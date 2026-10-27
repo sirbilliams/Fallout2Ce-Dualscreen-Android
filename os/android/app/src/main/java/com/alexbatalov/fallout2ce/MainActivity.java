@@ -22,6 +22,8 @@ import java.nio.charset.StandardCharsets;
 
 public class MainActivity extends SDLActivity {
     private boolean noExit = false;
+    // The second screen of a dual-screen device (null on the import path).
+    private BottomScreen bottomScreen;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,7 +56,26 @@ public class MainActivity extends SDLActivity {
 
             noExit = true;
             finish();
+            return;
         }
+
+        bottomScreen = new BottomScreen(this);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (bottomScreen != null) {
+            bottomScreen.start();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        if (bottomScreen != null) {
+            bottomScreen.stop();
+        }
+        super.onPause();
     }
 
     // The engine's own data (ce.dat, a folder in the app's assets, see

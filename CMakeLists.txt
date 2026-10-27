@@ -505,6 +505,19 @@ if(WIN32)
     )
 endif()
 
+# Dual-screen devices (AYN Thor): the second screen's surface
+# (BottomScreen.java).
+if(ANDROID)
+    target_sources(${EXECUTABLE_NAME} PUBLIC
+        "src/bottom_screen.cc"
+        "src/bottom_screen.h"
+    )
+    target_link_libraries(${EXECUTABLE_NAME}
+        android
+        log
+    )
+endif()
+
 if(MSVC)
     target_link_libraries(${EXECUTABLE_NAME} 
         debug libcpmtd
