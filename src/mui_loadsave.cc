@@ -1,5 +1,6 @@
 #include "mui.h"
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -25,9 +26,9 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kBackground = muiRgb(0x060A07);
-    const MuiColor kPanel = muiRgb(0x0B120D);
-    const MuiColor kSelected = muiRgb(0x16301D);
+    const MuiColor kBackground = muiRgb(0x070A06);
+    const MuiColor kPanel = muiRgb(0x0C0F09);
+    const MuiColor kSelected = muiRgb(0x24401E);
     const MuiColor kDanger = muiRgb(0xFF8E72);
     const MuiColor kDangerFill = muiRgb(0x1B100E);
     const MuiColor kDangerPressed = muiRgb(0x47211D);
@@ -386,7 +387,7 @@ namespace {
             ui.isInteractive = false;
         }
 
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         MuiRect content;
         MuiRect tabs;
@@ -444,7 +445,7 @@ namespace {
     void LoadSaveScreen::buildList(MuiContext& ui, const MuiRect& list)
     {
         const MuiTheme& theme = muiTheme();
-        muiFillRoundRect(list, ui.dp(7.0f), kPanel);
+        muiSkinWell(ui, list);
         muiStrokeRoundRect(list, ui.dp(7.0f), ui.dp(1.0f), theme.panelBorder);
 
         MuiRect inner = list.inset(ui.dp(6.0f));
@@ -550,7 +551,7 @@ namespace {
     void LoadSaveScreen::buildDetails(MuiContext& ui, const MuiRect& details)
     {
         const MuiTheme& theme = muiTheme();
-        muiFillRoundRect(details, ui.dp(7.0f), kPanel);
+        muiSkinWell(ui, details);
         muiStrokeRoundRect(details, ui.dp(7.0f), ui.dp(1.0f), theme.panelBorder);
 
         MuiRect inner = details.inset(ui.dp(8.0f));
@@ -744,7 +745,7 @@ namespace {
         MuiRect safe = ui.safeRect().inset(ui.dp(12.0f));
         float width = std::min(safe.w, ui.dp(340.0f));
         MuiRect card = { safe.centerX() - width / 2.0f, safe.centerY() - ui.dp(35.0f), width, ui.dp(70.0f) };
-        muiFillRoundRect(card, ui.dp(theme.radius), kPanel);
+        muiSkinPlate(ui, card);
         ui.panel(card);
 
         MuiRect bar = { card.x + ui.dp(14.0f), card.y + ui.dp(17.0f), ui.dp(3.0f), card.h - ui.dp(34.0f) };

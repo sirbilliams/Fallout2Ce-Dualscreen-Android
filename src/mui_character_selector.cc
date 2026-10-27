@@ -1,5 +1,6 @@
 #include "mui.h"
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <stdio.h>
 
@@ -30,8 +31,8 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kBackground = muiRgb(0x060A07);
-    const MuiColor kPanel = muiRgb(0x0B120D);
+    const MuiColor kBackground = muiRgb(0x070A06);
+    const MuiColor kPanel = muiRgb(0x0C0F09);
     const MuiColor kPoints = muiRgb(0xFFB000);
 
     // Texts in `game\ce.msg`.
@@ -281,7 +282,7 @@ namespace {
 
     void CharacterSelectorScreen::build(MuiContext& ui)
     {
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         MuiRect content;
         MuiRect rail;
@@ -322,7 +323,7 @@ namespace {
 
     void CharacterSelectorScreen::buildPicture(MuiContext& ui, const MuiRect& rect)
     {
-        muiFillRoundRect(rect, ui.dp(6.0f), kPanel);
+        muiSkinWell(ui, rect);
 
         if (isCustom()) {
             if (!splash.empty()) {

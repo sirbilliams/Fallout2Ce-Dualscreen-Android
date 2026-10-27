@@ -62,6 +62,16 @@ struct MuiTheme {
     float bodySize;
     float buttonTextSize;
     float touchSlop;
+    // Behind everything (full screens), under the metal.
+    MuiColor background;
+    // Recessed monitor wells (lists, maps, readouts).
+    MuiColor well;
+    // A chosen row or item in a well.
+    MuiColor selected;
+    // Mistakes, not enough, danger.
+    MuiColor warning;
+    // The metal plates' tint (mui_skin.h).
+    MuiColor metal;
 };
 
 const MuiTheme& muiTheme();

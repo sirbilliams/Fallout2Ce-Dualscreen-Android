@@ -1,4 +1,5 @@
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <string>
@@ -11,7 +12,7 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kListBackground = muiRgb(0x0B120D);
+    const MuiColor kListBackground = muiRgb(0x0C0F09);
 
     // "Use item on": dude's items (not the equipped ones) in a compact panel
     // next to the target - name, filters, a grid of three columns. Tap uses
@@ -87,7 +88,7 @@ namespace {
         y += filterHeight + ui.dp(6.0f);
 
         MuiRect list = { x, y, gridWidth, panel.bottom() - padding - y };
-        muiFillRoundRect(list, ui.dp(6.0f), kListBackground);
+        muiSkinWell(ui, list);
         muiStrokeRoundRect(list, ui.dp(6.0f), ui.dp(1.0f), theme.panelBorder);
 
         MuiRect area = list.inset(gap);

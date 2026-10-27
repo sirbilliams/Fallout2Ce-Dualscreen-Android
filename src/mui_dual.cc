@@ -1,4 +1,5 @@
 #include "mui_dual.h"
+#include "mui_skin.h"
 
 #include <math.h>
 #include <stdio.h>
@@ -28,12 +29,7 @@ namespace {
 
     const char* const kMonths[12] = { "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
 
-    // The backdrop's colors: Pip-Boy green on near black.
-    const MuiColor kBackdropTop = muiRgb(0x0A1A0E);
-    const MuiColor kBackdropBottom = muiRgb(0x030704);
-    const MuiColor kScanline = muiRgb(0x000000, 40);
-    const MuiColor kVignette = muiRgb(0x000000, 110);
-    const MuiColor kFadeColor = muiRgb(0x040905);
+    const MuiColor kFadeColor = muiRgb(0x17120C);
     const MuiColor kWarningRed = muiRgb(0xFF3B30);
     const MuiColor kHpGood = muiRgb(0x3CE03C);
     const MuiColor kHpMid = muiRgb(0xF0D030);
@@ -88,7 +84,7 @@ void muiDualHitPointsBar(MuiContext& ui, const MuiRect& rect)
     const MuiTheme& theme = muiTheme();
     float fraction = muiDualHitPointsFraction();
     float radius = rect.h / 2.0f;
-    muiFillRoundRect(rect, radius, muiRgb(0x14281A, 230));
+    muiFillRoundRect(rect, radius, muiRgb(0x2A2218, 230));
     if (fraction > 0.0f) {
         MuiRect fill = { rect.x, rect.y, std::max(rect.w * fraction, rect.h), rect.h };
         muiFillRoundRect(fill, radius, hitPointsColor(fraction).withAlpha(210));
@@ -114,46 +110,64 @@ float muiDualHitPointsFraction()
 
 void muiDualBackdrop(MuiContext& ui)
 {
+    // The bottom screen is a metal console (mui_skin.h), bolted at the
+    // corners.
     MuiRect screen = ui.screenRect();
-    muiFillGradient(screen, kBackdropTop, kBackdropTop, kBackdropBottom, kBackdropBottom);
-
-    // Scanlines: one dark line every few pixels, as the Pip-Boy's screen.
-    float step = std::max(3.0f, std::round(ui.dp(1.6f)));
-    for (float y = 0.0f; y < screen.h; y += step) {
-        muiFillRect({ screen.x, screen.y + y, screen.w, 1.0f }, kScanline);
-    }
-
-    // Vignette: the edges darker.
-    float edge = ui.dp(44.0f);
-    MuiColor clear = kVignette.withAlpha(0);
-    muiFillGradient({ screen.x, screen.y, edge, screen.h }, kVignette, clear, clear, kVignette);
-    muiFillGradient({ screen.right() - edge, screen.y, edge, screen.h }, clear, kVignette, kVignette, clear);
-    muiFillGradient({ screen.x, screen.y, screen.w, edge }, kVignette, kVignette, clear, clear);
-    muiFillGradient({ screen.x, screen.bottom() - edge, screen.w, edge }, clear, clear, kVignette, kVignette);
+    muiSkinBackdrop(ui, screen);
+    float inset = ui.dp(9.0f);
+    muiSkinRivet(ui, screen.x + inset, screen.y + inset);
+    muiSkinRivet(ui, screen.right() - inset, screen.y + inset);
+    muiSkinRivet(ui, screen.x + inset, screen.bottom() - inset);
+    muiSkinRivet(ui, screen.right() - inset, screen.bottom() - inset);
 }
 
 void muiDualCompanion(MuiContext& ui)
 {
     const MuiTheme& theme = muiTheme();
     MuiRect screen = ui.screenRect();
-    float width = std::min(screen.w - ui.dp(48.0f), ui.dp(420.0f));
+    float width = std::min(screen.w - ui.dp(88.0f), ui.dp(400.0f));
     float x = screen.centerX() - width / 2.0f;
+
+    // A monitor in a riveted bezel, the readouts in it.
+    float bezel = ui.dp(16.0f);
+    float padding = ui.dp(14.0f);
+    auto monitor = [&](float contentHeight) {
+        float height = contentHeight + (bezel + padding) * 2.0f;
+        MuiRect plate = { x - bezel - padding, screen.centerY() - height / 2.0f, width + (bezel + padding) * 2.0f, height };
+        muiSkinPlate(ui, plate, true);
+        muiSkinWell(ui, plate.inset(bezel));
+        return plate.y + bezel + padding;
+    };
 
     if (!inGame()) {
         // Outside a game: the title.
-        MuiRect title = { x, screen.centerY() - ui.dp(48.0f), width, ui.dp(56.0f) };
+        float y = monitor(ui.dp(84.0f));
+        MuiRect title = { x, y, width, ui.dp(56.0f) };
         muiDrawTextAligned(muiDecodeUtf8("FALLOUT 2"), title, ui.dp(44.0f), theme.accent, MuiAlign::Center, MuiAlign::Center);
         MuiRect subtitle = { x, title.bottom(), width, ui.dp(28.0f) };
         muiDrawTextAligned(text(kTextDualScreen, "Dual screen"), subtitle, ui.dp(16.0f), theme.textDim, MuiAlign::Center, MuiAlign::Center);
         return;
     }
 
-    float y = screen.y + ui.dp(28.0f);
+    // What is going on up there.
+    std::u32string mode;
+    int gameMode = GameMode::getCurrentGameMode();
+    if ((gameMode & (GameMode::kDialog | GameMode::kBarter)) != 0) {
+        mode = text(kTextInConversation, "In conversation");
+    } else if ((gameMode & GameMode::kWorldmap) != 0) {
+        mode = text(kTextTraveling, "Traveling");
+    }
+
+    float contentHeight = ui.dp(24.0f + 8.0f + 72.0f + 26.0f + 14.0f + 1.0f + 14.0f + 24.0f + 10.0f + 22.0f);
+    if (!mode.empty()) {
+        contentHeight += ui.dp(16.0f + 30.0f);
+    }
+    float y = monitor(contentHeight);
 
     // Where.
     std::u32string place;
     Map map = mapGetCurrentMap();
-    if ((GameMode::getCurrentGameMode() & GameMode::kWorldmap) == 0 && mapIsValid(map)) {
+    if ((gameMode & GameMode::kWorldmap) == 0 && mapIsValid(map)) {
         place = muiDecodeGameText(mapGetCityName(map));
         std::u32string name = muiDecodeGameText(mapGetName(map, gElevation));
         if (!name.empty() && name != place) {
@@ -165,15 +179,15 @@ void muiDualCompanion(MuiContext& ui)
     }
     MuiRect placeRect = { x, y, width, ui.dp(24.0f) };
     float placeSize = muiFitTextSize(place, width, ui.dp(16.0f), ui.dp(11.0f));
-    muiDrawTextAligned(place, placeRect, placeSize, theme.textDim, MuiAlign::Center, MuiAlign::Center);
-    y = placeRect.bottom() + ui.dp(10.0f);
+    muiDrawTextAligned(place, placeRect, placeSize, theme.accent, MuiAlign::Center, MuiAlign::Center);
+    y = placeRect.bottom() + ui.dp(8.0f);
 
-    // The game's clock, large, and its date.
+    // The game's clock, large, and its date: green readouts.
     int hour = gameTimeGetHour();
     char clock[16];
     snprintf(clock, sizeof(clock), "%02d:%02d", hour / 100, hour % 100);
     MuiRect clockRect = { x, y, width, ui.dp(72.0f) };
-    muiDrawTextAligned(muiDecodeUtf8(clock), clockRect, ui.dp(64.0f), theme.accent, MuiAlign::Center, MuiAlign::Center);
+    muiDrawTextAligned(muiDecodeUtf8(clock), clockRect, ui.dp(64.0f), theme.text, MuiAlign::Center, MuiAlign::Center);
     y = clockRect.bottom();
 
     int month;
@@ -183,11 +197,11 @@ void muiDualCompanion(MuiContext& ui)
     char date[32];
     snprintf(date, sizeof(date), "%d %s %d", day, kMonths[std::clamp(month, 1, 12) - 1], year);
     MuiRect dateRect = { x, y, width, ui.dp(26.0f) };
-    muiDrawTextAligned(muiDecodeUtf8(date), dateRect, ui.dp(18.0f), theme.text, MuiAlign::Center, MuiAlign::Center);
-    y = dateRect.bottom() + ui.dp(18.0f);
+    muiDrawTextAligned(muiDecodeUtf8(date), dateRect, ui.dp(18.0f), theme.textDim, MuiAlign::Center, MuiAlign::Center);
+    y = dateRect.bottom() + ui.dp(14.0f);
 
-    muiFillRect({ x + width * 0.15f, y, width * 0.7f, ui.dp(1.0f) }, theme.panelBorder);
-    y += ui.dp(16.0f);
+    muiFillRect({ x + width * 0.1f, y, width * 0.8f, std::max(ui.dp(1.0f), 1.0f) }, theme.textDim.withAlpha(120));
+    y += ui.dp(1.0f) + ui.dp(14.0f);
 
     // Who: name and level, then HP.
     char level[32];
@@ -198,21 +212,13 @@ void muiDualCompanion(MuiContext& ui)
     y = whoRect.bottom() + ui.dp(10.0f);
 
     muiDualHitPointsBar(ui, { x + width * 0.1f, y, width * 0.8f, ui.dp(22.0f) });
-    y += ui.dp(22.0f) + ui.dp(18.0f);
+    y += ui.dp(22.0f) + ui.dp(16.0f);
 
-    // What is going on up there.
-    std::u32string mode;
-    int gameMode = GameMode::getCurrentGameMode();
-    if ((gameMode & (GameMode::kDialog | GameMode::kBarter)) != 0) {
-        mode = text(kTextInConversation, "In conversation");
-    } else if ((gameMode & GameMode::kWorldmap) != 0) {
-        mode = text(kTextTraveling, "Traveling");
-    }
     if (!mode.empty()) {
         float size = ui.dp(15.0f);
         float chipWidth = muiTextWidth(mode, size) + ui.dp(28.0f);
         MuiRect chip = { screen.centerX() - chipWidth / 2.0f, y, chipWidth, ui.dp(30.0f) };
-        muiFillRoundRect(chip, chip.h / 2.0f, muiRgb(0x14281A, 230));
+        muiFillRoundRect(chip, chip.h / 2.0f, muiRgb(0x2A2218, 230));
         muiStrokeRoundRect(chip, chip.h / 2.0f, ui.dp(1.0f), theme.accent.withAlpha(160));
         muiDrawTextAligned(mode, chip, size, theme.accent, MuiAlign::Center, MuiAlign::Center);
     }
@@ -274,7 +280,7 @@ void muiDualTopDim(MuiContext& ui)
     MuiRect safe = ui.safeRect();
     MuiRect chip = { screen.centerX() - chipWidth / 2.0f, safe.bottom() - ui.dp(56.0f) + bob, chipWidth, ui.dp(36.0f) };
     Uint8 alpha = static_cast<Uint8>(progress * 255.0f);
-    muiFillRoundRect(chip, chip.h / 2.0f, muiRgb(0x0B120D, static_cast<Uint8>(progress * 235.0f)));
+    muiFillRoundRect(chip, chip.h / 2.0f, muiRgb(0x0C0F09, static_cast<Uint8>(progress * 235.0f)));
     muiStrokeRoundRect(chip, chip.h / 2.0f, ui.dp(1.5f), theme.accent.withAlpha(alpha));
 
     float arrowX = chip.x + ui.dp(18.0f) + arrow;

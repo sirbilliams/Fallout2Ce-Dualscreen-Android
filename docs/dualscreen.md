@@ -34,6 +34,18 @@ Built (needs checking on a Thor):
   combat an amber (your turn, AP left) or red (enemy turn) banner and border.
 - Settings -> Display -> Dual screen (`[touch] dual_screen`, on).
 
+- Classic Fallout 2 theme (`mui_skin.cc`, the palette in `mui.cc`): worn metal plates drawn from
+  a generated texture, bevels and rivets, recessed monitor wells with green readouts, amber
+  highlights and lit switches, red primary buttons. Full screens get the bolted metal backdrop,
+  lists and readouts the wells; the bottom screen is a metal console, its companion panel a
+  monitor in a riveted bezel.
+- Detailed maps (`automapGetView`, `MuiMapView`), on the map screen and the live map: the explored
+  floor in its tiles' own colors (squares near anything seen, so it survives a reload), doors,
+  containers, stairs / ladders / elevators, party members, and names of where exits lead; a legend
+  on the map screen.
+- `tools/mui_preview`: renders the skin and a made-up map off-screen, to tune the look without a
+  device.
+
 Next: dialogue split (head and reply on top, options below), barter, the map cursor for the pad,
 d-pad focus on the bottom screen, quick use (option), screen layouts for the square bottom
 screen.

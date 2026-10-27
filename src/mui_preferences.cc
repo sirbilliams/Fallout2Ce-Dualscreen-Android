@@ -1,5 +1,6 @@
 #include "mui.h"
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <stdio.h>
 
@@ -38,9 +39,9 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kBackground = muiRgb(0x060A07);
-    const MuiColor kPanel = muiRgb(0x0B120D);
-    const MuiColor kRowLine = muiRgb(0x12301A);
+    const MuiColor kBackground = muiRgb(0x070A06);
+    const MuiColor kPanel = muiRgb(0x0C0F09);
+    const MuiColor kRowLine = muiRgb(0x3A3020);
     const MuiColor kChanged = muiRgb(0xFFB000);
     const MuiColor kPortBadge = muiRgb(0xFFB000);
 
@@ -795,7 +796,7 @@ namespace {
     void PreferencesScreen::build(MuiContext& ui)
     {
         const MuiTheme& theme = muiTheme();
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         MuiRect content;
         MuiRect rail;
@@ -840,7 +841,7 @@ namespace {
             }
         }
 
-        muiFillRoundRect(list, ui.dp(7.0f), kPanel);
+        muiSkinWell(ui, list);
         int current = static_cast<int>(std::find(shown.begin(), shown.end(), section) - shown.begin());
         int chosen = muiSectionList(ui, "prefs.sections", list, labels, current, marked);
         if (chosen != current && chosen >= 0 && chosen < static_cast<int>(shown.size())) {
@@ -852,7 +853,7 @@ namespace {
         }
 
         // Settings over the buttons.
-        muiFillRoundRect(panel, ui.dp(7.0f), kPanel);
+        muiSkinWell(ui, panel);
         muiStrokeRoundRect(panel, ui.dp(7.0f), ui.dp(1.0f), theme.panelBorder);
         MuiRect inner = panel.inset(ui.dp(8.0f));
         if (section == Section::Files) {

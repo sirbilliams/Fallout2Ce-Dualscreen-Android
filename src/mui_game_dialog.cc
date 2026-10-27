@@ -1,6 +1,7 @@
 #include "mui.h"
 #include "mui_icons.h"
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <string>
@@ -25,7 +26,7 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kBackground = muiRgb(0x060A07);
+    const MuiColor kBackground = muiRgb(0x070A06);
     const MuiColor kReactionGood = muiRgb(0x78B4FF);
     const MuiColor kReactionBad = muiRgb(0xFF6E5E);
 
@@ -141,7 +142,7 @@ namespace {
     void TalkScreen::build(MuiContext& ui)
     {
         // Opaque over the map.
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         MuiRect content;
         MuiRect iconColumn;
@@ -838,7 +839,7 @@ void muiDrawCostBadge(MuiContext& ui, const MuiRect& button, const std::u32strin
     float width = std::max(height, muiTextWidth(text, size) + ui.dp(8.0f));
     MuiRect badge = { button.right() - width + ui.dp(3.0f), button.y - ui.dp(3.0f), width, height };
     MuiColor color = warning ? muiRgb(0xFF6E5E) : theme.accent;
-    muiFillRoundRect(badge, height / 2.0f, muiRgb(0x0B120D));
+    muiFillRoundRect(badge, height / 2.0f, muiRgb(0x0C0F09));
     muiStrokeRoundRect(badge, height / 2.0f, ui.dp(1.2f), color);
     muiDrawTextAligned(text, badge, size, color, MuiAlign::Center, MuiAlign::Center);
 }

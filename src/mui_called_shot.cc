@@ -1,6 +1,7 @@
 #include "mui.h"
 #include "mui_icons.h"
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <string>
@@ -22,7 +23,7 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kPanel = muiRgb(0x0B120D, 245);
+    const MuiColor kPanel = muiRgb(0x0C0F09, 245);
     const MuiColor kLow = muiRgb(0xFF6E5E);
     const MuiColor kMiddle = muiRgb(0xFFB000);
 
@@ -136,7 +137,7 @@ namespace {
             cancelled = true;
         }
 
-        muiFillRoundRect(panel, ui.dp(theme.radius), kPanel);
+        muiSkinWell(ui, panel);
         muiStrokeRoundRect(panel, ui.dp(theme.radius), ui.dp(theme.borderWidth), theme.accent);
         ui.region(panel);
 

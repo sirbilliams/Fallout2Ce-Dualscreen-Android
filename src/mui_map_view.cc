@@ -7,7 +7,7 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kScenery = muiRgb(0x2E7A3A);
+    const MuiColor kScenery = muiRgb(0x2E6A30);
 
     // Texture pixels per tile: steps the map is drawn at (the view scales
     // the nearest one), the texture size limit.
@@ -16,6 +16,12 @@ namespace {
 
     // Explored part margin, tiles.
     constexpr int kMargin = 3;
+
+    // Floor colors are darkened to this part of their art's.
+    constexpr float kFloorShade = 0.42f;
+
+    // Labels show from this many dp per tile on.
+    constexpr float kLabelZoomDp = 3.2f;
 
     SDL_Vertex vertex(float x, float y, MuiColor color)
     {
@@ -65,6 +71,12 @@ namespace {
 
 } // namespace
 
+void muiFillDiamond(float x, float y, float radius, MuiColor color)
+{
+    muiFillConvex({ { x, y - radius }, { x + radius, y }, { x - radius, y } }, color);
+    muiFillConvex({ { x + radius, y }, { x, y + radius }, { x - radius, y } }, color);
+}
+
 unsigned char MuiMapView::tileAt(int x, int y) const
 {
     if (x < 0 || y < 0 || x >= width || y >= height) {
@@ -84,8 +96,34 @@ void MuiMapView::setTiles(const std::string& newKey, const std::vector<unsigned 
     tiles = newTiles;
     width = newWidth;
     height = newHeight;
+    if (anotherMap) {
+        floors.clear();
+        floorsWidth = 0;
+        floorsHeight = 0;
+    }
     textureValid = false;
+    updateBounds();
 
+    if (anotherMap) {
+        needsFit = true;
+    }
+}
+
+void MuiMapView::setFloors(const std::vector<unsigned int>& colors, int floorWidth, int floorHeight)
+{
+    if (colors == floors && floorWidth == floorsWidth && floorHeight == floorsHeight) {
+        return;
+    }
+
+    floors = colors;
+    floorsWidth = floorWidth;
+    floorsHeight = floorHeight;
+    textureValid = false;
+    updateBounds();
+}
+
+void MuiMapView::updateBounds()
+{
     left = width;
     top = height;
     right = -1;
@@ -101,28 +139,26 @@ void MuiMapView::setTiles(const std::string& newKey, const std::vector<unsigned 
         }
     }
 
+    // A floor square covers 2 x 2 tiles.
+    for (int y = 0; y < floorsHeight; y++) {
+        for (int x = 0; x < floorsWidth; x++) {
+            if (floors[static_cast<size_t>(y) * floorsWidth + x] != 0) {
+                left = std::min(left, x * 2);
+                right = std::max(right, std::min(x * 2 + 1, width - 1));
+                top = std::min(top, y * 2);
+                bottom = std::max(bottom, std::min(y * 2 + 1, height - 1));
+            }
+        }
+    }
+
     if (right >= left) {
         left = std::max(left - kMargin, 0);
         top = std::max(top - kMargin, 0);
         right = std::min(right + kMargin, width - 1);
         bottom = std::min(bottom + kMargin, height - 1);
     }
-
-    if (anotherMap) {
-        needsFit = true;
-    }
 }
 
-void MuiMapView::centerOn(float x, float y)
-{
-    hasCenter = true;
-    centerX = x;
-    centerY = y;
-}
-
-// Draws the explored part into the texture at [scale] texture pixels per
-// tile: dim scenery dots, then walls as lines between neighbouring walls
-// with a glow.
 void MuiMapView::render(MuiContext& ui, float scale)
 {
     SDL_Renderer* renderer = muiDrawGetRenderer();
@@ -153,13 +189,37 @@ void MuiMapView::render(MuiContext& ui, float scale)
     }
 
     const MuiTheme& theme = muiTheme();
-    MuiColor glow = theme.accent.withAlpha(60);
-    MuiColor core = theme.accent;
+    // Walls in the readouts' green, as the game's automap.
+    MuiColor glow = theme.text.withAlpha(60);
+    MuiColor core = theme.text;
     float thickness = std::max(scale * 0.34f, 1.5f);
 
+    std::vector<SDL_Vertex> floorVertices;
     std::vector<SDL_Vertex> scenery;
     std::vector<SDL_Vertex> glowVertices;
     std::vector<SDL_Vertex> coreVertices;
+
+    // The explored floor in its art's colors, darkened so walls and markers
+    // stand out on it.
+    for (int y = 0; y < floorsHeight; y++) {
+        for (int x = 0; x < floorsWidth; x++) {
+            unsigned int color = floors[static_cast<size_t>(y) * floorsWidth + x];
+            if (color == 0 || x * 2 + 1 < left || x * 2 > right || y * 2 + 1 < top || y * 2 > bottom) {
+                continue;
+            }
+            MuiColor fill = {
+                static_cast<Uint8>(((color >> 16) & 0xFF) * kFloorShade),
+                static_cast<Uint8>(((color >> 8) & 0xFF) * kFloorShade),
+                static_cast<Uint8>((color & 0xFF) * kFloorShade),
+                255,
+            };
+            float x1 = (x * 2 - left) * scale;
+            float y1 = (y * 2 - top) * scale;
+            float x2 = x1 + 2.0f * scale;
+            float y2 = y1 + 2.0f * scale;
+            addQuad(floorVertices, { x1, y1 }, { x2, y1 }, { x2, y2 }, { x1, y2 }, fill);
+        }
+    }
 
     auto center = [&](int x, int y) {
         return SDL_FPoint { (x - left + 0.5f) * scale, (y - top + 0.5f) * scale };
@@ -218,7 +278,7 @@ void MuiMapView::render(MuiContext& ui, float scale)
     SDL_RenderClear(renderer);
     // Colors with alpha blended over transparent black are premultiplied.
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-    for (const std::vector<SDL_Vertex>* layer : { &scenery, &glowVertices, &coreVertices }) {
+    for (const std::vector<SDL_Vertex>* layer : { &floorVertices, &scenery, &glowVertices, &coreVertices }) {
         if (!layer->empty()) {
             SDL_RenderGeometry(renderer, nullptr, layer->data(), static_cast<int>(layer->size()), nullptr, 0);
         }
@@ -230,7 +290,7 @@ void MuiMapView::render(MuiContext& ui, float scale)
     textureValid = true;
 }
 
-void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers)
+void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers, const std::vector<MuiMapLabel>* labels)
 {
     if (isEmpty()) {
         return;
@@ -307,8 +367,42 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
         float x = rect.centerX() + (marker.x + 0.5f - view.centerX) * view.zoom;
         float y = rect.centerY() + (marker.y + 0.5f - view.centerY) * view.zoom;
         float radius = ui.dp(marker.radius);
-        muiFillCircle(x, y, radius * 2.0f, marker.color.withAlpha(50));
-        muiFillCircle(x, y, radius, marker.color);
+        MuiColor outline = muiRgb(0x000000, 170);
+        switch (marker.shape) {
+        case MuiMapMarkerShape::Dot:
+            muiFillCircle(x, y, radius * 2.0f, marker.color.withAlpha(50));
+            muiFillCircle(x, y, radius, marker.color);
+            break;
+        case MuiMapMarkerShape::Square:
+            muiFillRect({ x - radius - 1.0f, y - radius - 1.0f, radius * 2.0f + 2.0f, radius * 2.0f + 2.0f }, outline);
+            muiFillRect({ x - radius, y - radius, radius * 2.0f, radius * 2.0f }, marker.color);
+            break;
+        case MuiMapMarkerShape::Diamond:
+            muiFillDiamond(x, y, radius + 1.5f, outline);
+            muiFillDiamond(x, y, radius, marker.color);
+            break;
+        case MuiMapMarkerShape::Ring:
+            muiStrokeCircle(x, y, radius, std::max(radius * 0.45f, 1.5f), marker.color);
+            break;
+        case MuiMapMarkerShape::Triangle:
+            muiFillConvex({ { x, y - radius * 1.15f - 1.5f }, { x + radius + 1.5f, y + radius * 0.8f + 1.0f }, { x - radius - 1.5f, y + radius * 0.8f + 1.0f } }, outline);
+            muiFillConvex({ { x, y - radius * 1.15f }, { x + radius, y + radius * 0.8f }, { x - radius, y + radius * 0.8f } }, marker.color);
+            break;
+        }
+    }
+
+    // Names, once they can be read at this zoom.
+    if (labels != nullptr && view.zoom >= ui.dp(kLabelZoomDp)) {
+        float size = ui.dp(11.0f);
+        for (const MuiMapLabel& label : *labels) {
+            float x = rect.centerX() + (label.x + 0.5f - view.centerX) * view.zoom;
+            float y = rect.centerY() + (label.y + 0.5f - view.centerY) * view.zoom - ui.dp(14.0f);
+            float width = muiTextWidth(label.text, size) + ui.dp(10.0f);
+            MuiRect plate = { x - width / 2.0f, y - ui.dp(9.0f), width, ui.dp(18.0f) };
+            muiFillRoundRect(plate, ui.dp(4.0f), muiRgb(0x000000, 190));
+            muiStrokeRoundRect(plate, ui.dp(4.0f), ui.dp(1.0f), label.color.withAlpha(150));
+            muiDrawTextAligned(label.text, plate, size, label.color, MuiAlign::Center, MuiAlign::Center);
+        }
     }
 
     muiPopClip();

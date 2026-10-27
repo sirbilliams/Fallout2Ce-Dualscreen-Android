@@ -11,8 +11,8 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kPlate = muiRgb(0x0B120D, 245);
-    const MuiColor kHudLine = muiRgb(0x0B120D, 200);
+    const MuiColor kPlate = muiRgb(0x0C0F09, 245);
+    const MuiColor kHudLine = muiRgb(0x0C0F09, 200);
     const MuiColor kWarning = muiRgb(0xFF6E5E);
 
     // Shown for a base time plus time to read it, fading out at the end.

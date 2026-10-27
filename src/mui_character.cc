@@ -2,6 +2,7 @@
 #include "mui_icons.h"
 #include "mui_notify.h"
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <string>
@@ -28,9 +29,9 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kBackground = muiRgb(0x060A07);
-    const MuiColor kListBackground = muiRgb(0x0B120D);
-    const MuiColor kSelected = muiRgb(0x16301D);
+    const MuiColor kBackground = muiRgb(0x070A06);
+    const MuiColor kListBackground = muiRgb(0x0C0F09);
+    const MuiColor kSelected = muiRgb(0x24401E);
     const MuiColor kWarning = muiRgb(0xFF6E5E);
     const MuiColor kNotice = muiRgb(0xE0C95F);
 
@@ -340,7 +341,7 @@ namespace {
             }
         }
 
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         // Under the perk panel and the name field nothing takes touches (they
         // are parts of this screen, the first widget under the finger would
@@ -1278,7 +1279,7 @@ namespace {
         float width = std::min(safe.w * 0.9f, ui.dp(760.0f));
         float height = std::min(safe.h * 0.9f, ui.dp(330.0f));
         MuiRect panel = { safe.centerX() - width / 2.0f, safe.centerY() - height / 2.0f, width, height };
-        muiFillRoundRect(panel, ui.dp(theme.radius), kListBackground);
+        muiSkinWell(ui, panel);
         muiStrokeRoundRect(panel, ui.dp(theme.radius), ui.dp(theme.borderWidth), theme.accent);
         ui.region(panel);
 
@@ -1435,7 +1436,7 @@ namespace {
         MuiRect safe = ui.safeRect().inset(ui.dp(10.0f));
         float width = std::min(safe.w * 0.7f, ui.dp(520.0f));
         MuiRect panel = { safe.centerX() - width / 2.0f, safe.y, width, ui.dp(112.0f) };
-        muiFillRoundRect(panel, ui.dp(theme.radius), kListBackground);
+        muiSkinWell(ui, panel);
         muiStrokeRoundRect(panel, ui.dp(theme.radius), ui.dp(theme.borderWidth), theme.accent);
         ui.region(panel);
 

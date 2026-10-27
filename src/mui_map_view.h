@@ -20,6 +20,14 @@ enum MuiMapTile : unsigned char {
     MUI_MAP_TILE_SCENERY = 2,
 };
 
+enum class MuiMapMarkerShape {
+    Dot,
+    Square,
+    Diamond,
+    Ring,
+    Triangle,
+};
+
 // Marker in tile coordinates (tile centers are at x + 0.5, y + 0.5).
 struct MuiMapMarker {
     float x;
@@ -27,6 +35,15 @@ struct MuiMapMarker {
     MuiColor color;
     // dp.
     float radius;
+    MuiMapMarkerShape shape = MuiMapMarkerShape::Dot;
+};
+
+// A name on the map at tile ([x], [y]), shown once zoomed in enough to read.
+struct MuiMapLabel {
+    float x;
+    float y;
+    std::u32string text;
+    MuiColor color;
 };
 
 class MuiMapView {
@@ -34,6 +51,10 @@ public:
     // [tiles]: [width] x [height] codes, rows top down. A new [key] (another
     // map) shows the explored part whole; the same key keeps the view.
     void setTiles(const std::string& key, const std::vector<unsigned char>& tiles, int width, int height);
+
+    // The explored floor under the walls: [floorWidth] x [floorHeight]
+    // squares of 2 x 2 tiles, ARGB colors (0 - none), drawn darkened.
+    void setFloors(const std::vector<unsigned int>& colors, int floorWidth, int floorHeight);
 
     bool isEmpty() const { return right < left; }
 
@@ -75,13 +96,17 @@ public:
         return true;
     }
 
-    void build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers);
+    void build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers, const std::vector<MuiMapLabel>* labels = nullptr);
 
 private:
     std::string key;
     std::vector<unsigned char> tiles;
     int width = 0;
     int height = 0;
+
+    std::vector<unsigned int> floors;
+    int floorsWidth = 0;
+    int floorsHeight = 0;
 
     // Explored part (tiles), with a margin.
     int left = 0;
@@ -111,8 +136,25 @@ private:
     bool textureValid = false;
 
     unsigned char tileAt(int x, int y) const;
+    // The explored part from the tiles and the floor.
+    void updateBounds();
     void render(MuiContext& ui, float scale);
 };
+
+struct AutomapView;
+
+// A diamond centered at ([x], [y]) reaching [radius] out (two triangles).
+void muiFillDiamond(float x, float y, float radius, MuiColor color);
+
+// The automap's markers and names (mui_automap.cc), the same on the map
+// screen and the dual-screen dashboard's live map: exits and their
+// destinations, doors, containers, stairs / ladders / elevators, party
+// members, and with [critters] the motion sensor's critters. Dude is the
+// caller's.
+void muiAutomapDetail(const AutomapView& view, bool critters, std::vector<MuiMapMarker>* markers, std::vector<MuiMapLabel>* labels);
+
+// What the markers are: a row of keys along the bottom of [area].
+void muiAutomapLegend(MuiContext& ui, const MuiRect& area);
 
 } // namespace fallout
 

@@ -294,3 +294,9 @@
 {908}{}{YOUR TURN}
 {909}{}{ENEMY TURN}
 {910}{}{%d AP}
+{911}{}{World map}
+{912}{}{Door}
+{913}{}{Container}
+{914}{}{Stairs}
+{915}{}{Party}
+{916}{}{Exit}

@@ -4,6 +4,9 @@
 #include <string.h>
 
 #include <algorithm>
+#include <map>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "art.h"
@@ -24,10 +27,13 @@
 #include "memory.h"
 #include "mui.h"
 #include "object.h"
+#include "party_member.h"
 #include "platform_compat.h"
+#include "proto.h"
 #include "settings.h"
 #include "svga.h"
 #include "text_font.h"
+#include "tile.h"
 #include "touch.h"
 #include "window_manager.h"
 #include "worldmap.h"
@@ -580,6 +586,52 @@ void automapGetLiveView(int elevation, AutomapView* view)
     gAutomapFlags = flags;
 }
 
+// The average color of floor tile art [frameId] (ARGB, from the game's color
+// table), 0 for none; computed once per tile.
+static unsigned int automapFloorColor(int frameId)
+{
+    static std::unordered_map<int, unsigned int> colors;
+    auto it = colors.find(frameId);
+    if (it != colors.end()) {
+        return it->second;
+    }
+
+    unsigned int color = 0;
+    CacheEntry* handle;
+    Art* art = artLock(TileFrmId(static_cast<TileFrameId>(frameId)), &handle);
+    if (art != nullptr) {
+        int width = artGetWidth(art, 0, ROTATION_NE);
+        int height = artGetHeight(art, 0, ROTATION_NE);
+        unsigned char* data = artGetFrameData(art, 0, ROTATION_NE);
+        if (data != nullptr && width > 0 && height > 0) {
+            unsigned long r = 0;
+            unsigned long g = 0;
+            unsigned long b = 0;
+            unsigned long count = 0;
+            for (int index = 0; index < width * height; index++) {
+                unsigned char pixel = data[index];
+                if (pixel == 0) {
+                    continue;
+                }
+                r += _cmap[pixel * 3] * 4;
+                g += _cmap[pixel * 3 + 1] * 4;
+                b += _cmap[pixel * 3 + 2] * 4;
+                count++;
+            }
+            if (count != 0) {
+                color = 0xFF000000u
+                    | (static_cast<unsigned int>(std::min(r / count, 255ul)) << 16)
+                    | (static_cast<unsigned int>(std::min(g / count, 255ul)) << 8)
+                    | static_cast<unsigned int>(std::min(b / count, 255ul));
+            }
+        }
+        artUnlock(handle);
+    }
+
+    colors[frameId] = color;
+    return color;
+}
+
 void automapGetView(int elevation, AutomapView* view)
 {
     view->tiles.assign(HEX_GRID_WIDTH * HEX_GRID_HEIGHT, 0);
@@ -587,6 +639,26 @@ void automapGetView(int elevation, AutomapView* view)
     view->dudeY = -1;
     view->exits.clear();
     view->critters.clear();
+    view->doors.clear();
+    view->containers.clear();
+    view->levelChanges.clear();
+    view->party.clear();
+    view->exitLabels.clear();
+    view->floors.assign(kAutomapFloorWidth * kAutomapFloorHeight, 0);
+
+    // Floor squares near what dude has seen count as explored.
+    std::vector<unsigned char> explored(kAutomapFloorWidth * kAutomapFloorHeight, 0);
+    auto markExplored = [&](int x, int y) {
+        explored[(y / 2) * kAutomapFloorWidth + x / 2] = 1;
+    };
+
+    // Seen exit grids by where they lead: sums of their places.
+    struct ExitGroup {
+        float sumX = 0.0f;
+        float sumY = 0.0f;
+        int count = 0;
+    };
+    std::map<std::pair<int, int>, ExitGroup> exitGroups;
 
     for (Object* object = objectFindFirstAtElevation(elevation); object != nullptr; object = objectFindNextAtElevation()) {
         if (object->tile == -1) {
@@ -610,11 +682,54 @@ void automapGetView(int elevation, AutomapView* view)
         if (object == gDude) {
             view->dudeX = x;
             view->dudeY = y;
+            markExplored(x, y);
+            continue;
+        }
+
+        // Party members: where they are, seen or not (they're with dude).
+        if (objectType == OBJ_TYPE_CRITTER
+            && (object->flags & OBJECT_HIDDEN) == OBJECT_NONE
+            && (object->data.critter.combat.results & DAM_DEAD) == DAM_NONE
+            && objectIsPartyMember(object)) {
+            view->party.push_back({ x, y });
             continue;
         }
 
         if ((object->flags & OBJECT_SEEN) == OBJECT_NONE) {
             continue;
+        }
+
+        markExplored(x, y);
+
+        if (objectType == OBJ_TYPE_MISC && isExitGridProtoId(ProtoId(object))) {
+            ExitGroup& group = exitGroups[{ static_cast<int>(object->data.misc.map), object->data.misc.elevation }];
+            group.sumX += x;
+            group.sumY += y;
+            group.count++;
+            continue;
+        }
+
+        if (objectType == OBJ_TYPE_ITEM && itemGetType(object) == ITEM_TYPE_CONTAINER) {
+            view->containers.push_back({ x, y });
+        }
+
+        if (objectType == OBJ_TYPE_SCENERY) {
+            Proto* proto;
+            if (protoGetProto(ProtoId(object), &proto) != -1) {
+                switch (proto->scenery.type) {
+                case SCENERY_TYPE_DOOR:
+                    view->doors.push_back({ x, y });
+                    break;
+                case SCENERY_TYPE_STAIRS:
+                case SCENERY_TYPE_ELEVATOR:
+                case SCENERY_TYPE_LADDER_UP:
+                case SCENERY_TYPE_LADDER_DOWN:
+                    view->levelChanges.push_back({ x, y });
+                    break;
+                default:
+                    break;
+                }
+            }
         }
 
         if (ProtoId(object) == SceneryProtoTypeId::ExitGridAutomapMarker) {
@@ -629,6 +744,60 @@ void automapGetView(int elevation, AutomapView* view)
             if (tile == 0) {
                 tile = 2;
             }
+        }
+    }
+
+    // Exit grids: one label per place they lead to.
+    Map currentMap = mapGetCurrentMap();
+    for (const auto& entry : exitGroups) {
+        Map destination = static_cast<Map>(entry.first.first);
+        int destinationElevation = entry.first.second;
+        const ExitGroup& group = entry.second;
+        std::string label;
+        if (static_cast<int>(destination) < 0) {
+            // To the world map.
+            label = muiText(911, "World map");
+        } else if (destination != currentMap && mapGetCityName(destination) != nullptr) {
+            label = mapGetCityName(destination);
+        } else {
+            char* name = mapGetName(destination, std::max(destinationElevation, 0));
+            label = name != nullptr ? name : "";
+        }
+        if (!label.empty()) {
+            view->exitLabels.push_back({ group.sumX / group.count, group.sumY / group.count, label });
+        }
+    }
+
+    // Explored floor: two squares around anything seen, with floor art.
+    TileData* squares = elevation >= 0 && elevation < ELEVATION_COUNT ? _square[elevation] : nullptr;
+    if (squares == nullptr) {
+        return;
+    }
+    constexpr int kReach = 2;
+    for (int y = 0; y < kAutomapFloorHeight; y++) {
+        for (int x = 0; x < kAutomapFloorWidth; x++) {
+            bool near = false;
+            for (int dy = -kReach; dy <= kReach && !near; dy++) {
+                for (int dx = -kReach; dx <= kReach && !near; dx++) {
+                    int nx = x + dx;
+                    int ny = y + dy;
+                    near = nx >= 0 && ny >= 0 && nx < kAutomapFloorWidth && ny < kAutomapFloorHeight
+                        && explored[ny * kAutomapFloorWidth + nx] != 0;
+                }
+            }
+            if (!near) {
+                continue;
+            }
+
+            // The square grid's columns run the other way (see
+            // `squareTileFromTile`).
+            int squareTile = (kAutomapFloorWidth - 1 - x) + kAutomapFloorWidth * y;
+            const FloorTileFrmId floor = FloorTileFrmId(squares->tileFid[squareTile]);
+            int frameId = static_cast<int>(floor.frameId<TileFrameId>());
+            if (frameId <= static_cast<int>(TileFrameId::Grid)) {
+                continue;
+            }
+            view->floors[y * kAutomapFloorWidth + x] = automapFloorColor(frameId);
         }
     }
 }

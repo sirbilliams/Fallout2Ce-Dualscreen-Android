@@ -88,13 +88,38 @@ bool automapGetPipboyTiles(Map map, int elevation, std::vector<unsigned char>& t
 // high details) scenery of objects seen as tiles like
 // `automapGetPipboyTiles`, dude, exit grids, and critters with the motion
 // sensor.
+// A name on the map: where a group of exit grids leads.
+struct AutomapLabel {
+    float x;
+    float y;
+    // Game charset.
+    std::string text;
+};
+
 struct AutomapView {
     std::vector<unsigned char> tiles;
     int dudeX;
     int dudeY;
     std::vector<std::pair<int, int>> exits;
     std::vector<std::pair<int, int>> critters;
+
+    // Detail (dual-screen port): seen doors, containers, ways to other
+    // levels (stairs, ladders, elevators), party members.
+    std::vector<std::pair<int, int>> doors;
+    std::vector<std::pair<int, int>> containers;
+    std::vector<std::pair<int, int>> levelChanges;
+    std::vector<std::pair<int, int>> party;
+    // Where seen exit grids lead, at the middle of each group.
+    std::vector<AutomapLabel> exitLabels;
+    // The explored floor: `kAutomapFloorWidth` x `kAutomapFloorHeight` floor
+    // squares in the map's orientation (each covers 2 x 2 tiles), ARGB
+    // colors of their floor art, 0 where nothing was explored or there is
+    // no floor.
+    std::vector<unsigned int> floors;
 };
+
+constexpr int kAutomapFloorWidth = 100;
+constexpr int kAutomapFloorHeight = 100;
 
 void automapGetView(int elevation, AutomapView* view);
 

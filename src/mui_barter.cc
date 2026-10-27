@@ -1,4 +1,5 @@
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <string>
@@ -25,7 +26,7 @@ namespace {
     constexpr int kTextRequest = 119;
     constexpr int kTextWeight = 120;
 
-    const MuiColor kBackground = muiRgb(0x060A07);
+    const MuiColor kBackground = muiRgb(0x070A06);
 
     // Item lists of the barter screen.
     enum List {
@@ -133,7 +134,7 @@ namespace {
         }
 
         // Opaque over the map.
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         MuiRect content;
         MuiRect tabs;
@@ -303,7 +304,7 @@ namespace {
             || (list == LIST_BARTERER_TABLE && dragList == LIST_BARTERER)
             || (list == LIST_BARTERER && dragList == LIST_BARTERER_TABLE);
 
-        muiFillRoundRect(rect, ui.dp(6.0f), muiRgb(0x0B120D));
+        muiFillRoundRect(rect, ui.dp(6.0f), muiRgb(0x0C0F09));
         muiStrokeRoundRect(rect, ui.dp(6.0f), ui.dp(target ? 2.0f : 1.0f), target ? theme.accent : theme.panelBorder);
 
         float gap = ui.dp(4.0f);

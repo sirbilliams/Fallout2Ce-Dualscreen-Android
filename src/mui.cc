@@ -1,6 +1,7 @@
 #include "mui.h"
 #include "mui_dual.h"
 #include "mui_notify.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -28,21 +29,22 @@ namespace fallout {
 
 namespace {
 
-    // Terminal-like placeholder theme, see `MuiTheme`.
+    // Classic Fallout 2 (see mui_skin.h): worn brown metal, recessed dark
+    // monitors with green readouts, amber highlights, red button plates.
     const MuiTheme kTheme = {
         muiRgb(0x000000, 150), // dim
-        muiRgb(0x0B120D, 240), // panel
-        muiRgb(0x3C6E45), // panelBorder
-        muiRgb(0xBDF5B5), // text
-        muiRgb(0x74A874), // textDim
-        muiRgb(0x5CFF5C), // accent
-        muiRgb(0x14281A, 245), // button
-        muiRgb(0x2E6A3A), // buttonPressed
-        muiRgb(0x4C8F57), // buttonBorder
-        muiRgb(0xCFFFD0), // buttonText
-        muiRgb(0x3F9A4C), // buttonPrimary
-        muiRgb(0x041006), // buttonPrimaryText
-        8.0f, // radius
+        muiRgb(0x0C0F09, 242), // panel
+        muiRgb(0x6E5A3A), // panelBorder
+        muiRgb(0x5CE65C), // text
+        muiRgb(0x4A9A48), // textDim
+        muiRgb(0xFFC23A), // accent
+        muiRgb(0x7A6548, 250), // button
+        muiRgb(0x3A2E20), // buttonPressed
+        muiRgb(0x120D08), // buttonBorder
+        muiRgb(0xF2DDA6), // buttonText
+        muiRgb(0xA0321F), // buttonPrimary
+        muiRgb(0xFFE9C4), // buttonPrimaryText
+        3.0f, // radius
         20.0f, // padding
         12.0f, // gap
         52.0f, // buttonHeight
@@ -51,7 +53,15 @@ namespace {
         17.0f, // bodySize
         18.0f, // buttonTextSize
         10.0f, // touchSlop
+        muiRgb(0x17120C), // background
+        muiRgb(0x070A06, 248), // well
+        muiRgb(0x24401E), // selected
+        muiRgb(0xFF5A3C), // warning
+        muiRgb(0x857055), // metal
     };
+
+    // Text on amber-lit keys and switches.
+    const MuiColor kLitText = muiRgb(0x241808);
 
     // Typed text not taken yet (see `MuiContext::takeTextInput`).
     std::u32string gTextInput;
@@ -371,8 +381,8 @@ void MuiContext::dim()
 void MuiContext::panel(const MuiRect& rect)
 {
     region(rect);
-    muiFillRoundRect(rect, dp(kTheme.radius), kTheme.panel);
-    muiStrokeRoundRect(rect, dp(kTheme.radius), dp(kTheme.borderWidth), kTheme.panelBorder);
+    // A recessed monitor in the metal (mui_skin.h).
+    muiSkinWell(*this, rect);
 }
 
 void MuiContext::region(const MuiRect& rect)
@@ -441,11 +451,10 @@ bool MuiContext::button(const std::string& id, const MuiRect& rect, const std::u
     bool clicked = touchable(id, rect, &pressed);
 
     bool primary = style == MuiButtonStyle::Primary;
-    MuiColor fill = pressed ? kTheme.buttonPressed : (primary ? kTheme.buttonPrimary : kTheme.button);
     MuiColor textColor = primary && !pressed ? kTheme.buttonPrimaryText : kTheme.buttonText;
 
-    muiFillRoundRect(rect, dp(kTheme.radius), fill);
-    muiStrokeRoundRect(rect, dp(kTheme.radius), dp(kTheme.borderWidth), pressed ? kTheme.accent : kTheme.buttonBorder);
+    // A metal button (mui_skin.h).
+    muiSkinButton(*this, rect, pressed, primary);
     // Long labels (other languages, narrow buttons) get smaller.
     float size = muiFitTextSize(label, rect.w - dp(kTheme.padding), dp(kTheme.buttonTextSize), dp(10.0f));
     muiDrawTextAligned(label, rect, size, textColor, MuiAlign::Center, MuiAlign::Center);
@@ -716,14 +725,16 @@ float MuiContext::slider(const std::string& id, const MuiRect& rect, float value
     float ratio = maxValue > minValue ? std::clamp((value - minValue) / (maxValue - minValue), 0.0f, 1.0f) : 0.0f;
     float trackHeight = dp(6.0f);
     MuiRect track = { rect.x, rect.centerY() - trackHeight / 2.0f, rect.w, trackHeight };
-    muiFillRoundRect(track, trackHeight / 2.0f, kTheme.button);
-    muiStrokeRoundRect(track, trackHeight / 2.0f, dp(1.0f), kTheme.buttonBorder);
-    muiFillRoundRect({ track.x, track.y, track.w * ratio, track.h }, trackHeight / 2.0f, kTheme.buttonPrimary);
+    // A slot in the metal, lit amber up to the value; a metal knob.
+    muiSkinWell(*this, track);
+    muiFillRect({ track.x + dp(1.0f), track.y + dp(1.0f), std::max((track.w - dp(2.0f)) * ratio, 0.0f), track.h - dp(2.0f) }, kTheme.accent.withAlpha(210));
 
     float thumbRadius = dp(pressed ? 13.0f : 11.0f);
     float thumbX = rect.x + rect.w * ratio;
-    muiFillCircle(thumbX, rect.centerY(), thumbRadius, kTheme.buttonPrimary);
-    muiStrokeCircle(thumbX, rect.centerY(), thumbRadius, dp(1.5f), kTheme.accent);
+    muiFillCircle(thumbX + dp(1.0f), rect.centerY() + dp(1.5f), thumbRadius, muiRgb(0x000000, 130));
+    muiFillCircle(thumbX, rect.centerY(), thumbRadius, kTheme.button);
+    muiFillCircle(thumbX - thumbRadius * 0.25f, rect.centerY() - thumbRadius * 0.25f, thumbRadius * 0.55f, muiRgb(0xE8D5A8, 70));
+    muiStrokeCircle(thumbX, rect.centerY(), thumbRadius, dp(1.5f), pressed ? kTheme.accent : kTheme.buttonBorder);
 
     return value;
 }
@@ -740,12 +751,21 @@ bool MuiContext::toggle(const std::string& id, const MuiRect& rect, bool* value)
     float height = std::min(rect.h, dp(24.0f));
     float width = std::min(rect.w, height * 1.9f);
     MuiRect track = { rect.right() - width, rect.centerY() - height / 2.0f, width, height };
-    muiFillRoundRect(track, height / 2.0f, *value ? kTheme.buttonPrimary : kTheme.button);
-    muiStrokeRoundRect(track, height / 2.0f, dp(1.0f), pressed ? kTheme.accent : kTheme.buttonBorder);
+    // A slot in the metal, lit amber while on; a metal knob.
+    muiSkinWell(*this, track);
+    if (*value) {
+        muiFillRect(track.inset(dp(2.0f)), kTheme.accent.withAlpha(200));
+    }
+    if (pressed) {
+        muiSkinBevel(track, dp(1.5f), kTheme.accent, kTheme.accent, false);
+    }
 
-    float radius = height / 2.0f - dp(3.0f);
+    float radius = height / 2.0f - dp(2.0f);
     float knobX = *value ? track.right() - height / 2.0f : track.x + height / 2.0f;
-    muiFillCircle(knobX, track.centerY(), radius, *value ? kTheme.buttonPrimaryText : kTheme.accent);
+    muiFillCircle(knobX + dp(1.0f), track.centerY() + dp(1.0f), radius, muiRgb(0x000000, 130));
+    muiFillCircle(knobX, track.centerY(), radius, kTheme.button);
+    muiFillCircle(knobX - radius * 0.25f, track.centerY() - radius * 0.25f, radius * 0.5f, muiRgb(0xE8D5A8, 80));
+    muiStrokeCircle(knobX, track.centerY(), radius, dp(1.0f), kTheme.buttonBorder);
 
     return tapped;
 }
@@ -776,7 +796,8 @@ bool MuiContext::segmented(const std::string& id, const MuiRect& rect, const std
 
     bool changed = false;
     float radius = dp(kTheme.radius);
-    muiFillRoundRect(rect, radius, kTheme.button);
+    // Joined metal keys; the chosen one lit amber.
+    muiSkinButton(*this, rect, false, false);
 
     float x = rect.x;
     for (size_t index = 0; index < labels.size(); index++) {
@@ -791,15 +812,20 @@ bool MuiContext::segmented(const std::string& id, const MuiRect& rect, const std
         }
 
         bool on = *selected == static_cast<int>(index);
-        if (on || pressed) {
-            muiFillRoundRect(cell.inset(dp(2.0f)), radius - dp(2.0f), pressed && !on ? kTheme.buttonPressed : kTheme.buttonPrimary);
+        if (on) {
+            muiFillRect(cell.inset(dp(3.0f)), kTheme.accent.withAlpha(220));
+        } else if (pressed) {
+            muiFillRect(cell.inset(dp(3.0f)), kTheme.buttonPressed);
+        }
+        if (index != 0) {
+            muiFillRect({ cell.x, cell.y + dp(4.0f), std::max(dp(1.0f), 1.0f), cell.h - dp(8.0f) }, muiRgb(0x000000, 120));
         }
 
-        MuiColor color = on ? kTheme.buttonPrimaryText : kTheme.buttonText;
+        MuiColor color = on ? kLitText : kTheme.buttonText;
         muiDrawTextAligned(labels[index], cell, size, color, MuiAlign::Center, MuiAlign::Center);
     }
 
-    muiStrokeRoundRect(rect, radius, dp(1.0f), kTheme.buttonBorder);
+    (void)radius;
     return changed;
 }
 

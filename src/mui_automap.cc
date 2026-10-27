@@ -3,6 +3,7 @@
 #include "mui_map_view.h"
 #include "mui_notify.h"
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <string>
 #include <vector>
@@ -22,11 +23,22 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kBackground = muiRgb(0x060A07);
-    const MuiColor kListBackground = muiRgb(0x0B120D);
+    const MuiColor kBackground = muiRgb(0x070A06);
+    const MuiColor kListBackground = muiRgb(0x0C0F09);
     const MuiColor kDude = muiRgb(0xFF5A4A);
     const MuiColor kExit = muiRgb(0xFFB000);
     const MuiColor kCritter = muiRgb(0xFF3B30);
+    const MuiColor kDoor = muiRgb(0xD8B26A);
+    const MuiColor kContainer = muiRgb(0x8CCBFF);
+    const MuiColor kLevelChange = muiRgb(0xF4F0E0);
+    const MuiColor kParty = muiRgb(0x6CFF6C);
+
+    // Texts of the legend in `game\ce.msg`.
+    constexpr int kTextLegendDoor = 912;
+    constexpr int kTextLegendContainer = 913;
+    constexpr int kTextLegendLevel = 914;
+    constexpr int kTextLegendParty = 915;
+    constexpr int kTextLegendExit = 916;
 
     // Texts in `game\ce.msg`.
     constexpr int kTextDetails = 212;
@@ -92,7 +104,7 @@ namespace {
     void AutomapScreen::build(MuiContext& ui)
     {
         const MuiTheme& theme = muiTheme();
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         MuiRect content;
         MuiRect tabs;
@@ -167,21 +179,103 @@ namespace {
             mapView.fit();
         }
 
+        mapView.setFloors(view.floors, kAutomapFloorWidth, kAutomapFloorHeight);
+
         std::vector<MuiMapMarker> markers;
-        for (const auto& exit : view.exits) {
-            markers.push_back({ static_cast<float>(exit.first), static_cast<float>(exit.second), kExit, 2.5f });
-        }
-        for (const auto& critter : view.critters) {
-            markers.push_back({ static_cast<float>(critter.first), static_cast<float>(critter.second), kCritter, 3.0f });
-        }
+        std::vector<MuiMapLabel> labels;
+        muiAutomapDetail(view, true, &markers, &labels);
         if (view.dudeX != -1) {
             markers.push_back({ static_cast<float>(view.dudeX), static_cast<float>(view.dudeY), kDude, 4.0f });
         }
 
-        mapView.build(ui, "automap.map", body.inset(ui.dp(4.0f)), markers);
+        MuiRect mapRect = body.inset(ui.dp(4.0f));
+        mapView.build(ui, "automap.map", mapRect, markers, &labels);
+        muiAutomapLegend(ui, mapRect);
     }
 
 } // namespace
+
+void muiAutomapDetail(const AutomapView& view, bool critters, std::vector<MuiMapMarker>* markers, std::vector<MuiMapLabel>* labels)
+{
+    auto add = [&](const std::vector<std::pair<int, int>>& places, MuiColor color, float radius, MuiMapMarkerShape shape) {
+        for (const auto& place : places) {
+            markers->push_back({ static_cast<float>(place.first), static_cast<float>(place.second), color, radius, shape });
+        }
+    };
+
+    add(view.doors, kDoor, 2.2f, MuiMapMarkerShape::Square);
+    add(view.containers, kContainer, 2.6f, MuiMapMarkerShape::Diamond);
+    add(view.exits, kExit, 2.5f, MuiMapMarkerShape::Dot);
+    add(view.levelChanges, kLevelChange, 3.2f, MuiMapMarkerShape::Triangle);
+    add(view.party, kParty, 3.2f, MuiMapMarkerShape::Ring);
+    if (critters) {
+        add(view.critters, kCritter, 3.0f, MuiMapMarkerShape::Dot);
+    }
+
+    if (labels != nullptr) {
+        for (const AutomapLabel& label : view.exitLabels) {
+            labels->push_back({ label.x, label.y, muiDecodeGameText(label.text.c_str()), kExit });
+        }
+    }
+}
+
+void muiAutomapLegend(MuiContext& ui, const MuiRect& area)
+{
+    struct Key {
+        MuiMapMarkerShape shape;
+        MuiColor color;
+        int text;
+        const char* fallback;
+    };
+    const Key keys[] = {
+        { MuiMapMarkerShape::Square, kDoor, kTextLegendDoor, "Door" },
+        { MuiMapMarkerShape::Diamond, kContainer, kTextLegendContainer, "Container" },
+        { MuiMapMarkerShape::Triangle, kLevelChange, kTextLegendLevel, "Stairs" },
+        { MuiMapMarkerShape::Ring, kParty, kTextLegendParty, "Party" },
+        { MuiMapMarkerShape::Dot, kExit, kTextLegendExit, "Exit" },
+    };
+
+    float size = ui.dp(11.0f);
+    float height = ui.dp(22.0f);
+    float gap = ui.dp(6.0f);
+    float x = area.x + ui.dp(6.0f);
+    float y = area.bottom() - height - ui.dp(6.0f);
+    for (const Key& key : keys) {
+        std::u32string name = muiDecodeGameText(muiText(key.text, key.fallback));
+        float width = height + muiTextWidth(name, size) + ui.dp(8.0f);
+        if (x + width > area.right() - ui.dp(6.0f)) {
+            break;
+        }
+        MuiRect pill = { x, y, width, height };
+        muiFillRoundRect(pill, height / 2.0f, muiRgb(0x000000, 170));
+
+        // The marker as drawn on the map (a one-marker map line).
+        float cx = pill.x + height / 2.0f;
+        float cy = pill.centerY();
+        float radius = ui.dp(3.5f);
+        switch (key.shape) {
+        case MuiMapMarkerShape::Square:
+            muiFillRect({ cx - radius, cy - radius, radius * 2.0f, radius * 2.0f }, key.color);
+            break;
+        case MuiMapMarkerShape::Diamond:
+            muiFillDiamond(cx, cy, radius, key.color);
+            break;
+        case MuiMapMarkerShape::Triangle:
+            muiFillConvex({ { cx, cy - radius * 1.15f }, { cx + radius, cy + radius * 0.8f }, { cx - radius, cy + radius * 0.8f } }, key.color);
+            break;
+        case MuiMapMarkerShape::Ring:
+            muiStrokeCircle(cx, cy, radius, ui.dp(1.6f), key.color);
+            break;
+        case MuiMapMarkerShape::Dot:
+            muiFillCircle(cx, cy, radius, key.color);
+            break;
+        }
+
+        MuiRect label = { pill.x + height, pill.y, width - height - ui.dp(4.0f), height };
+        muiDrawTextAligned(name, label, size, muiTheme().text, MuiAlign::Start, MuiAlign::Center);
+        x += width + gap;
+    }
+}
 
 void muiAutomapScreenRun()
 {

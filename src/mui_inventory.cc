@@ -1,4 +1,5 @@
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -28,8 +29,8 @@ namespace {
     // Taps on "Drop all" within this time confirm it.
     constexpr unsigned int kConfirmMs = 3000;
 
-    const MuiColor kBackground = muiRgb(0x07100A);
-    const MuiColor kListBackground = muiRgb(0x0B120D);
+    const MuiColor kBackground = muiRgb(0x070A06);
+    const MuiColor kListBackground = muiRgb(0x0C0F09);
     const MuiColor kDropZone = muiRgb(0x1A2A10);
     const MuiColor kWarning = muiRgb(0xFFB000);
     const MuiColor kEncumbered = muiRgb(0xFF4A3A);
@@ -235,7 +236,7 @@ namespace {
         }
 
         // Opaque over the map.
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         MuiRect content;
         MuiRect tabs;
@@ -322,7 +323,7 @@ namespace {
             dragged = items[dragPayload].item;
         }
 
-        muiFillRoundRect(rect, ui.dp(6.0f), kListBackground);
+        muiSkinWell(ui, rect);
         muiStrokeRoundRect(rect, ui.dp(6.0f), ui.dp(target ? 2.0f : 1.0f), target ? theme.accent : theme.panelBorder);
 
         constexpr int kColumns = 4;
@@ -437,7 +438,7 @@ namespace {
 
         MuiRect figure = { rect.x, rect.y, rect.w * 0.58f, rect.h * 0.52f };
         figureRect = figure;
-        muiFillRoundRect(figure, ui.dp(6.0f), kListBackground);
+        muiSkinWell(ui, figure);
         muiStrokeRoundRect(figure, ui.dp(6.0f), ui.dp(1.0f), theme.panelBorder);
 
         // Horizontal swipe turns the character the same way, tap shows the

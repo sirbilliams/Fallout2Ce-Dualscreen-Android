@@ -1,4 +1,5 @@
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -20,8 +21,8 @@ namespace {
     constexpr int kTextTakeAll = 158;
     constexpr int kTextGiveAll = 159;
 
-    const MuiColor kBackground = muiRgb(0x07100A);
-    const MuiColor kListBackground = muiRgb(0x0B120D);
+    const MuiColor kBackground = muiRgb(0x070A06);
+    const MuiColor kListBackground = muiRgb(0x0C0F09);
 
     enum Side {
         SIDE_LEFT,
@@ -117,7 +118,7 @@ namespace {
         const MuiTheme& theme = muiTheme();
 
         // Opaque over the map.
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         MuiRect content;
         MuiRect tabs;
@@ -279,7 +280,7 @@ namespace {
         int dragPayload;
         bool target = ui.dragging(&dragPayload) && dragPayload / kPayloadSideStride != side;
 
-        muiFillRoundRect(rect, ui.dp(6.0f), kListBackground);
+        muiSkinWell(ui, rect);
         muiStrokeRoundRect(rect, ui.dp(6.0f), ui.dp(target ? 2.0f : 1.0f), target ? theme.accent : theme.panelBorder);
 
         constexpr int kColumns = 5;

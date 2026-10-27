@@ -36,6 +36,7 @@
 #include "mui_map_view.h"
 #include "mui_notify.h"
 #include "mui_screens.h"
+#include "mui_skin.h"
 #include "object.h"
 #include "party_member.h"
 #include "pipboy.h"
@@ -174,8 +175,8 @@ namespace {
     };
 
     // HUD colors on top of the mobile UI theme.
-    const MuiColor kPanelColor = muiRgb(0x0B120D, 200);
-    const MuiColor kActiveColor = muiRgb(0x1D4A26, 230);
+    const MuiColor kPanelColor = muiRgb(0x0C0F09, 200);
+    const MuiColor kActiveColor = muiRgb(0x4A3A1E, 230);
     const MuiColor kBulbGreen = muiRgb(0x3CE03C);
     const MuiColor kBulbYellow = muiRgb(0xF0D030);
     const MuiColor kBulbRed = muiRgb(0xE84030);
@@ -259,7 +260,6 @@ namespace {
     // following dude again.
     constexpr unsigned int kLiveMapHoldMs = 5000;
     const MuiColor kLiveMapDude = muiRgb(0xFF5A4A);
-    const MuiColor kLiveMapExit = muiRgb(0xFFB000);
 
     MuiMapView gLiveMap;
     AutomapView gLiveMapView;
@@ -407,11 +407,16 @@ namespace {
         bool dudeTurn = combat && _combat_whose_turn() == gDude;
         MuiColor border = combat ? (dudeTurn ? kCombatAmber : kCombatRed) : theme.panelBorder;
 
-        float radius = ui.dp(theme.radius);
-        muiFillRoundRect(rect, radius, kPanelColor);
-        muiStrokeRoundRect(rect, radius, ui.dp(combat ? 2.0f : theme.borderWidth), border);
+        // A monitor set in a riveted metal bezel; in combat the bezel's rim
+        // lights up.
+        muiSkinPlate(ui, rect, true);
+        if (combat) {
+            muiSkinBevel(rect, std::max(ui.dp(2.0f), 1.0f), border, border, false);
+        }
+        float bezel = ui.dp(13.0f);
+        muiSkinWell(ui, rect.inset(bezel));
 
-        MuiRect inner = rect.inset(ui.dp(4.0f));
+        MuiRect inner = rect.inset(bezel + ui.dp(3.0f));
 
         // Combat: whose turn, across the top.
         MuiRect banner;
@@ -428,7 +433,7 @@ namespace {
             muiStrokeRoundRect(banner, ui.dp(5.0f), ui.dp(1.0f), color.withAlpha(150));
             muiDrawTextAligned(label, banner, ui.dp(14.0f), color, MuiAlign::Center, MuiAlign::Center);
             inner.y = banner.bottom() + ui.dp(4.0f);
-            inner.h = rect.bottom() - ui.dp(4.0f) - inner.y;
+            inner.h = rect.bottom() - (bezel + ui.dp(3.0f)) - inner.y;
         }
 
         // Dude's HP along the bottom.
@@ -445,10 +450,13 @@ namespace {
             gLiveMap.zoomTo(5.0f);
         }
 
+        gLiveMap.setFloors(gLiveMapView.floors, kAutomapFloorWidth, kAutomapFloorHeight);
+
+        // Doors, containers, stairs, party, exits and where they lead (no
+        // motion sensor here).
         std::vector<MuiMapMarker> markers;
-        for (const auto& exit : gLiveMapView.exits) {
-            markers.push_back({ static_cast<float>(exit.first), static_cast<float>(exit.second), kLiveMapExit, 2.5f });
-        }
+        std::vector<MuiMapLabel> labels;
+        muiAutomapDetail(gLiveMapView, false, &markers, &labels);
 
         // The camera follows dude, eased (no jumps as he walks), unless a
         // finger moved the map a moment ago.
@@ -478,7 +486,7 @@ namespace {
         gLiveMapCameraTime = ui.now;
 
         muiPushClip(inner);
-        gLiveMap.build(ui, "hud.livemap", inner, markers);
+        gLiveMap.build(ui, "hud.livemap", inner, markers, &labels);
         float dudeX;
         float dudeY;
         if (dudeShown && gLiveMap.tileToScreen(static_cast<float>(gLiveMapView.dudeX), static_cast<float>(gLiveMapView.dudeY), &dudeX, &dudeY)) {
@@ -497,7 +505,7 @@ namespace {
         float buttonSize = ui.dp(40.0f);
         float chipWidth = std::min(muiTextWidth(chipText, size) + padding * 2.0f, inner.w - buttonSize - ui.dp(16.0f));
         MuiRect chip = { inner.x + ui.dp(4.0f), inner.y + ui.dp(4.0f), chipWidth, ui.dp(24.0f) };
-        muiFillRoundRect(chip, chip.h / 2.0f, muiRgb(0x060A07, 215));
+        muiFillRoundRect(chip, chip.h / 2.0f, muiRgb(0x070A06, 215));
         muiStrokeRoundRect(chip, chip.h / 2.0f, ui.dp(1.0f), theme.panelBorder);
         muiPushClip(chip);
         muiDrawTextAligned(chipText, chip, size, theme.text, MuiAlign::Center, MuiAlign::Center);
@@ -758,16 +766,20 @@ namespace {
         bool inventoryHasCost = id == HudElementId::Inventory && muiInventoryCost(&inventoryCost, &inventoryBlocked);
         bool unavailable = (id == HudElementId::Pipboy && pipboyUnavailableReason() != PipboyUnavailable::None) || inventoryBlocked;
 
-        MuiColor fill = look == ButtonLook::Active ? kActiveColor : (framed ? theme.button : kPanelColor);
-        MuiColor border = look == ButtonLook::Active ? theme.accent : theme.buttonBorder;
-        MuiColor color = look == ButtonLook::Disabled ? theme.textDim : theme.accent;
-        if (pressed && look != ButtonLook::Disabled) {
-            fill = theme.buttonPressed;
-            border = theme.accent;
+        (void)framed;
+        // Metal buttons (mui_skin.h): amber icons, dimmed when not
+        // available, an amber rim while on (sneak, highlight).
+        MuiColor color = look == ButtonLook::Disabled ? muiRgb(0x5E4E38) : theme.accent;
+        bool down = pressed && look != ButtonLook::Disabled;
+        if (down) {
             color = theme.buttonText;
         }
 
-        drawPanel(ui, rect, fill, border);
+        muiSkinButton(ui, rect, down, false);
+        if (look == ButtonLook::Active) {
+            muiFillRect(rect.inset(ui.dp(2.0f)), kActiveColor.withAlpha(110));
+            muiSkinBevel(rect, std::max(ui.dp(2.0f), 1.0f), theme.accent, theme.accent, false);
+        }
 
         float iconSize = std::min(rect.h * 0.5f, ui.dp(22.0f));
         float thickness = ui.dp(1.8f);
@@ -899,7 +911,7 @@ namespace {
         bool tapped = ui.touchable(elementWidgetId(HudElementId::Weapon), rect, &pressed);
         bool active = pressed && !info.disabled;
 
-        drawPanel(ui, rect, active ? theme.buttonPressed : theme.button, active ? theme.accent : theme.buttonBorder);
+        muiSkinButton(ui, rect, active, false);
 
         int quantity;
         int capacity;
@@ -1183,7 +1195,7 @@ namespace {
         float size = ui.dp(14.0f);
         float padding = ui.dp(10.0f);
 
-        drawPanel(ui, rect, muiRgb(0x0B120D, 225), theme.panelBorder);
+        muiSkinWell(ui, rect);
 
         std::vector<std::string> messages(gMessages.begin(), gMessages.end());
         MuiRect content = rect.inset(padding);
@@ -1570,10 +1582,9 @@ namespace {
                 continue;
             }
 
-            // Terminal panel under the group.
+            // A metal plate under the group, as the game's interface bar.
             if (group.framed) {
-                muiFillRoundRect(groupRect, ui.dp(theme.radius), kPanelColor);
-                muiStrokeRoundRect(groupRect, ui.dp(theme.radius), ui.dp(theme.borderWidth), theme.panelBorder);
+                muiSkinPlate(ui, groupRect, false);
             }
 
             for (const HudPlacedElement& element : group.elements) {

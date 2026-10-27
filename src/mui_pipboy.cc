@@ -3,6 +3,7 @@
 #include "mui_map_view.h"
 #include "mui_notify.h"
 #include "mui_screens.h"
+#include "mui_skin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -29,9 +30,9 @@ namespace fallout {
 
 namespace {
 
-    const MuiColor kBackground = muiRgb(0x060A07);
-    const MuiColor kListBackground = muiRgb(0x0B120D);
-    const MuiColor kSelected = muiRgb(0x16301D);
+    const MuiColor kBackground = muiRgb(0x070A06);
+    const MuiColor kListBackground = muiRgb(0x0C0F09);
+    const MuiColor kSelected = muiRgb(0x24401E);
     const MuiColor kWarning = muiRgb(0xFF6E5E);
 
     // Texts in `game\ce.msg`.
@@ -271,7 +272,7 @@ namespace {
             return;
         }
 
-        muiFillRect(ui.screenRect(), kBackground);
+        muiSkinBackdrop(ui, ui.screenRect());
 
         // Leaving the holodisks stops the narration.
         if (section != Section::Data && narratedHolodisk != -1) {
