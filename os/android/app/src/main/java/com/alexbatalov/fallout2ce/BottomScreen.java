@@ -3,29 +3,29 @@ package com.alexbatalov.fallout2ce;
 import android.app.Activity;
 import android.app.Presentation;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.hardware.display.DisplayManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.view.Display;
-import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.Surface;
 import android.view.Window;
 import android.view.WindowManager;
 
-// The second screen of a dual-screen device (AYN Thor and the like): the game
-// stays on the activity's display (top), the mobile UI's panels go to the
-// other one (bottom) through a Presentation whose surface native code draws
-// into (bottom_screen.cc).
+// The second screen of a dual-screen device (AYN Thor): the game stays on the
+// activity's display (top), the mobile UI's panels go to the device's
+// built-in bottom screen (BottomDisplay.java: never a TV, cast or HDMI
+// display, so mirroring keeps showing the game) through a Presentation
+// whose surface native code draws into (bottom_screen.cc).
 //
 // Lives while the activity is resumed: `start` in onResume, `stop` in
-// onPause. Follows the display coming and going (a dock, a cable, the
-// device's own screen settings) through the display listener.
+// onPause. Follows displays coming, going and changing through the display
+// listener. The panel window never takes focus, so the gamepad and keys stay
+// with the game; it still gets touches.
 final class BottomScreen implements DisplayManager.DisplayListener {
-    private static final String TAG = "BottomScreen";
-
     private final Activity activity;
     private final DisplayManager displayManager;
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -43,7 +43,7 @@ final class BottomScreen implements DisplayManager.DisplayListener {
         }
         started = true;
         displayManager.registerDisplayListener(this, handler);
-        show();
+        update("start");
     }
 
     void stop() {
@@ -52,77 +52,74 @@ final class BottomScreen implements DisplayManager.DisplayListener {
         }
         started = false;
         displayManager.unregisterDisplayListener(this);
-        dismiss();
+        update(null);
     }
 
-    // The display for the panels: a presentation display that isn't the
-    // game's, else any other display.
-    private Display findDisplay() {
-        int gameDisplayId = activity.getWindowManager().getDefaultDisplay().getDisplayId();
-
-        for (Display display : displayManager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)) {
-            if (display.getDisplayId() != gameDisplayId) {
-                return display;
-            }
+    // Shows the panel on the bottom screen while started and it's there,
+    // moves or hides it otherwise. [why]: the display log's reason, null for
+    // none.
+    private void update(String why) {
+        Display display = started && !activity.isFinishing() ? BottomDisplay.find(activity, displayManager, why) : null;
+        if (panel != null && (display == null || panel.getDisplay().getDisplayId() != display.getDisplayId())) {
+            hide();
         }
-
-        for (Display display : displayManager.getDisplays()) {
-            if (display.getDisplayId() != gameDisplayId) {
-                return display;
-            }
+        if (display != null && panel == null) {
+            show(display);
         }
-
-        return null;
     }
 
-    private void show() {
-        if (panel != null || activity.isFinishing()) {
-            return;
-        }
-
-        Display display = findDisplay();
-        if (display == null) {
-            Log.i(TAG, "no second display, single screen");
-            return;
-        }
-
-        Panel newPanel = new Panel(activity, display);
+    private void show(Display display) {
+        final Panel newPanel = new Panel(activity, display);
+        // A Presentation dismisses itself when its display goes away or
+        // changes size: forget it and look again.
+        newPanel.setOnDismissListener(new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                if (panel != newPanel) {
+                    return;
+                }
+                panel = null;
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        update("panel closed");
+                    }
+                });
+            }
+        });
         try {
             newPanel.show();
-        } catch (WindowManager.InvalidDisplayException e) {
-            Log.w(TAG, "second display went away before the panel showed", e);
+        } catch (WindowManager.InvalidDisplayException | IllegalStateException e) {
+            BottomDisplay.log(activity, "panel didn't show: " + e);
             return;
         }
         panel = newPanel;
-        Log.i(TAG, "panel on display " + display.getDisplayId() + " (" + display.getName() + ")");
     }
 
-    private void dismiss() {
-        if (panel != null) {
-            panel.dismiss();
-            panel = null;
+    private void hide() {
+        Panel oldPanel = panel;
+        // Before dismissing: the dismiss listener ignores it then.
+        panel = null;
+        try {
+            oldPanel.dismiss();
+        } catch (RuntimeException e) {
+            // The display went away.
         }
     }
 
     @Override
     public void onDisplayAdded(int displayId) {
-        if (started) {
-            show();
-        }
+        update("display " + displayId + " added");
     }
 
     @Override
     public void onDisplayRemoved(int displayId) {
-        if (panel != null && panel.getDisplay().getDisplayId() == displayId) {
-            dismiss();
-        }
-        if (started) {
-            show();
-        }
+        update("display " + displayId + " removed");
     }
 
     @Override
     public void onDisplayChanged(int displayId) {
+        update(null);
     }
 
     // The bottom screen's window: one surface filling it, handed to native
@@ -138,7 +135,9 @@ final class BottomScreen implements DisplayManager.DisplayListener {
 
             Window window = getWindow();
             if (window != null) {
-                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                window.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                    | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                    | WindowManager.LayoutParams.FLAG_FULLSCREEN);
             }
 
             SurfaceView view = new SurfaceView(getContext());
