@@ -59,6 +59,22 @@ public:
     // When a finger last moved or pinched the map (SDL ticks, 0 - never).
     unsigned int lastTouchTime() const { return lastTouch; }
 
+    // The tile at the view's center now.
+    float viewCenterX() const { return view.centerX; }
+    float viewCenterY() const { return view.centerY; }
+
+    // Where the center of tile ([x], [y]) was drawn in the last `build`
+    // (output pixels); false before any.
+    bool tileToScreen(float x, float y, float* screenX, float* screenY) const
+    {
+        if (lastRect.w <= 0.0f) {
+            return false;
+        }
+        *screenX = lastRect.centerX() + (x + 0.5f - view.centerX) * view.zoom;
+        *screenY = lastRect.centerY() + (y + 0.5f - view.centerY) * view.zoom;
+        return true;
+    }
+
     void build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers);
 
 private:
@@ -80,6 +96,7 @@ private:
     float followY = 0.0f;
     float pendingZoomDp = 0.0f;
     unsigned int lastTouch = 0;
+    MuiRect lastRect;
     bool hasCenter = false;
     float centerX = 0.0f;
     float centerY = 0.0f;

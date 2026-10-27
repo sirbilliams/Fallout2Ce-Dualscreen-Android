@@ -290,6 +290,7 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
         render(ui, wanted);
     }
 
+    lastRect = rect;
     muiPushClip(rect);
 
     if (texture != nullptr && textureValid) {

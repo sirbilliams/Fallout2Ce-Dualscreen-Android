@@ -1,4 +1,5 @@
 #include "mui.h"
+#include "mui_dual.h"
 #include "mui_notify.h"
 
 #include <algorithm>
@@ -1055,7 +1056,11 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
 {
     gSurface = &surfaceOf(surface);
 
-    if (!hasScreensOn(surface)) {
+    // The bottom screen is always drawn (its backdrop, the companion panel);
+    // the top only with screens, or dimmed while the bottom one holds the
+    // game.
+    bool draws = surface == MuiSurface::Bottom || hasScreensOn(surface) || muiBottomHoldsGame();
+    if (!draws) {
         // Touches may be captured by a screen that is gone. Its pointer
         // events are dropped: a screen shown later would take them as taps.
         resetSurfaceInput(*gSurface);
@@ -1090,9 +1095,12 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
     context.now = now;
 
     // The world on top is frozen while the game runs a screen on the bottom
-    // one: dimmed, so it doesn't look like it is still playing.
-    if (surface == MuiSurface::Top && muiBottomHoldsGame()) {
-        muiFillRect(context.screen, muiTheme().dim);
+    // one: dimmed, so it doesn't look like it is still playing. The bottom
+    // screen gets its backdrop.
+    if (surface == MuiSurface::Top) {
+        muiDualTopDim(context);
+    } else {
+        muiDualBackdrop(context);
     }
 
     // Copy: screens may push/remove screens while building.
@@ -1106,6 +1114,17 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
         context.current = screen;
         context.isInteractive = screen == top;
         screen->build(context);
+    }
+
+    // The bottom screen: the companion panel when nothing is on it, a screen
+    // coming up fades in, low HP pulses at the edges.
+    if (surface == MuiSurface::Bottom) {
+        context.current = nullptr;
+        context.isInteractive = false;
+        if (top == nullptr) {
+            muiDualCompanion(context);
+        }
+        muiDualBottomOverlay(context, top);
     }
 
     // Over every screen, not touchable: with the HUD's log.

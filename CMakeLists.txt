@@ -365,6 +365,8 @@ set(FALLOUT_PLATFORM_SOURCES
     "src/sfall_callbacks.h"
     "src/touch.cc"
     "src/gamepad.cc"
+    "src/mui_dual.cc"
+    "src/mui_dual.h"
     "src/gamepad.h"
     "src/touch_controls.cc"
     "src/touch_controls.h"

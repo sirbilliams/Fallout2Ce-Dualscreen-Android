@@ -285,3 +285,12 @@
 {374}{}{Combat button: see-through figures, tiles and where you can walk}
 {900}{}{Dual screen}
 {901}{}{On two-screen devices: the HUD, map and game screens on the bottom screen, the world on top}
+{902}{}{Game paused: continue on the bottom screen}
+{903}{}{In conversation}
+{904}{}{Traveling}
+{905}{}{Level %d}
+{906}{}{Wasteland}
+{907}{}{Dual screen}
+{908}{}{YOUR TURN}
+{909}{}{ENEMY TURN}
+{910}{}{%d AP}

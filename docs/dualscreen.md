@@ -25,6 +25,13 @@ Built (needs checking on a Thor):
   world on top is dimmed and its touches go nowhere. Item menus (radial), the quantity picker and
   popups follow the screen that opened them.
 - Gamepad basics (`gamepad.h`).
+- The look (`mui_dual.cc`): a Pip-Boy CRT backdrop on the bottom screen (gradient, scanlines,
+  vignette); the companion panel when nothing else is on it (game clock and date, where, who,
+  HP; the title outside a game); screens fade in there; the edges pulse red at 25% HP or less;
+  the frozen world on top fades darker with a chip pointing down.
+- The live map: dude as a pulsing marker with an arrow where he faces, the camera eased after
+  him, a chip with the map's name and the game's clock, an HP bar along the bottom, and in
+  combat an amber (your turn, AP left) or red (enemy turn) banner and border.
 - Settings -> Display -> Dual screen (`[touch] dual_screen`, on).
 
 Next: dialogue split (head and reply on top, options below), barter, the map cursor for the pad,

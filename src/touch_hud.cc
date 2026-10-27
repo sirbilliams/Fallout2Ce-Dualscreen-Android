@@ -31,6 +31,7 @@
 #include "map_defs.h"
 #include "message.h"
 #include "mui.h"
+#include "mui_dual.h"
 #include "mui_icons.h"
 #include "mui_map_view.h"
 #include "mui_notify.h"
@@ -39,6 +40,7 @@
 #include "party_member.h"
 #include "pipboy.h"
 #include "proto_types.h"
+#include "scripts.h"
 #include "settings.h"
 #include "sfall_ini.h"
 #include "sfall_kb_helpers.h"
@@ -313,6 +315,74 @@ namespace {
 
     // MARK: Live map
 
+    // Texts of the live map in `game\ce.msg`.
+    constexpr HudText kTextYourTurn = { 908, "YOUR TURN" };
+    constexpr HudText kTextEnemyTurn = { 909, "ENEMY TURN" };
+    constexpr HudText kTextActionPointsShort = { 910, "%d AP" };
+
+    const MuiColor kCombatAmber = muiRgb(0xFFB000);
+    const MuiColor kCombatRed = muiRgb(0xFF4A3A);
+
+    // The map's camera, eased towards dude (tiles), and when it last moved.
+    float gLiveMapCameraX = 0.0f;
+    float gLiveMapCameraY = 0.0f;
+    bool gLiveMapFollowing = false;
+    unsigned int gLiveMapCameraTime = 0;
+
+    // Where dude faces on the map: the step from his tile to the next one his
+    // way, as a unit vector in map tiles (the map's columns are mirrored).
+    bool liveMapHeading(float* x, float* y)
+    {
+        if (gDude == nullptr || gDude->tile == -1) {
+            return false;
+        }
+        int next = tileGetTileInDirection(gDude->tile, gDude->rotation, 1);
+        if (next == -1) {
+            return false;
+        }
+        float fromX = static_cast<float>(HEX_GRID_WIDTH - 1 - gDude->tile % HEX_GRID_WIDTH);
+        float fromY = static_cast<float>(gDude->tile / HEX_GRID_WIDTH);
+        float toX = static_cast<float>(HEX_GRID_WIDTH - 1 - next % HEX_GRID_WIDTH);
+        float toY = static_cast<float>(next / HEX_GRID_WIDTH);
+        float dx = toX - fromX;
+        float dy = toY - fromY;
+        float length = std::sqrt(dx * dx + dy * dy);
+        if (length < 0.001f) {
+            return false;
+        }
+        *x = dx / length;
+        *y = dy / length;
+        return true;
+    }
+
+    // Dude on the map: a ring pulsing out, the arrow of where he faces, a
+    // dot.
+    void drawLiveMapDude(MuiContext& ui, float x, float y)
+    {
+        float phase = static_cast<float>(ui.now % 1600) / 1600.0f;
+        float ring = ui.dp(6.0f + 12.0f * phase);
+        muiStrokeCircle(x, y, ring, ui.dp(2.0f), kLiveMapDude.withAlpha(static_cast<Uint8>(200.0f * (1.0f - phase))));
+
+        float headingX;
+        float headingY;
+        if (liveMapHeading(&headingX, &headingY)) {
+            float tip = ui.dp(13.0f);
+            float back = ui.dp(5.0f);
+            float half = ui.dp(5.5f);
+            float sideX = -headingY;
+            float sideY = headingX;
+            muiFillConvex({
+                              { x + headingX * tip, y + headingY * tip },
+                              { x - headingX * back + sideX * half, y - headingY * back + sideY * half },
+                              { x - headingX * back - sideX * half, y - headingY * back - sideY * half },
+                          },
+                kLiveMapDude);
+        }
+
+        muiFillCircle(x, y, ui.dp(4.0f), muiRgb(0xFFE0D8));
+        muiStrokeCircle(x, y, ui.dp(4.0f), ui.dp(1.5f), kLiveMapDude);
+    }
+
     void buildLiveMap(MuiContext& ui, const MuiRect& rect)
     {
         const MuiTheme& theme = muiTheme();
@@ -331,13 +401,46 @@ namespace {
             gLiveMapTime = ui.now != 0 ? ui.now : 1;
         }
 
+        // In combat the panel takes its colors: amber on dude's turn, red on
+        // the others'.
+        bool combat = isInCombat();
+        bool dudeTurn = combat && _combat_whose_turn() == gDude;
+        MuiColor border = combat ? (dudeTurn ? kCombatAmber : kCombatRed) : theme.panelBorder;
+
         float radius = ui.dp(theme.radius);
         muiFillRoundRect(rect, radius, kPanelColor);
-        muiStrokeRoundRect(rect, radius, ui.dp(theme.borderWidth), theme.panelBorder);
+        muiStrokeRoundRect(rect, radius, ui.dp(combat ? 2.0f : theme.borderWidth), border);
+
+        MuiRect inner = rect.inset(ui.dp(4.0f));
+
+        // Combat: whose turn, across the top.
+        MuiRect banner;
+        if (combat) {
+            banner = { inner.x, inner.y, inner.w, ui.dp(26.0f) };
+            std::u32string label = muiDecodeGameText(text(dudeTurn ? kTextYourTurn : kTextEnemyTurn));
+            if (dudeTurn) {
+                char points[32];
+                snprintf(points, sizeof(points), text(kTextActionPointsShort), gActionPoints + gBonusActionPoints);
+                label += U"  \u00B7  " + muiDecodeGameText(points);
+            }
+            MuiColor color = dudeTurn ? kCombatAmber : kCombatRed;
+            muiFillRoundRect(banner, ui.dp(5.0f), color.withAlpha(46));
+            muiStrokeRoundRect(banner, ui.dp(5.0f), ui.dp(1.0f), color.withAlpha(150));
+            muiDrawTextAligned(label, banner, ui.dp(14.0f), color, MuiAlign::Center, MuiAlign::Center);
+            inner.y = banner.bottom() + ui.dp(4.0f);
+            inner.h = rect.bottom() - ui.dp(4.0f) - inner.y;
+        }
+
+        // Dude's HP along the bottom.
+        float barHeight = ui.dp(16.0f);
+        MuiRect hitPoints = { inner.x, inner.bottom() - barHeight, inner.w, barHeight };
+        muiDualHitPointsBar(ui, hitPoints);
+        inner.h -= barHeight + ui.dp(4.0f);
 
         gLiveMap.setTiles(key, gLiveMapView.tiles, HEX_GRID_WIDTH, HEX_GRID_HEIGHT);
         if (key != gLiveMapKey) {
             gLiveMapKey = key;
+            gLiveMapFollowing = false;
             // Close enough to see the rooms around dude.
             gLiveMap.zoomTo(5.0f);
         }
@@ -346,34 +449,63 @@ namespace {
         for (const auto& exit : gLiveMapView.exits) {
             markers.push_back({ static_cast<float>(exit.first), static_cast<float>(exit.second), kLiveMapExit, 2.5f });
         }
-        if (gLiveMapView.dudeX != -1) {
-            markers.push_back({ static_cast<float>(gLiveMapView.dudeX), static_cast<float>(gLiveMapView.dudeY), kLiveMapDude, 4.0f });
 
-            unsigned int touched = gLiveMap.lastTouchTime();
-            if (touched == 0 || ui.now - touched >= kLiveMapHoldMs) {
-                gLiveMap.follow(gLiveMapView.dudeX + 0.5f, gLiveMapView.dudeY + 0.5f);
+        // The camera follows dude, eased (no jumps as he walks), unless a
+        // finger moved the map a moment ago.
+        bool dudeShown = gLiveMapView.dudeX != -1;
+        unsigned int touched = gLiveMap.lastTouchTime();
+        bool follow = dudeShown && (touched == 0 || ui.now - touched >= kLiveMapHoldMs);
+        if (follow) {
+            float targetX = gLiveMapView.dudeX + 0.5f;
+            float targetY = gLiveMapView.dudeY + 0.5f;
+            if (!gLiveMapFollowing) {
+                // From where the map is (after a drag), or right on him
+                // (a new map).
+                bool fresh = gLiveMapCameraTime == 0 || key != gLiveMapKey || touched == 0;
+                gLiveMapCameraX = fresh ? targetX : gLiveMap.viewCenterX();
+                gLiveMapCameraY = fresh ? targetY : gLiveMap.viewCenterY();
+                gLiveMapFollowing = true;
+            } else {
+                float seconds = std::min((ui.now - gLiveMapCameraTime) / 1000.0f, 0.1f);
+                float ease = std::min(seconds * 6.0f, 1.0f);
+                gLiveMapCameraX += (targetX - gLiveMapCameraX) * ease;
+                gLiveMapCameraY += (targetY - gLiveMapCameraY) * ease;
             }
+            gLiveMap.follow(gLiveMapCameraX, gLiveMapCameraY);
+        } else {
+            gLiveMapFollowing = false;
         }
+        gLiveMapCameraTime = ui.now;
 
-        MuiRect body = rect.inset(ui.dp(4.0f));
-        muiPushClip(body);
-        gLiveMap.build(ui, "hud.livemap", body, markers);
+        muiPushClip(inner);
+        gLiveMap.build(ui, "hud.livemap", inner, markers);
+        float dudeX;
+        float dudeY;
+        if (dudeShown && gLiveMap.tileToScreen(static_cast<float>(gLiveMapView.dudeX), static_cast<float>(gLiveMapView.dudeY), &dudeX, &dudeY)) {
+            drawLiveMapDude(ui, dudeX, dudeY);
+        }
         muiPopClip();
 
-        // Where: the map's name, top left.
-        std::u32string name = muiDecodeGameText(mapGetName(map, gElevation));
-        if (!name.empty()) {
-            float size = ui.dp(12.0f);
-            float padding = ui.dp(6.0f);
-            MuiRect label = { body.x + padding, body.y + padding, std::min(muiTextWidth(name, size) + padding * 2.0f, body.w * 0.6f), ui.dp(22.0f) };
-            muiFillRoundRect(label, ui.dp(4.0f), kPanelColor);
-            muiDrawTextAligned(name, label, size, theme.textDim, MuiAlign::Center, MuiAlign::Center);
-        }
+        // Where and when: the map's name and the game's clock, top left.
+        std::u32string chipText = muiDecodeGameText(mapGetName(map, gElevation));
+        int hour = gameTimeGetHour();
+        char clock[16];
+        snprintf(clock, sizeof(clock), "%02d:%02d", hour / 100, hour % 100);
+        chipText += (chipText.empty() ? U"" : U"  \u00B7  ") + muiDecodeUtf8(clock);
+        float size = ui.dp(12.0f);
+        float padding = ui.dp(8.0f);
+        float buttonSize = ui.dp(40.0f);
+        float chipWidth = std::min(muiTextWidth(chipText, size) + padding * 2.0f, inner.w - buttonSize - ui.dp(16.0f));
+        MuiRect chip = { inner.x + ui.dp(4.0f), inner.y + ui.dp(4.0f), chipWidth, ui.dp(24.0f) };
+        muiFillRoundRect(chip, chip.h / 2.0f, muiRgb(0x060A07, 215));
+        muiStrokeRoundRect(chip, chip.h / 2.0f, ui.dp(1.0f), theme.panelBorder);
+        muiPushClip(chip);
+        muiDrawTextAligned(chipText, chip, size, theme.text, MuiAlign::Center, MuiAlign::Center);
+        muiPopClip();
 
         // The full map screen (the game's automap, its details and motion
         // sensor), top right.
-        float buttonSize = ui.dp(40.0f);
-        MuiRect open = { body.right() - buttonSize - ui.dp(4.0f), body.y + ui.dp(4.0f), buttonSize, buttonSize };
+        MuiRect open = { inner.right() - buttonSize - ui.dp(4.0f), inner.y + ui.dp(4.0f), buttonSize, buttonSize };
         bool pressed = false;
         if (ui.touchable("hud.livemap.open", open, &pressed)) {
             sendCommand({ GameCommandType::Automap });
