@@ -21,9 +21,7 @@
 #include "touch.h"
 #include "touch_log.h"
 
-#ifdef __ANDROID__
 #include "bottom_screen.h"
-#endif
 
 namespace fallout {
 
@@ -1203,7 +1201,6 @@ void muiRender(SDL_Renderer* renderer)
     muiRenderSurface(renderer, MuiSurface::Top, width, height, hudGetScreenDensity());
 }
 
-#ifdef __ANDROID__
 namespace {
     // The bottom screen's frame: drawn into this texture with the game's
     // renderer (its textures and caches are shared), read back and handed
@@ -1219,11 +1216,9 @@ namespace {
     // waits for the GPU, the panels don't need the game's frame rate.
     constexpr unsigned int kBottomFrameMs = 33;
 } // namespace
-#endif
 
 void muiRenderBottom(SDL_Renderer* renderer)
 {
-#ifdef __ANDROID__
     bool wasActive = gBottomActive;
     gBottomActive = settings.touch.dual_screen && bottomScreenAvailable();
     if (gBottomActive && !wasActive) {
@@ -1310,20 +1305,15 @@ void muiRenderBottom(SDL_Renderer* renderer)
     if (read) {
         bottomScreenPostFrame(gBottomPixels.data(), width, height, width * 4);
     }
-#else
-    (void)renderer;
-#endif
 }
 
 void muiResetRenderer()
 {
-#ifdef __ANDROID__
     // The renderer is going away, its textures with it.
     if (gBottomTexture != nullptr) {
         SDL_DestroyTexture(gBottomTexture);
         gBottomTexture = nullptr;
     }
-#endif
     muiDrawReset();
 }
 

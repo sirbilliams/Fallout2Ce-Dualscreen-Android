@@ -522,6 +522,13 @@ if(ANDROID)
         android
         log
     )
+else()
+    # Elsewhere no second screen, but tests can make one
+    # (tools/mui_preview/bottom_input_test.cc).
+    target_sources(${EXECUTABLE_NAME} PUBLIC
+        "src/bottom_screen_desktop.cc"
+        "src/bottom_screen.h"
+    )
 endif()
 
 if(MSVC)
