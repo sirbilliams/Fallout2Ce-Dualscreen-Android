@@ -277,7 +277,7 @@ void muiHoldFrameForSwitch(MuiScreen* from);
 // `MuiScreen::coversScreen`).
 bool muiCoversScreen();
 
-// An active screen on the top screen hides the HUD (see
+// An active screen on the HUD's screen of the device hides the HUD (see
 // `MuiScreen::hidesHud`).
 bool muiHidesHud();
 

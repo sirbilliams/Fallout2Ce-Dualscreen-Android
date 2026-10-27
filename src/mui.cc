@@ -859,8 +859,11 @@ bool muiHasModalOn(MuiSurface surface)
 
 bool muiHidesHud()
 {
+    // Screens on the HUD's screen of the device (the bottom one while it's
+    // active: the elevator there hides it).
+    MuiSurface hudSurface = muiHudSurface();
     for (MuiScreen* screen : gScreens) {
-        if (screen->hidesHud() && screen->isActive() && screen->surface() == MuiSurface::Top) {
+        if (screen->hidesHud() && screen->isActive() && screen->surface() == hudSurface) {
             return true;
         }
     }
@@ -922,13 +925,15 @@ bool muiBottomHoldsGame()
     return muiHasModalOn(MuiSurface::Bottom);
 }
 
+// Whether the bottom screen is in use, taken once a frame (`muiRenderBottom`)
+// so every screen sees the same answer for the whole frame, whatever the
+// bottom screen's window does meanwhile (it comes and goes on Android's UI
+// thread).
+static bool gBottomActive = false;
+
 bool muiBottomActive()
 {
-#ifdef __ANDROID__
-    return settings.touch.dual_screen && bottomScreenAvailable();
-#else
-    return false;
-#endif
+    return gBottomActive;
 }
 
 MuiSurface muiGameScreenSurface()
@@ -1174,6 +1179,7 @@ namespace {
 void muiRenderBottom(SDL_Renderer* renderer)
 {
 #ifdef __ANDROID__
+    gBottomActive = settings.touch.dual_screen && bottomScreenAvailable();
     if (!muiBottomActive()) {
         resetSurfaceInput(surfaceOf(MuiSurface::Bottom));
         return;
@@ -1194,9 +1200,13 @@ void muiRenderBottom(SDL_Renderer* renderer)
         return;
     }
 
-    // A new texture for a new size, or after the renderer dropped its
-    // textures.
-    if (gBottomTexture != nullptr && (width != gBottomTextureWidth || height != gBottomTextureHeight || gBottomTextureGeneration != muiDrawGeneration())) {
+    // Textures were dropped with the renderer (`muiResetRenderer` freed
+    // this one): a new one.
+    if (gBottomTextureGeneration != muiDrawGeneration()) {
+        gBottomTexture = nullptr;
+    }
+    // A new texture for a new size.
+    if (gBottomTexture != nullptr && (width != gBottomTextureWidth || height != gBottomTextureHeight)) {
         SDL_DestroyTexture(gBottomTexture);
         gBottomTexture = nullptr;
     }
@@ -1258,6 +1268,13 @@ void muiRenderBottom(SDL_Renderer* renderer)
 
 void muiResetRenderer()
 {
+#ifdef __ANDROID__
+    // The renderer is going away, its textures with it.
+    if (gBottomTexture != nullptr) {
+        SDL_DestroyTexture(gBottomTexture);
+        gBottomTexture = nullptr;
+    }
+#endif
     muiDrawReset();
 }
 
