@@ -89,6 +89,14 @@ static bool commandLineDevNewGame = false;
 static const char* commandLineDevMap = nullptr;
 static bool commandLineDevEndgameMovie = false;
 
+// CE: `mainIsPlaying`.
+static bool gMainLoopRunning = false;
+
+bool mainIsPlaying()
+{
+    return gMainLoopRunning;
+}
+
 // 0x48099C
 int falloutMain(int argc, char** argv)
 {
@@ -482,6 +490,7 @@ static void mainLoop()
     _main_game_paused = 0;
 
     scriptsEnable();
+    gMainLoopRunning = true;
 
     while (_game_user_wants_to_quit == GAME_QUIT_REQUEST_NONE) {
         sharedFpsLimiter.mark();
@@ -520,6 +529,7 @@ static void mainLoop()
         sharedFpsLimiter.throttle();
     }
 
+    gMainLoopRunning = false;
     scriptsDisable();
 
     if (cursorWasHidden) {

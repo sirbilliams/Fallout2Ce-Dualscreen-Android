@@ -3,6 +3,8 @@
 #include <math.h>
 #include <stdint.h>
 
+#include <SDL.h>
+
 #include <algorithm>
 #include <vector>
 
@@ -15,6 +17,9 @@ namespace {
     // Drawn this many output pixels per texture pixel (coarse grain, as the
     // game's art at its scale).
     constexpr float kMetalScaleDp = 1.25f;
+
+    // The phosphor band takes this long to roll down a monitor.
+    constexpr Uint32 kRollMs = 7000;
 
     SDL_Texture* gMetal = nullptr;
     unsigned int gMetalGeneration = 0;
@@ -203,8 +208,70 @@ void muiSkinWell(MuiContext& ui, const MuiRect& rect)
     MuiColor glow = theme.text.withAlpha(14);
     muiFillGradient({ rect.x, rect.y, rect.w, rect.h }, glow, glow, clear, clear);
 
+    // Monitors big enough to be glass (not switch slots): the phosphor's
+    // band rolling down slowly, and the glare of the glass in its top left.
+    if (rect.w >= ui.dp(80.0f) && rect.h >= ui.dp(60.0f)) {
+        muiPushClip(rect);
+
+        float phase = static_cast<float>(SDL_GetTicks() % kRollMs) / kRollMs;
+        float band = ui.dp(46.0f);
+        float bandY = rect.y - band + (rect.h + band * 2.0f) * phase;
+        MuiColor roll = theme.text.withAlpha(16);
+        MuiColor rollClear = roll.withAlpha(0);
+        muiFillGradient({ rect.x, bandY, rect.w, band }, rollClear, rollClear, roll, roll);
+        muiFillGradient({ rect.x, bandY + band, rect.w, band * 0.4f }, roll, roll, rollClear, rollClear);
+
+        // Two diagonal streaks of glare, fading out down the glass.
+        float reach = std::min(rect.w, rect.h * 1.6f);
+        constexpr int kSlices = 10;
+        auto streak = [&](float startX, float width, float strength) {
+            for (int slice = 0; slice < kSlices; slice++) {
+                float t0 = static_cast<float>(slice) / kSlices;
+                float t1 = static_cast<float>(slice + 1) / kSlices;
+                float y0 = rect.y + reach * 0.5f * t0;
+                float y1 = rect.y + reach * 0.5f * t1;
+                float shift0 = reach * 0.42f * t0;
+                float shift1 = reach * 0.42f * t1;
+                Uint8 alpha = static_cast<Uint8>(strength * (1.0f - t0) * (1.0f - t0));
+                if (alpha == 0) {
+                    continue;
+                }
+                muiFillConvex({ { rect.x + startX - shift0, y0 }, { rect.x + startX + width - shift0, y0 }, { rect.x + startX + width - shift1, y1 }, { rect.x + startX - shift1, y1 } }, muiRgb(0xFFFFFF, alpha));
+            }
+        };
+        streak(reach * 0.16f, reach * 0.22f, 12.0f);
+        streak(reach * 0.44f, reach * 0.06f, 10.0f);
+
+        muiPopClip();
+    }
+
     float bevel = std::max(ui.dp(1.5f), 1.0f);
     muiSkinBevel(rect, bevel, muiRgb(0xE8D5A8, 60), muiRgb(0x000000, 190), true);
+}
+
+void muiSkinLabel(MuiContext& ui, float x, float y, const std::u32string& text)
+{
+    float size = ui.dp(10.5f);
+    float height = ui.dp(19.0f);
+    float pin = ui.dp(2.2f);
+    float width = muiTextWidth(text, size) + ui.dp(14.0f) + pin * 4.0f;
+    MuiRect plate = { x - width / 2.0f, y - height / 2.0f, width, height };
+
+    muiFillRect({ plate.x + ui.dp(1.0f), plate.y + ui.dp(1.5f), plate.w, plate.h }, muiRgb(0x000000, 140));
+    fillMetal(ui, plate, muiRgb(0xC9A86A));
+    float bevel = std::max(ui.dp(1.0f), 1.0f);
+    muiSkinBevel(plate, bevel, muiRgb(0xFFF0C8, 120), muiRgb(0x2A1E10, 170), false);
+
+    // Pins at the ends.
+    for (float pinX : { plate.x + pin * 1.8f, plate.right() - pin * 1.8f }) {
+        muiFillCircle(pinX, plate.centerY(), pin, muiRgb(0x4A3A24));
+        muiFillCircle(pinX - pin * 0.3f, plate.centerY() - pin * 0.3f, pin * 0.45f, muiRgb(0xF2DDA6, 160));
+    }
+
+    // Engraved: dark letters with a light edge under them.
+    MuiRect textRect = { plate.x, plate.y, plate.w, plate.h };
+    muiDrawTextAligned(text, { textRect.x, textRect.y + ui.dp(1.0f), textRect.w, textRect.h }, size, muiRgb(0xFFF0C8, 110), MuiAlign::Center, MuiAlign::Center);
+    muiDrawTextAligned(text, textRect, size, muiRgb(0x2A1E10), MuiAlign::Center, MuiAlign::Center);
 }
 
 void muiSkinButton(MuiContext& ui, const MuiRect& rect, bool pressed, bool primary)

@@ -300,3 +300,6 @@
 {914}{}{Stairs}
 {915}{}{Party}
 {916}{}{Exit}
+{917}{}{STATUS}
+{918}{}{AUTOMAP}
+{919}{}{RADS}

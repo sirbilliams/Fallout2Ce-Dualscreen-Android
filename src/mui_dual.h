@@ -26,6 +26,22 @@ void muiDualBottomOverlay(MuiContext& ui, MuiScreen* top);
 // world fades darker and a chip points down to it.
 void muiDualTopDim(MuiContext& ui);
 
+// The sun by day (6:00 to 18:00), the moon by night, on an arc over the
+// horizon of [rect] where the game's clock [hour] (HHMM) has them.
+void muiDualDayArc(MuiContext& ui, const MuiRect& rect, int hour);
+
+// A Geiger counter's half dial at ([centerX], [baseY]) of [radius]: 0 to 1000
+// rads in the game's radiation levels' colors, the needle at [rads],
+// twitching while above 0.
+void muiDualRadGauge(MuiContext& ui, float centerX, float baseY, float radius, float rads);
+
+// One frame of the bottom screen's CRT power-on, [progress] 0..1.
+void muiDualPowerOnFrame(MuiContext& ui, float progress);
+
+// The bottom screen came on (the app started or came back, the screen or
+// the setting was switched on): it switches on as a CRT.
+void muiDualPowerOn();
+
 // Dude's hit points now, 0..1 (1 outside a game).
 float muiDualHitPointsFraction();
 

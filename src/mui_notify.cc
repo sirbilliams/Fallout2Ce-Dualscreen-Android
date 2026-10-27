@@ -15,6 +15,9 @@ namespace {
     const MuiColor kHudLine = muiRgb(0x0C0F09, 200);
     const MuiColor kWarning = muiRgb(0xFF6E5E);
 
+    // The teletype of the HUD's log: one letter this often.
+    constexpr unsigned int kTypeMs = 16;
+
     // Shown for a base time plus time to read it, fading out at the end.
     constexpr unsigned int kBaseMs = 2500;
     constexpr unsigned int kPerCharacterMs = 45;
@@ -76,13 +79,20 @@ namespace {
         struct Line {
             std::u32string text;
             float alpha;
+            // Typed so far (teletype), the whole line when done.
+            size_t typed;
         };
 
+        // New messages type out as on a teletype, at kTypeMs a letter; the
+        // line being typed has a blinking cursor.
         std::vector<Line> lines;
         for (Notice* notice : notices) {
             float alpha = fade(*notice, ui.now, true);
+            size_t budget = ui.now >= notice->shownTime ? (ui.now - notice->shownTime) / kTypeMs : 0;
             for (const std::u32string& text : muiWrapText(muiDecodeGameText(notice->text.c_str()), area.w - padding * 2.0f, size)) {
-                lines.push_back({ text, alpha });
+                size_t typed = std::min(budget, text.size());
+                budget -= typed;
+                lines.push_back({ text, alpha, typed });
             }
         }
 
@@ -92,10 +102,29 @@ namespace {
 
         float rowHeight = muiLineHeight(size) + padding;
         float y = area.bottom() - lines.size() * (rowHeight + ui.dp(2.0f));
+        bool cursorShown = false;
         for (const Line& line : lines) {
-            float width = std::min(muiTextWidth(line.text, size) + padding * 2.0f, area.w);
+            if (line.typed == 0) {
+                y += rowHeight + ui.dp(2.0f);
+                continue;
+            }
+            // The plate is as wide as the whole line from the start, so it
+            // doesn't grow as the letters come.
+            float width = std::min(muiTextWidth(line.text, size) + padding * 2.0f + ui.dp(8.0f), area.w);
             muiFillRoundRect({ area.x, y, width, rowHeight }, ui.dp(4.0f), faded(kHudLine, line.alpha));
-            muiDrawTextAligned(line.text, { area.x + padding, y, width, rowHeight }, size, faded(theme.text, line.alpha), MuiAlign::Start, MuiAlign::Center);
+            std::u32string shown = line.text.substr(0, line.typed);
+            MuiRect textRect = { area.x + padding, y, width, rowHeight };
+            muiDrawTextAligned(shown, textRect, size, faded(theme.text, line.alpha), MuiAlign::Start, MuiAlign::Center);
+
+            // The cursor after the letters being typed, blinking.
+            if (!cursorShown && line.typed < line.text.size()) {
+                cursorShown = true;
+                if ((ui.now / 260) % 2 == 0) {
+                    float cursorX = textRect.x + muiTextWidth(shown, size) + ui.dp(1.0f);
+                    float cursorHeight = muiLineHeight(size) * 0.8f;
+                    muiFillRect({ cursorX, y + (rowHeight - cursorHeight) / 2.0f, size * 0.5f, cursorHeight }, faded(theme.text, line.alpha * 0.85f));
+                }
+            }
             y += rowHeight + ui.dp(2.0f);
         }
     }

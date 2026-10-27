@@ -1224,7 +1224,11 @@ namespace {
 void muiRenderBottom(SDL_Renderer* renderer)
 {
 #ifdef __ANDROID__
+    bool wasActive = gBottomActive;
     gBottomActive = settings.touch.dual_screen && bottomScreenAvailable();
+    if (gBottomActive && !wasActive) {
+        muiDualPowerOn();
+    }
     if (!muiBottomActive()) {
         resetSurfaceInput(surfaceOf(MuiSurface::Bottom));
         return;

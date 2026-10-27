@@ -170,6 +170,55 @@ int main(int argc, char** argv)
         save(renderer, surface, argc > 3 ? argv[3] : "widgets.bmp");
     }
 
+    // 4. The new pieces: stamped plates, the day arc by day and night, the
+    // Geiger gauge at several rad counts, the glass on a big monitor.
+    {
+        MuiContext ui = makeContext(width, height, density);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+        muiDrawBegin(renderer);
+        muiDualBackdrop(ui);
+
+        float bezel = ui.dp(16.0f);
+        MuiRect monitor = { ui.dp(20.0f), ui.dp(30.0f), width - ui.dp(40.0f), ui.dp(200.0f) };
+        muiSkinPlate(ui, monitor, true);
+        muiSkinWell(ui, monitor.inset(bezel));
+        muiSkinLabel(ui, monitor.centerX(), monitor.y + bezel / 2.0f, U"STATUS");
+        MuiRect inner = monitor.inset(bezel + ui.dp(12.0f));
+        muiDualDayArc(ui, { inner.x, inner.y, inner.w / 2.0f - ui.dp(10.0f), ui.dp(60.0f) }, 1230);
+        muiDualDayArc(ui, { inner.x + inner.w / 2.0f + ui.dp(10.0f), inner.y, inner.w / 2.0f - ui.dp(10.0f), ui.dp(60.0f) }, 2215);
+
+        MuiRect gauges = { ui.dp(20.0f), monitor.bottom() + ui.dp(20.0f), width - ui.dp(40.0f), ui.dp(140.0f) };
+        muiSkinPlate(ui, gauges, true);
+        muiSkinWell(ui, gauges.inset(bezel));
+        const float rads[] = { 0.0f, 150.0f, 450.0f, 900.0f };
+        for (int index = 0; index < 4; index++) {
+            float centerX = gauges.x + gauges.w * (index + 0.5f) / 4.0f;
+            muiDualRadGauge(ui, centerX, gauges.y + ui.dp(78.0f), ui.dp(48.0f), rads[index]);
+        }
+        muiDrawEnd();
+        save(renderer, surface, argc > 4 ? argv[4] : "pieces.bmp");
+    }
+
+    // 5. The power-on at three moments, side by side.
+    {
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
+        const float moments[] = { 0.12f, 0.45f, 0.8f };
+        for (int index = 0; index < 3; index++) {
+            MuiContext ui = makeContext(width / 3, height / 2, density / 2.0f);
+            ui.screen.x = static_cast<float>(index * (width / 3));
+            ui.safe = ui.screen;
+            muiDrawBegin(renderer);
+            muiPushClip(ui.screen);
+            muiDualBackdrop(ui);
+            muiDualPowerOnFrame(ui, moments[index]);
+            muiPopClip();
+            muiDrawEnd();
+        }
+        save(renderer, surface, argc > 5 ? argv[5] : "poweron.bmp");
+    }
+
     return 0;
 }
 

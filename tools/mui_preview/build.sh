@@ -22,9 +22,9 @@ c++ -g "$OUT/preview.o" $OBJS CMakeFiles/fallout2-ce.dir/third_party/lodepng/lod
     _deps/zlib-build/libz.a _deps/sdl2-build/libSDL2d.a -lm -pthread -ldl
 # The UI's font is read from the engine's own data.
 cd "$ROOT/files/ce.dat"
-"$OUT/preview" "$OUT/bottom.bmp" "$OUT/companion.bmp" "$OUT/widgets.bmp"
+"$OUT/preview" "$OUT/bottom.bmp" "$OUT/companion.bmp" "$OUT/widgets.bmp" "$OUT/pieces.bmp" "$OUT/poweron.bmp"
 cd "$OUT"
-for name in bottom companion widgets; do
+for name in bottom companion widgets pieces poweron; do
     convert "$name.bmp" "$name.png" && rm "$name.bmp"
 done
 echo "Previews in $OUT"

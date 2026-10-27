@@ -319,6 +319,7 @@ namespace {
     constexpr HudText kTextYourTurn = { 908, "YOUR TURN" };
     constexpr HudText kTextEnemyTurn = { 909, "ENEMY TURN" };
     constexpr HudText kTextActionPointsShort = { 910, "%d AP" };
+    constexpr HudText kTextAutomapPlate = { 918, "AUTOMAP" };
 
     const MuiColor kCombatAmber = muiRgb(0xFFB000);
     const MuiColor kCombatRed = muiRgb(0xFF4A3A);
@@ -415,6 +416,7 @@ namespace {
         }
         float bezel = ui.dp(13.0f);
         muiSkinWell(ui, rect.inset(bezel));
+        muiSkinLabel(ui, rect.centerX(), rect.y + bezel / 2.0f, muiDecodeGameText(text(kTextAutomapPlate)));
 
         MuiRect inner = rect.inset(bezel + ui.dp(3.0f));
 

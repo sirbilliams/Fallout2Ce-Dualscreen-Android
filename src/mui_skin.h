@@ -33,6 +33,11 @@ void muiSkinBevel(const MuiRect& rect, float thickness, MuiColor light, MuiColor
 // A rivet centered at ([x], [y]).
 void muiSkinRivet(MuiContext& ui, float x, float y);
 
+// A stamped name plate centered at ([x], [y]): a small brass plate with
+// [text] engraved in it and a pin at each end, as the tags on the game's
+// interface bar.
+void muiSkinLabel(MuiContext& ui, float x, float y, const std::u32string& text);
+
 } // namespace fallout
 
 #endif /* FALLOUT_MUI_SKIN_H_ */

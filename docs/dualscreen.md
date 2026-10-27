@@ -43,6 +43,13 @@ Built (needs checking on a Thor):
   floor in its tiles' own colors (squares near anything seen, so it survives a reload), doors,
   containers, stairs / ladders / elevators, party members, and names of where exits lead; a legend
   on the map screen.
+- Touches of life: the bottom screen switches on as a CRT (line, opening, flash) when it comes on;
+  big monitors have a rolling phosphor band and glass glare; stamped brass name plates (STATUS,
+  AUTOMAP); the companion panel's sun / moon arc over the game's clock and a Geiger gauge
+  (square-root dial in the game's radiation levels, needle twitching while radiated); log
+  messages type out as on a teletype.
+- The companion panel shows game details only while a game is played (`mainIsPlaying`): the
+  startup screen shows just the title.
 - `tools/mui_preview`: renders the skin and a made-up map off-screen, to tune the look without a
   device.
 
