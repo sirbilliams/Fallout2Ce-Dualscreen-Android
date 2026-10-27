@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Fallout 2 CE</string>
+    <string name="app_name">Fallout 2 Dual</string>
 
     <!-- ImportActivity: the game's files from the player's own copy. -->
     <string name="import_title">Files of the game</string>
