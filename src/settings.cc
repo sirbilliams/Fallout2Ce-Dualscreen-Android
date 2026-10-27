@@ -407,6 +407,7 @@ void initSettingsRegistry(bool isMapper)
     SETTING_P(hud_scale, clamp(50, 200));
     SETTING_P(hud_density, clamp(0.0, 8.0));
     SETTING(tactical_view);
+    SETTING(dual_screen);
 #undef SECT
 
 #define SECT world_view

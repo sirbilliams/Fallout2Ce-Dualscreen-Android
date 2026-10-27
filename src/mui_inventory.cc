@@ -63,6 +63,8 @@ namespace {
     // `inventoryQueueAction`).
     class InventoryScreen : public MuiScreen {
     public:
+        // Dual-screen devices: the bottom screen, the world stays on top.
+        MuiSurface surface() override { return muiGameScreenSurface(); }
         InventoryScreen()
         {
             modal = true;

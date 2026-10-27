@@ -1,13 +1,17 @@
 #include "bottom_screen.h"
 
 #include <stdint.h>
+#include <string.h>
 
 #include <mutex>
 
+#include <SDL.h>
 #include <android/log.h>
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 #include <jni.h>
+
+#include "mui.h"
 
 namespace fallout {
 
@@ -15,63 +19,20 @@ namespace {
 
     constexpr const char* kLogTag = "BottomScreen";
 
+    // Finger ids of the bottom screen's touches: Android numbers each
+    // screen's pointers from 0, and the game looks fingers up by id alone
+    // (input.cc), so the bottom's are moved out of the top's range.
+    constexpr SDL_FingerID kFingerBase = 0x7B000000;
+
     // The surface from BottomScreen.java. Set and dropped on the UI thread,
-    // read from the game's thread: guarded by `gMutex`.
+    // drawn into from the game's thread: guarded by `gMutex`.
     std::mutex gMutex;
     ANativeWindow* gWindow = nullptr;
     int gWidth = 0;
     int gHeight = 0;
-
-    // A pixel of an RGBX_8888 buffer (bytes R, G, B, X in memory).
-    uint32_t pixel(uint8_t r, uint8_t g, uint8_t b)
-    {
-        return 0xFF000000u | (static_cast<uint32_t>(b) << 16) | (static_cast<uint32_t>(g) << 8) | r;
-    }
-
-    // Until the panels draw there: a pattern showing the screen works end to
-    // end (Pip-Boy green, a border at the very edges, a red mark in the top
-    // left corner for orientation, a cross at the center).
-    void drawTestPattern(ANativeWindow* window)
-    {
-        if (ANativeWindow_setBuffersGeometry(window, 0, 0, WINDOW_FORMAT_RGBX_8888) != 0) {
-            __android_log_print(ANDROID_LOG_WARN, kLogTag, "setBuffersGeometry failed");
-            return;
-        }
-
-        ANativeWindow_Buffer buffer;
-        if (ANativeWindow_lock(window, &buffer, nullptr) != 0) {
-            __android_log_print(ANDROID_LOG_WARN, kLogTag, "lock failed");
-            return;
-        }
-
-        const uint32_t background = pixel(10, 31, 10);
-        const uint32_t border = pixel(47, 209, 47);
-        const uint32_t mark = pixel(220, 40, 40);
-        const int borderWidth = 6;
-        const int markSize = 48;
-        const int crossHalf = buffer.width < buffer.height ? buffer.width / 6 : buffer.height / 6;
-        const int centerX = buffer.width / 2;
-        const int centerY = buffer.height / 2;
-
-        uint32_t* rows = static_cast<uint32_t*>(buffer.bits);
-        for (int y = 0; y < buffer.height; y++) {
-            uint32_t* row = rows + static_cast<size_t>(y) * buffer.stride;
-            for (int x = 0; x < buffer.width; x++) {
-                uint32_t color = background;
-                if (x < borderWidth || y < borderWidth || x >= buffer.width - borderWidth || y >= buffer.height - borderWidth) {
-                    color = border;
-                } else if (x < borderWidth + markSize && y < borderWidth + markSize) {
-                    color = mark;
-                } else if ((x >= centerX - 2 && x < centerX + 2 && y > centerY - crossHalf && y < centerY + crossHalf)
-                    || (y >= centerY - 2 && y < centerY + 2 && x > centerX - crossHalf && x < centerX + crossHalf)) {
-                    color = border;
-                }
-                row[x] = color;
-            }
-        }
-
-        ANativeWindow_unlockAndPost(window);
-    }
+    // The window's buffers are set to the surface's size and format.
+    bool gGeometrySet = false;
+    float gDensity = 2.0f;
 
 } // namespace
 
@@ -88,9 +49,46 @@ void bottomScreenGetSize(int* width, int* height)
     *height = gWindow != nullptr ? gHeight : 0;
 }
 
+float bottomScreenGetDensity()
+{
+    std::lock_guard<std::mutex> lock(gMutex);
+    return gDensity;
+}
+
+void bottomScreenPostFrame(const unsigned char* pixels, int width, int height, int pitch)
+{
+    std::lock_guard<std::mutex> lock(gMutex);
+    if (gWindow == nullptr || width != gWidth || height != gHeight) {
+        return;
+    }
+
+    if (!gGeometrySet) {
+        if (ANativeWindow_setBuffersGeometry(gWindow, width, height, WINDOW_FORMAT_RGBA_8888) != 0) {
+            __android_log_print(ANDROID_LOG_WARN, kLogTag, "setBuffersGeometry failed");
+            return;
+        }
+        gGeometrySet = true;
+    }
+
+    ANativeWindow_Buffer buffer;
+    if (ANativeWindow_lock(gWindow, &buffer, nullptr) != 0) {
+        return;
+    }
+
+    int rows = height < buffer.height ? height : buffer.height;
+    int columns = width < buffer.width ? width : buffer.width;
+    unsigned char* destination = static_cast<unsigned char*>(buffer.bits);
+    size_t destinationPitch = static_cast<size_t>(buffer.stride) * 4;
+    for (int y = 0; y < rows; y++) {
+        memcpy(destination + y * destinationPitch, pixels + static_cast<size_t>(y) * pitch, static_cast<size_t>(columns) * 4);
+    }
+
+    ANativeWindow_unlockAndPost(gWindow);
+}
+
 } // namespace fallout
 
-extern "C" JNIEXPORT void JNICALL Java_com_alexbatalov_fallout2ce_BottomScreen_nativeSurfaceChanged(JNIEnv* env, jclass, jobject surface, jint width, jint height)
+extern "C" JNIEXPORT void JNICALL Java_com_alexbatalov_fallout2ce_BottomScreen_nativeSurfaceChanged(JNIEnv* env, jclass, jobject surface, jint width, jint height, jfloat density)
 {
     using namespace fallout;
 
@@ -107,9 +105,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_alexbatalov_fallout2ce_BottomScreen_n
     gWindow = window;
     gWidth = width;
     gHeight = height;
-    __android_log_print(ANDROID_LOG_INFO, kLogTag, "surface %dx%d", width, height);
-
-    drawTestPattern(gWindow);
+    gGeometrySet = false;
+    if (density > 0.0f) {
+        gDensity = density;
+    }
+    __android_log_print(ANDROID_LOG_INFO, kLogTag, "surface %dx%d, density %.2f", width, height, gDensity);
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_alexbatalov_fallout2ce_BottomScreen_nativeSurfaceDestroyed(JNIEnv*, jclass)
@@ -123,4 +123,35 @@ extern "C" JNIEXPORT void JNICALL Java_com_alexbatalov_fallout2ce_BottomScreen_n
     }
     gWidth = 0;
     gHeight = 0;
+    gGeometrySet = false;
+}
+
+// A touch on the bottom screen (UI thread): into the game's event queue as
+// an SDL finger event of the bottom screen's touch device (mui.h
+// `kMuiBottomTouchId`), where the mobile UI's bottom surface takes it.
+// [action] 0 down, 1 move, 2 up; [x] and [y] 0..1 across the screen.
+extern "C" JNIEXPORT void JNICALL Java_com_alexbatalov_fallout2ce_BottomScreen_nativeTouch(JNIEnv*, jclass, jint action, jint pointerId, jfloat x, jfloat y)
+{
+    using namespace fallout;
+
+    SDL_Event event;
+    SDL_zero(event);
+    switch (action) {
+    case 0:
+        event.type = SDL_FINGERDOWN;
+        break;
+    case 1:
+        event.type = SDL_FINGERMOTION;
+        break;
+    default:
+        event.type = SDL_FINGERUP;
+        break;
+    }
+    event.tfinger.touchId = kMuiBottomTouchId;
+    event.tfinger.fingerId = kFingerBase + pointerId;
+    event.tfinger.x = x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x);
+    event.tfinger.y = y < 0.0f ? 0.0f : (y > 1.0f ? 1.0f : y);
+    event.tfinger.pressure = action == 2 ? 0.0f : 1.0f;
+    event.tfinger.timestamp = SDL_GetTicks();
+    SDL_PushEvent(&event);
 }

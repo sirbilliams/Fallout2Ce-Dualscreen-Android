@@ -196,12 +196,12 @@ void muiNotifyHudArea(const MuiRect& area, bool logOpen)
 
 void muiNotifyRender(MuiContext& ui)
 {
-    bool hudShown = gHudThisFrame && !muiCoversScreen();
+    bool hudShown = gHudThisFrame && !muiCoversSurface(ui.surface);
     gHudThisFrame = false;
 
     // Where the log is seen: the HUD's log, or the game's interface bar when
     // the touch HUD is off and no screen covers it.
-    bool gameLogShown = !touchHudIsEnabled() && !muiCoversScreen();
+    bool gameLogShown = !touchHudIsEnabled() && !muiCoversSurface(ui.surface);
 
     std::vector<Notice*> hud;
     std::vector<Notice*> plates;

@@ -256,7 +256,21 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
     }
     hasCenter = false;
 
+    if (pendingZoomDp > 0.0f) {
+        view.zoom = ui.dp(pendingZoomDp);
+        pendingZoomDp = 0.0f;
+    }
+
+    if (following) {
+        following = false;
+        view.centerX = followX;
+        view.centerY = followY;
+    }
+
     bool touched = ui.panZoom(id, rect, &view);
+    if (touched) {
+        lastTouch = ui.now != 0 ? ui.now : 1;
+    }
     view.zoom = std::clamp(view.zoom, view.minZoom, view.maxZoom);
     view.centerX = std::clamp(view.centerX, static_cast<float>(left), static_cast<float>(right + 1));
     view.centerY = std::clamp(view.centerY, static_cast<float>(top), static_cast<float>(bottom + 1));

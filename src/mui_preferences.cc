@@ -95,6 +95,8 @@ namespace {
     constexpr int kTextWorldmapFollow = 322;
     constexpr int kTextWorldmapFollowNote = 323;
     constexpr int kTextTacticalView = 373;
+    constexpr int kTextDualScreen = 900;
+    constexpr int kTextDualScreenNote = 901;
     constexpr int kTextTacticalViewNote = 374;
     constexpr int kTextSaveCompatibility = 327;
     constexpr int kTextSaveCompatibilityNote = 328;
@@ -197,6 +199,7 @@ namespace {
         bool mainMenuContinue;
         bool worldmapFollow;
         bool tacticalView;
+        bool dualScreen;
         bool saveCompatibility;
         int interfaceSize;
         int mapFilter;
@@ -220,6 +223,7 @@ namespace {
         values.mainMenuContinue = settings.enhancements.main_menu_continue;
         values.worldmapFollow = settings.enhancements.worldmap_follow_party;
         values.tacticalView = settings.enhancements.tactical_view;
+        values.dualScreen = settings.touch.dual_screen;
         values.saveCompatibility = settings.enhancements.save_compatibility;
         values.interfaceSize = settings.touch.hud_scale;
         values.mapFilter = settings.world_view.filter;
@@ -244,6 +248,7 @@ namespace {
         values.mainMenuContinue = EnhancementSettings().main_menu_continue;
         values.worldmapFollow = EnhancementSettings().worldmap_follow_party;
         values.tacticalView = EnhancementSettings().tactical_view;
+        values.dualScreen = TouchSettings().dual_screen;
         values.saveCompatibility = EnhancementSettings().save_compatibility;
         values.interfaceSize = TouchSettings().hud_scale;
         values.mapFilter = WorldViewSettings().filter;
@@ -318,6 +323,7 @@ namespace {
         settings.enhancements.main_menu_continue = values.mainMenuContinue;
         settings.enhancements.worldmap_follow_party = values.worldmapFollow;
         settings.enhancements.tactical_view = values.tacticalView;
+        settings.touch.dual_screen = values.dualScreen;
         settings.enhancements.save_compatibility = values.saveCompatibility;
         settings.touch.hud_scale = values.interfaceSize;
         settings.world_view.filter = values.mapFilter;
@@ -614,6 +620,12 @@ namespace {
             };
             row.get = [](const Values& values) { return static_cast<float>(values.interfaceSize); };
             row.set = [](Values& values, float value) { values.interfaceSize = static_cast<int>(std::lround(value / 5.0f) * 5); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Display, RowKind::Toggle, kTextDualScreen, "Dual screen", Origin::Port, kTextDualScreenNote, "On two-screen devices: the HUD, map and game screens on the bottom screen, the world on top" };
+            row.get = [](const Values& values) { return values.dualScreen ? 1.0f : 0.0f; };
+            row.set = [](Values& values, float value) { values.dualScreen = value != 0.0f; };
             rows.push_back(row);
         }
         {

@@ -15,6 +15,7 @@
 #include "draw.h"
 #include "game.h"
 #include "game_commands.h"
+#include "gamepad.h"
 #include "kb.h"
 #include "loadsave.h"
 #include "memory.h"
@@ -1129,6 +1130,11 @@ void _GNW95_process_message()
     KeyboardData keyboardData;
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
+        // CE: Game controllers (gamepad.h).
+        if (gamepadHandleEvent(&e)) {
+            continue;
+        }
+
         switch (e.type) {
         case SDL_MOUSEMOTION:
         case SDL_MOUSEBUTTONDOWN:
@@ -1278,6 +1284,9 @@ void _GNW95_process_message()
 
     // CE: All events are in: fingers of ours not down any more lost their end.
     inputForgetLiftedFingers(false, 0);
+
+    // CE: Sticks and held buttons of game controllers.
+    gamepadTick();
 
     touch_process_gesture();
 

@@ -347,6 +347,9 @@ struct TouchSettings {
     double hud_density = 0.0;
     // Combat's tactical view (its HUD button), kept until switched again.
     bool tactical_view = false;
+    // Dual-screen devices (AYN Thor): the bottom screen shows the dashboard
+    // and the game's screens, see mui.h `muiBottomActive`.
+    bool dual_screen = true;
 };
 
 struct MapperSettings {

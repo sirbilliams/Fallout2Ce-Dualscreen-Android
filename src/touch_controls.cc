@@ -103,8 +103,13 @@ public:
 
     void build(MuiContext& ui) override;
 
+    // Dual-screen devices: the screen it was opened on (an item's menu of
+    // the inventory or loot on the bottom screen opens there, at the finger).
+    MuiSurface surface() override { return openedOn; }
+
     bool pointerInput = false;
     bool pointerWasDown = false;
+    MuiSurface openedOn = MuiSurface::Top;
 
 private:
     void handlePointer(MuiContext& ui, float scale);
@@ -982,17 +987,25 @@ static bool radialMenuOpenItems(const GameMouseActionMenuItem* items, int itemsL
     // over the part of the circle that fits on screen (e.g. the lower arc at
     // the top edge), so the menu stays centered on the finger. Sizes are in
     // dp (physical size).
-    float pixelsPerDp = hudGetPixelsPerDp();
+    // Dual-screen devices: a menu asked for while the game shows a screen on
+    // the bottom one (an item's actions in the inventory) opens there; [x]
+    // and [y] are in its logical space then (mui.h `muiToScreen`).
+    MuiSurface surface = muiBottomHoldsGame() ? MuiSurface::Bottom : MuiSurface::Top;
+    gRadialMenuScreen.openedOn = surface;
+    HudMetrics metrics = muiSurfaceMetrics(surface);
+    int screenWidth = metrics.screenWidth;
+    int screenHeight = metrics.screenHeight;
+
+    float pixelsPerDp = surface == MuiSurface::Top ? hudGetPixelsPerDp() : metrics.pixelsPerDp;
     int buttonSize = static_cast<int>(lround(kRadialMenuButtonSizeDp * pixelsPerDp));
     double minRadius = kRadialMenuMinRadiusDp * pixelsPerDp;
     int count = gRadialMenu.itemsLength;
 
-    HudMetrics metrics = hudMetricsGet();
     double margin = 4.0 * pixelsPerDp + buttonSize / 2.0;
     double left = metrics.insetLeft + margin;
     double top = metrics.insetTop + margin;
-    double right = screenGetWidth() - metrics.insetRight - margin;
-    double bottom = screenGetHeight() - metrics.insetBottom - margin;
+    double right = screenWidth - metrics.insetRight - margin;
+    double bottom = screenHeight - metrics.insetBottom - margin;
 
     // Angle between neighbour buttons which keeps them apart.
     auto minStep = [&](double radius) {
@@ -1065,8 +1078,8 @@ static bool radialMenuOpenItems(const GameMouseActionMenuItem* items, int itemsL
         // Corner with many actions: move the menu off the edge.
         radius = std::max(minRadius, count > 1 ? buttonSize * 1.12 / (2.0 * sin(M_PI / count)) : 0.0);
         int extent = static_cast<int>(ceil(radius)) + buttonSize / 2 + 2;
-        centerX = std::clamp(x, extent, std::max(screenGetWidth() - extent, extent));
-        centerY = std::clamp(y, extent, std::max(screenGetHeight() - extent, extent));
+        centerX = std::clamp(x, extent, std::max(screenWidth - extent, extent));
+        centerY = std::clamp(y, extent, std::max(screenHeight - extent, extent));
         fullCircle = true;
     }
 
@@ -1110,8 +1123,9 @@ int touchControlsChooseActionMenuItem(const GameMouseActionMenuItem* items, int 
     }
 
     // Menu is opened by long press, the same finger may choose by sliding.
-    // Over a mobile UI screen the finger is the mobile UI's.
-    bool pointerInput = muiHasModal();
+    // Over a mobile UI screen the finger is the mobile UI's (the menu is on
+    // the top screen, with the map).
+    bool pointerInput = muiHasModalOn(gRadialMenuScreen.openedOn);
     gRadialMenuScreen.pointerInput = pointerInput;
     gRadialMenuScreen.pointerWasDown = true;
     gRadialMenuScreen.modal = pointerInput;

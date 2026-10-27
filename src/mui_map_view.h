@@ -43,6 +43,22 @@ public:
     // Centers the view on tile ([x], [y]) (e.g. the player).
     void centerOn(float x, float y);
 
+    // Keeps tile ([x], [y]) at the center this frame (a live map following
+    // the player); callers stop while the map is being dragged.
+    void follow(float x, float y)
+    {
+        following = true;
+        followX = x;
+        followY = y;
+    }
+
+    // The zoom to use once, at [tileDp] dp per tile (within the map's
+    // limits).
+    void zoomTo(float tileDp) { pendingZoomDp = tileDp; }
+
+    // When a finger last moved or pinched the map (SDL ticks, 0 - never).
+    unsigned int lastTouchTime() const { return lastTouch; }
+
     void build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers);
 
 private:
@@ -59,6 +75,11 @@ private:
 
     MuiPanZoom view;
     bool needsFit = true;
+    bool following = false;
+    float followX = 0.0f;
+    float followY = 0.0f;
+    float pendingZoomDp = 0.0f;
+    unsigned int lastTouch = 0;
     bool hasCenter = false;
     float centerX = 0.0f;
     float centerY = 0.0f;

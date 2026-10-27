@@ -57,9 +57,55 @@ static const HudLayout kLandscapeLayout = {
     },
 };
 
+// Dual-screen devices: the HUD on the bottom screen (AYN Thor: 1240 x 1080,
+// nearly square), the top screen left to the world. Nothing covers a map
+// there, so the buttons are bigger and the middle is left free for the
+// dashboard's panel (the live map).
+//
+// Top left: inventory, character, Pip-Boy, map. Top right: menu, quick
+// save/load. Left edge: skills, highlight, sneak. Bottom left: log. Bottom
+// right: indicators, AP/HP, attack modes, swap hands and weapon. Right edge
+// (combat only): end turn and end combat.
+constexpr float kDashButton = 52.0f;
+
+static const HudLayout kDashboardLayout = {
+    10.0f,
+    8.0f,
+    {
+        { HudGroupId::Screens, HudAnchor::TopLeft, HudFlow::Rows, HudAlign::Start,
+            { { { HudElementId::Inventory, kDashButton, kDashButton }, { HudElementId::Character, kDashButton, kDashButton }, { HudElementId::Pipboy, kDashButton, kDashButton }, { HudElementId::Map, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::System, HudAnchor::TopRight, HudFlow::Rows, HudAlign::End,
+            { { { HudElementId::Menu, kDashButton, kDashButton }, { HudElementId::QuickSave, kDashButton, kDashButton }, { HudElementId::QuickLoad, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::Tools, HudAnchor::Left, HudFlow::Columns, HudAlign::Start,
+            { { { HudElementId::PartyOrders, kDashButton, kDashButton }, { HudElementId::Skills, kDashButton, kDashButton }, { HudElementId::Highlight, kDashButton, kDashButton }, { HudElementId::Sneak, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::Log, HudAnchor::BottomLeft, HudFlow::Rows, HudAlign::Start,
+            { { { HudElementId::Log, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::Weapon, HudAnchor::BottomRight, HudFlow::Rows, HudAlign::End,
+            {
+                { { HudElementId::Indicators, kHudFill, 22.0f } },
+                { { HudElementId::Status, kHudFill, 24.0f } },
+                { { HudElementId::Modes, kHudFill, 44.0f } },
+                { { HudElementId::SwapHands, kDashButton, 64.0f }, { HudElementId::Weapon, 180.0f, 64.0f } },
+            },
+            false, 6.0f },
+        { HudGroupId::Combat, HudAnchor::Right, HudFlow::Columns, HudAlign::Start,
+            { { { HudElementId::TacticalView, 110.0f, 48.0f }, { HudElementId::EndTurn, 110.0f, 48.0f }, { HudElementId::EndCombat, 110.0f, 48.0f } } },
+            true },
+    },
+};
+
 const HudLayout& hudLayoutLandscape()
 {
     return kLandscapeLayout;
+}
+
+const HudLayout& hudLayoutDashboard()
+{
+    return kDashboardLayout;
 }
 
 float hudGetScreenDensity()

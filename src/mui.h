@@ -10,6 +10,7 @@
 
 #include "art_defs.h"
 #include "combat_defs.h"
+#include "hud_layout.h"
 #include "mui_draw.h"
 #include "obj_types.h"
 #include "touch.h"
@@ -72,6 +73,28 @@ enum class MuiButtonStyle {
 
 class MuiContext;
 
+// The device's screens the mobile UI draws on: the game's (Top) and, on
+// dual-screen devices (AYN Thor), the bottom screen (bottom_screen.h).
+// Without a bottom screen everything is on Top, as on any phone.
+enum class MuiSurface {
+    Top,
+    Bottom,
+};
+
+constexpr int kMuiSurfaceCount = 2;
+
+// Touch device id of the bottom screen's fingers: BottomScreen.java's touches
+// come into the game's event queue as SDL finger events with it
+// (bottom_screen.cc), so they reach the bottom surface only, never the map.
+constexpr SDL_TouchID kMuiBottomTouchId = 0x7B07B07B;
+
+// The bottom screen is there and in use (`[touch] dual_screen`).
+bool muiBottomActive();
+
+// Where the game's own screens (inventory, character, Pip-Boy, map, loot,
+// barter...) go: the bottom screen while it's active, the top otherwise.
+MuiSurface muiGameScreenSurface();
+
 // View of content moved and zoomed by fingers (`MuiContext::panZoom`):
 // content point at the view's center, output pixels per content unit.
 struct MuiPanZoom {
@@ -108,6 +131,9 @@ public:
     // Over the map without covering it, but the HUD's buttons shouldn't show
     // under it (a game screen the game shows over the map: the elevator).
     virtual bool hidesHud() { return false; }
+
+    // The screen of the device it is drawn on and takes touches from.
+    virtual MuiSurface surface() { return MuiSurface::Top; }
 
     bool modal = true;
     bool finished = false;
@@ -205,6 +231,8 @@ public:
 
     // Internal state, filled by mui.cc.
     float pixelsPerDp = 1.0f;
+    // The screen of the device being built.
+    MuiSurface surface = MuiSurface::Top;
     MuiRect screen;
     MuiRect safe;
     bool isInteractive = false;
@@ -212,8 +240,15 @@ public:
     unsigned int now = 0;
 };
 
-// Output pixels to game screen (logical) pixels.
+// Output pixels of the surface being built (the top outside of building) to
+// game screen (logical) pixels. On the bottom screen: its own logical space,
+// as wide as the game's screen (`muiSurfaceMetrics`).
 void muiToScreen(float x, float y, int* screenX, int* screenY);
+
+// Layout metrics of [surface] in game screen (logical) pixels, as
+// `hudMetricsGet` for the top: the bottom screen is as wide as the game's
+// screen there, its height and dp in proportion, no cutouts.
+HudMetrics muiSurfaceMetrics(MuiSurface surface);
 
 // Text [id] of `game\ce.msg` (mobile UI texts localized with game data),
 // [fallback] without it.
@@ -221,7 +256,13 @@ const char* muiText(int id, const char* fallback);
 
 void muiPush(MuiScreen* screen);
 void muiRemove(MuiScreen* screen);
+// The surface being built (the top outside of building).
+MuiSurface muiCurrentSurface();
+
+// An active modal screen on any surface.
 bool muiHasModal();
+// An active modal screen on [surface].
+bool muiHasModalOn(MuiSurface surface);
 
 // A screen holds the last frame, don't present a new one (see
 // `MuiScreen::holdsFrame`).
@@ -232,11 +273,24 @@ bool muiHoldsFrame();
 // map doesn't show between them. [from] is the screen closing.
 void muiHoldFrameForSwitch(MuiScreen* from);
 
-// An active screen covers the whole screen (see `MuiScreen::coversScreen`).
+// An active screen covers the whole top screen (see
+// `MuiScreen::coversScreen`).
 bool muiCoversScreen();
 
-// An active screen hides the HUD (see `MuiScreen::hidesHud`).
+// An active screen on the top screen hides the HUD (see
+// `MuiScreen::hidesHud`).
 bool muiHidesHud();
+
+// An active screen covers the whole of [surface].
+bool muiCoversSurface(MuiSurface surface);
+
+// The surface of the HUD, its log and the notifications: the bottom screen
+// while it's active, the top otherwise.
+MuiSurface muiHudSurface();
+
+// An active modal screen on the bottom screen: the game shows a screen there
+// and the world on top is frozen (the game's own loop runs the screen).
+bool muiBottomHoldsGame();
 
 // Runs game input and rendering until [screen] is finished (synchronous flows
 // like dialog boxes). Esc / Android back call `MuiScreen::back`.
@@ -244,6 +298,9 @@ void muiRunModal(MuiScreen* screen);
 
 // svga.cc: draws screens over the game.
 void muiRender(SDL_Renderer* renderer);
+// svga.cc: draws the bottom screen's screens and hands the frame to it
+// (bottom_screen.h); nothing without one.
+void muiRenderBottom(SDL_Renderer* renderer);
 void muiResetRenderer();
 
 // input.cc: returns true if the finger event belongs to the mobile UI.

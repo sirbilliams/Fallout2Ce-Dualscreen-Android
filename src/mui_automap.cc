@@ -38,6 +38,8 @@ namespace {
     // the edge.
     class AutomapScreen : public MuiScreen {
     public:
+        // Dual-screen devices: the bottom screen, the world stays on top.
+        MuiSurface surface() override { return muiGameScreenSurface(); }
         AutomapScreen()
         {
             modal = true;

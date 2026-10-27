@@ -12,6 +12,7 @@
 
 #include "animation.h"
 #include "art.h"
+#include "automap.h"
 #include "combat.h"
 #include "critter.h"
 #include "dbox.h"
@@ -31,6 +32,7 @@
 #include "message.h"
 #include "mui.h"
 #include "mui_icons.h"
+#include "mui_map_view.h"
 #include "mui_notify.h"
 #include "mui_screens.h"
 #include "object.h"
@@ -202,6 +204,9 @@ namespace {
         void build(MuiContext& ui) override;
         bool isActive() override;
         void back() override;
+        // Dual-screen devices: on the bottom screen (the dashboard), the top
+        // left to the world.
+        MuiSurface surface() override { return muiHudSurface(); }
     };
 
     HudScreen gHudScreen;
@@ -242,6 +247,22 @@ namespace {
 
     // Orders with keys, empty without the mod.
     std::vector<AvailableOrder> gPartyOrders;
+
+    // Dual-screen devices: the dashboard's live map (the automap of where
+    // dude is, following him), between the HUD's groups on the bottom screen.
+    // The view is taken again this often (it is what opening the automap
+    // would show).
+    constexpr unsigned int kLiveMapRefreshMs = 1000;
+    // A finger moved the map: it stays where it was put this long before
+    // following dude again.
+    constexpr unsigned int kLiveMapHoldMs = 5000;
+    const MuiColor kLiveMapDude = muiRgb(0xFF5A4A);
+    const MuiColor kLiveMapExit = muiRgb(0xFFB000);
+
+    MuiMapView gLiveMap;
+    AutomapView gLiveMapView;
+    unsigned int gLiveMapTime = 0;
+    std::string gLiveMapKey;
 
     // Element rects of the last frame (output pixels) and output width, for
     // tests.
@@ -288,6 +309,78 @@ namespace {
             && !windowIsModalShown()
             && !muiHidesHud()
             && !mapIsLoading();
+    }
+
+    // MARK: Live map
+
+    void buildLiveMap(MuiContext& ui, const MuiRect& rect)
+    {
+        const MuiTheme& theme = muiTheme();
+        if (rect.w < ui.dp(120.0f) || rect.h < ui.dp(80.0f)) {
+            return;
+        }
+
+        Map map = mapGetCurrentMap();
+        if (!mapIsValid(map)) {
+            return;
+        }
+
+        std::string key = "hud.livemap." + std::to_string(map) + "." + std::to_string(gElevation);
+        if (key != gLiveMapKey || gLiveMapTime == 0 || ui.now - gLiveMapTime >= kLiveMapRefreshMs) {
+            automapGetLiveView(gElevation, &gLiveMapView);
+            gLiveMapTime = ui.now != 0 ? ui.now : 1;
+        }
+
+        float radius = ui.dp(theme.radius);
+        muiFillRoundRect(rect, radius, kPanelColor);
+        muiStrokeRoundRect(rect, radius, ui.dp(theme.borderWidth), theme.panelBorder);
+
+        gLiveMap.setTiles(key, gLiveMapView.tiles, HEX_GRID_WIDTH, HEX_GRID_HEIGHT);
+        if (key != gLiveMapKey) {
+            gLiveMapKey = key;
+            // Close enough to see the rooms around dude.
+            gLiveMap.zoomTo(5.0f);
+        }
+
+        std::vector<MuiMapMarker> markers;
+        for (const auto& exit : gLiveMapView.exits) {
+            markers.push_back({ static_cast<float>(exit.first), static_cast<float>(exit.second), kLiveMapExit, 2.5f });
+        }
+        if (gLiveMapView.dudeX != -1) {
+            markers.push_back({ static_cast<float>(gLiveMapView.dudeX), static_cast<float>(gLiveMapView.dudeY), kLiveMapDude, 4.0f });
+
+            unsigned int touched = gLiveMap.lastTouchTime();
+            if (touched == 0 || ui.now - touched >= kLiveMapHoldMs) {
+                gLiveMap.follow(gLiveMapView.dudeX + 0.5f, gLiveMapView.dudeY + 0.5f);
+            }
+        }
+
+        MuiRect body = rect.inset(ui.dp(4.0f));
+        muiPushClip(body);
+        gLiveMap.build(ui, "hud.livemap", body, markers);
+        muiPopClip();
+
+        // Where: the map's name, top left.
+        std::u32string name = muiDecodeGameText(mapGetName(map, gElevation));
+        if (!name.empty()) {
+            float size = ui.dp(12.0f);
+            float padding = ui.dp(6.0f);
+            MuiRect label = { body.x + padding, body.y + padding, std::min(muiTextWidth(name, size) + padding * 2.0f, body.w * 0.6f), ui.dp(22.0f) };
+            muiFillRoundRect(label, ui.dp(4.0f), kPanelColor);
+            muiDrawTextAligned(name, label, size, theme.textDim, MuiAlign::Center, MuiAlign::Center);
+        }
+
+        // The full map screen (the game's automap, its details and motion
+        // sensor), top right.
+        float buttonSize = ui.dp(40.0f);
+        MuiRect open = { body.right() - buttonSize - ui.dp(4.0f), body.y + ui.dp(4.0f), buttonSize, buttonSize };
+        bool pressed = false;
+        if (ui.touchable("hud.livemap.open", open, &pressed)) {
+            sendCommand({ GameCommandType::Automap });
+        }
+        muiFillRoundRect(open, ui.dp(6.0f), pressed ? theme.buttonPressed : theme.button);
+        muiStrokeRoundRect(open, ui.dp(6.0f), ui.dp(1.0f), theme.buttonBorder);
+        muiDrawIcon(MuiIcon::Expand, open.centerX(), open.centerY(), buttonSize * 0.55f, ui.dp(2.0f), theme.buttonText);
     }
 
     // MARK: Drawing
@@ -1296,7 +1389,7 @@ namespace {
         // closes up.
         bool partyOrders = partyOrdersAvailable();
         bool tacticalView = settings.enhancements.tactical_view;
-        HudLayout layout = hudLayoutLandscape();
+        HudLayout layout = ui.surface == MuiSurface::Bottom ? hudLayoutDashboard() : hudLayoutLandscape();
         for (HudGroupSpec& group : layout.groups) {
             for (auto& line : group.lines) {
                 line.erase(std::remove_if(line.begin(), line.end(), [&](const HudElementSpec& element) {
@@ -1316,6 +1409,9 @@ namespace {
         MuiRect logButton;
         MuiRect weaponGroup;
         MuiRect systemGroup;
+        MuiRect screensGroup;
+        MuiRect toolsGroup;
+        MuiRect combatGroup;
         for (const HudPlacedGroup& group : groups) {
             MuiRect groupRect = {
                 static_cast<float>(group.rect.x),
@@ -1330,6 +1426,12 @@ namespace {
                 weaponGroup = groupRect;
             } else if (group.id == HudGroupId::System) {
                 systemGroup = groupRect;
+            } else if (group.id == HudGroupId::Screens) {
+                screensGroup = groupRect;
+            } else if (group.id == HudGroupId::Tools) {
+                toolsGroup = groupRect;
+            } else if (group.id == HudGroupId::Combat && gCombatButtonsVisible) {
+                combatGroup = groupRect;
             }
 
             if (group.id == HudGroupId::Combat && !gCombatButtonsVisible) {
@@ -1374,9 +1476,20 @@ namespace {
             }
         }
 
+        float gap = ui.dp(6.0f);
+
+        // Dual-screen devices: the live map fills the middle of the bottom
+        // screen, between the groups around it.
+        if (ui.surface == MuiSurface::Bottom) {
+            float mapLeft = std::max(toolsGroup.right(), safe.x) + gap;
+            float mapTop = std::max(screensGroup.bottom(), systemGroup.bottom()) + gap;
+            float mapRight = (combatGroup.w > 0.0f ? combatGroup.x : safe.right()) - gap;
+            float mapBottom = (weaponGroup.h > 0.0f ? weaponGroup.y : safe.bottom()) - gap;
+            buildLiveMap(ui, { mapLeft, mapTop, mapRight - mapLeft, mapBottom - mapTop });
+        }
+
         // Notifications of the log (mui_notify.h) and the log go right of the
         // log button, between left side and weapon groups.
-        float gap = ui.dp(6.0f);
         float left = logButton.right() + gap;
         float right = std::min(weaponGroup.x - gap, left + screen.w * 0.55f);
         float bottom = logButton.bottom();

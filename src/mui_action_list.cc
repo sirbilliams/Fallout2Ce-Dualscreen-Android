@@ -23,6 +23,11 @@ namespace {
     // Popup list of actions, see `muiShowActionList`.
     class ActionListScreen : public MuiScreen {
     public:
+        // Dual-screen devices: the screen its anchor is on (the HUD's button
+        // on the bottom screen, a person on the map on the top).
+        MuiSurface openedOn = MuiSurface::Top;
+        MuiSurface surface() override { return openedOn; }
+
         ActionListScreen()
         {
             modal = true;
@@ -66,6 +71,9 @@ namespace {
     };
 
     ActionListScreen gActionListScreen;
+
+    // The surface of the last `muiPopupAnchor` (the map's, or the HUD's).
+    MuiSurface gAnchorSurface = MuiSurface::Top;
 
     void ActionListScreen::build(MuiContext& ui)
     {
@@ -223,11 +231,21 @@ bool muiObjectRect(Object* object, MuiRect* rect)
 void muiPopupAnchor(Object* target, HudElementId fallback, MuiRect* anchor, MuiRect* avoid)
 {
     MuiRect rect;
-    if (muiObjectRect(target, &rect) || touchHudGetElementRect(fallback, &rect)) {
+    if (muiObjectRect(target, &rect)) {
         *anchor = rect;
         *avoid = rect;
+        gAnchorSurface = MuiSurface::Top;
         return;
     }
+
+    if (touchHudGetElementRect(fallback, &rect)) {
+        *anchor = rect;
+        *avoid = rect;
+        gAnchorSurface = muiHudSurface();
+        return;
+    }
+
+    gAnchorSurface = MuiSurface::Top;
 
     *anchor = MuiRect();
     *avoid = MuiRect();
@@ -245,6 +263,7 @@ int muiChooseAction(const std::string& id, const std::vector<MuiActionItem>& ite
     screen.blocking = true;
     screen.result = -1;
     screen.open = true;
+    screen.openedOn = gAnchorSurface;
 
     muiRunModal(&screen);
 
@@ -264,6 +283,8 @@ void muiShowActionList(const std::string& id, const std::vector<MuiActionItem>& 
     screen.onChoose = std::move(onChoose);
     screen.keepOpen = std::move(keepOpen);
     screen.open = true;
+    // Opened by a screen while it's built: over it.
+    screen.openedOn = muiCurrentSurface();
 
     // On top of the screen it was opened from.
     muiPush(&screen);

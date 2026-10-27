@@ -98,6 +98,12 @@ struct AutomapView {
 
 void automapGetView(int elevation, AutomapView* view);
 
+// Dual-screen devices: the dashboard's live map (touch_hud.cc). What opening
+// the automap would show now: what dude has seen so far is marked first (as
+// opening the automap does), then the view, without the motion sensor's
+// critters (those take its charge on the automap screen).
+void automapGetLiveView(int elevation, AutomapView* view);
+
 bool automapGetHighDetails();
 void automapSetHighDetails(bool highDetails);
 

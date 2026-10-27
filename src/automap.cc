@@ -570,6 +570,16 @@ void automapSetHighDetails(bool highDetails)
     }
 }
 
+void automapGetLiveView(int elevation, AutomapView* view)
+{
+    _obj_process_seen();
+
+    AutomapFlags flags = gAutomapFlags;
+    gAutomapFlags = static_cast<AutomapFlags>(gAutomapFlags & ~AUTOMAP_WITH_SCANNER);
+    automapGetView(elevation, view);
+    gAutomapFlags = flags;
+}
+
 void automapGetView(int elevation, AutomapView* view)
 {
     view->tiles.assign(HEX_GRID_WIDTH * HEX_GRID_HEIGHT, 0);

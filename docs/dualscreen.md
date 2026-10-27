@@ -7,6 +7,30 @@ is always a live touch panel.
 The Thor's screens: top 1920x1080 (16:9, touch), bottom 1240x1080 (about 3.9", nearly square,
 touch). Display choice: `BottomDisplay.java` (built-in bottom screen only, never a TV / cast).
 
+## Status
+
+Built (needs checking on a Thor):
+
+- Two surfaces in the mobile UI (`mui.cc`): each screen of the device has its own finger, widgets
+  and scrolls; `MuiScreen::surface()` says where a screen goes.
+- The bottom surface is drawn into its own texture with the game's renderer every 33 ms, read back
+  and posted to the bottom screen's window (`muiRenderBottom`, `bottom_screen.cc`).
+- Bottom touches come from `BottomScreen.java` as SDL finger events of their own touch device
+  (`kMuiBottomTouchId`) and finger range, and reach the bottom surface only.
+- The touch HUD moves to the bottom screen (`hudLayoutDashboard`): screens, system, tools, log,
+  weapon / status / indicators, combat buttons; the top screen is the world alone.
+- The dashboard's live map between the HUD's groups follows dude (pan / pinch hold it 5 s), with
+  a button for the full map screen.
+- Inventory, character, Pip-Boy, map, loot and elevator open on the bottom screen; the frozen
+  world on top is dimmed and its touches go nowhere. Item menus (radial), the quantity picker and
+  popups follow the screen that opened them.
+- Gamepad basics (`gamepad.h`).
+- Settings -> Display -> Dual screen (`[touch] dual_screen`, on).
+
+Next: dialogue split (head and reply on top, options below), barter, the map cursor for the pad,
+d-pad focus on the bottom screen, quick use (option), screen layouts for the square bottom
+screen.
+
 ## What the engine does today (facts the design rests on)
 
 1. **Game screens freeze the world.** Inventory (`inventory.cc`), Pip-Boy (`pipboy.cc`),

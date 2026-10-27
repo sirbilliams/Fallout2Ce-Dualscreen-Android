@@ -9,6 +9,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Display;
+import android.view.MotionEvent;
+import android.view.View;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.Surface;
@@ -123,8 +125,8 @@ final class BottomScreen implements DisplayManager.DisplayListener {
     }
 
     // The bottom screen's window: one surface filling it, handed to native
-    // code while it exists.
-    private static final class Panel extends Presentation implements SurfaceHolder.Callback {
+    // code while it exists. Its touches go to the game (bottom_screen.cc).
+    private static final class Panel extends Presentation implements SurfaceHolder.Callback, View.OnTouchListener {
         Panel(Context outerContext, Display display) {
             super(outerContext, display);
         }
@@ -142,7 +144,39 @@ final class BottomScreen implements DisplayManager.DisplayListener {
 
             SurfaceView view = new SurfaceView(getContext());
             view.getHolder().addCallback(this);
+            view.setOnTouchListener(this);
             setContentView(view);
+        }
+
+        @Override
+        public boolean onTouch(View view, MotionEvent event) {
+            float width = Math.max(view.getWidth(), 1);
+            float height = Math.max(view.getHeight(), 1);
+            int index = event.getActionIndex();
+            switch (event.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_POINTER_DOWN:
+                nativeTouch(0, event.getPointerId(index), event.getX(index) / width, event.getY(index) / height);
+                break;
+            case MotionEvent.ACTION_MOVE:
+                for (int i = 0; i < event.getPointerCount(); i++) {
+                    nativeTouch(1, event.getPointerId(i), event.getX(i) / width, event.getY(i) / height);
+                }
+                break;
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+                nativeTouch(2, event.getPointerId(index), event.getX(index) / width, event.getY(index) / height);
+                break;
+            case MotionEvent.ACTION_CANCEL:
+                // Ended outside of anything: far off the screen.
+                for (int i = 0; i < event.getPointerCount(); i++) {
+                    nativeTouch(2, event.getPointerId(i), -1.0f, -1.0f);
+                }
+                break;
+            default:
+                break;
+            }
+            return true;
         }
 
         @Override
@@ -151,7 +185,8 @@ final class BottomScreen implements DisplayManager.DisplayListener {
 
         @Override
         public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-            nativeSurfaceChanged(holder.getSurface(), width, height);
+            float density = getContext().getResources().getDisplayMetrics().densityDpi / 160.0f;
+            nativeSurfaceChanged(holder.getSurface(), width, height, density);
         }
 
         @Override
@@ -161,6 +196,8 @@ final class BottomScreen implements DisplayManager.DisplayListener {
     }
 
     // bottom_screen.cc
-    static native void nativeSurfaceChanged(Surface surface, int width, int height);
+    static native void nativeSurfaceChanged(Surface surface, int width, int height, float density);
     static native void nativeSurfaceDestroyed();
+    // [action] 0 down, 1 move, 2 up; [x] and [y] 0..1 across the screen.
+    static native void nativeTouch(int action, int pointerId, float x, float y);
 }

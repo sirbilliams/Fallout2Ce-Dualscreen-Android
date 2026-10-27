@@ -153,6 +153,8 @@ float hudGetScreenDensity();
 int hudDpToPixels(const HudMetrics& metrics, float dp);
 
 const HudLayout& hudLayoutLandscape();
+// The HUD on a dual-screen device's bottom screen (mui.h `muiHudSurface`).
+const HudLayout& hudLayoutDashboard();
 
 // Computes screen rects of all groups and their elements.
 std::vector<HudPlacedGroup> hudLayoutPlace(const HudLayout& layout, const HudMetrics& metrics);

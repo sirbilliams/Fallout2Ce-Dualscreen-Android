@@ -19,6 +19,7 @@
 #ifdef FALLOUT_MAPPER
 #include "mapper/mapper.h"
 #else
+#include "gamepad.h"
 #include "main.h"
 #endif
 #include "svga.h"
@@ -106,6 +107,9 @@ int main(int argc, char* argv[])
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0) {
         return EXIT_FAILURE;
     }
+
+    // CE: Game controllers (gamepad.h); the game runs without them.
+    gamepadInit();
 
     atexit([] {
         audioEngineExit();

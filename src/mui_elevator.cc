@@ -50,6 +50,8 @@ namespace {
         explicit ElevatorScreen(const MuiElevatorView& view);
 
         bool hidesHud() override { return true; }
+        // Dual-screen devices: the bottom screen, the world stays on top.
+        MuiSurface surface() override { return muiGameScreenSurface(); }
         void build(MuiContext& ui) override;
         void back() override;
         void key(int keyCode) override;

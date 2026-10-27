@@ -113,6 +113,8 @@ namespace {
     // rules (pipboy.h), the game's window isn't created.
     class PipboyScreen : public MuiScreen {
     public:
+        // Dual-screen devices: the bottom screen, the world stays on top.
+        MuiSurface surface() override { return muiGameScreenSurface(); }
         Pending pending = Pending::None;
         int pendingValue = 0;
         bool resting = false;

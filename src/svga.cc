@@ -666,6 +666,9 @@ void renderPresent()
 
     PerfFrame perf;
     perfMonitorMark(&perf.start);
+    // Dual-screen devices: the bottom screen's frame first, drawn into its
+    // own texture (mui.h), then the top's as always.
+    muiRenderBottom(gSdlRenderer);
     SDL_RenderClear(gSdlRenderer);
     // CE: Under a mobile UI screen covering everything the map and the
     // game's screen would be drawn only to be painted over.

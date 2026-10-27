@@ -150,6 +150,8 @@ namespace {
     // (character_editor.h).
     class CharacterScreen : public MuiScreen {
     public:
+        // Dual-screen devices: the bottom screen, the world stays on top.
+        MuiSurface surface() override { return muiGameScreenSurface(); }
         int result = 0;
         Pending pending = Pending::None;
 

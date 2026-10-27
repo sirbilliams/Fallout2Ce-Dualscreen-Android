@@ -283,3 +283,5 @@
 {372}{}{Licenses}
 {373}{}{Tactical view}
 {374}{}{Combat button: see-through figures, tiles and where you can walk}
+{900}{}{Dual screen}
+{901}{}{On two-screen devices: the HUD, map and game screens on the bottom screen, the world on top}

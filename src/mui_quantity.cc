@@ -22,6 +22,11 @@ namespace {
     // values, all, cancel, done.
     class QuantityScreen : public MuiScreen {
     public:
+        // Dual-screen devices: over the screen it was asked for from (the
+        // inventory or loot on the bottom screen, barter on the top).
+        MuiSurface openedOn = MuiSurface::Top;
+        MuiSurface surface() override { return openedOn; }
+
         Object* item = nullptr;
         int minValue = 1;
         int maxValue = 1;
@@ -167,6 +172,7 @@ int muiQuantitySelect(Object* item, int minValue, int maxValue, int step, int de
     screen.step = std::max(step, 1);
     screen.value = std::clamp(defaultValue, minValue, maxValue);
     screen.timer = timer;
+    screen.openedOn = muiBottomHoldsGame() ? MuiSurface::Bottom : MuiSurface::Top;
 
     if (messageListInit(&(screen.messageList))) {
         screen.messageListLoaded = messageListLoad(&(screen.messageList), "game\\ce.msg");
