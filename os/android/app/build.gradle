@@ -110,7 +110,8 @@ android {
         // The dual-screen port's build: the CI run number (0 for local
         // builds), so each published APK updates the one before.
         def dualBuild = (System.getenv('GITHUB_RUN_NUMBER') ?: '0') as int
-        versionCode (ceVersion[0] * 1000000 + ceVersion[1] * 10000 + ceVersion[2] * 100 + mobileBuild) * 1000 + dualBuild % 1000
+        def mobileVersionCode = ceVersion[0] * 1000000 + ceVersion[1] * 10000 + ceVersion[2] * 100 + mobileBuild
+        versionCode mobileVersionCode * 1000 + dualBuild % 1000
         def appVersion = "${ceVersion.join('.')}-mobile.${mobileBuild}-dual.${dualBuild}"
         versionName appVersion
 
