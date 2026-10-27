@@ -118,10 +118,55 @@ what the screen is about:
    edge, two columns). The bottom screen is nearly square: each screen needs a layout pass for
    it.
 
-## Open questions
+## Quick use (option)
 
-- **Quick use from the dashboard** (a stimpak without opening the inventory): changes the game's
-  rules (no AP cost for opening the inventory). Default: no, tapping opens the real inventory.
-  Could become an option.
+Setting **Quick use from the dashboard**, off by default. On: the Inventory panel's items in the
+quick-use list (healing, drugs, explosives, the ones the player pins) use straight from the
+dashboard without opening the inventory. Off: tapping an item opens the game's inventory.
+
+Quick use goes through the game's own item use (the same functions the inventory calls), so
+using the item keeps the game's rules: its AP cost in combat, only on the player's turn, the
+item's own effects and scripts. What it skips is the inventory's own opening cost in combat
+(`inventoryGetInvenApCost`), which is why it is an option and not the default.
+
+## Gamepad (AYN Thor and any SDL game controller)
+
+Why it fits well: the touch controls don't emulate a mouse. Map gestures call the player's
+commands with an explicit target (an object or a tile, `touch_controls.h`), so a pad calls the
+same commands with the same rules. Today the pad does nothing because the game controller
+subsystem is never started (`SDL_Init` in `win32.cc` has no `SDL_INIT_GAMECONTROLLER`).
+
+### On the map (top screen)
+
+- **Left stick:** a target cursor on the map. It snaps to what can be acted on near it (people,
+  doors, containers, items on the ground), else marks a tile.
+- **A:** the primary action on the target, as a tap: walk there (again on the same tile: run),
+  talk, use, pick up, loot.
+- **Hold A:** the radial action menu (`touchControlsChooseActionMenuItem`), chosen with the
+  stick.
+- **L1 / R1:** previous / next interactable in view; in combat, previous / next enemy.
+- **Right stick:** move the view; L3 / R3 zoom out / in.
+- **Combat:** the touch rule maps directly. A on a target selects it (shows hit chance and AP
+  cost), A again attacks. Y cycles attack modes, X reloads, L2 swaps hands, holding Select ends
+  the turn (held, so it can't happen by accident).
+
+### On the bottom screen and menus
+
+- **D-pad:** moves a focus ring between the bottom screen's widgets. The mobile UI already
+  records every widget's id and rect each frame (for its automated tests), so focus can move
+  spatially (the nearest widget in the pressed direction) with no per-screen work.
+- **A:** taps the focused widget; **B:** back (`muiRequestBack`).
+- **Shoulder buttons in a game screen:** previous / next tab (inventory, character, Pip-Boy,
+  map).
+
+### System
+
+- **Start:** the game's menu (Esc), as in neutron2.
+- **Android back:** trapped (`SDL_HINT_ANDROID_TRAP_BACK_BUTTON`): back in the game, never closes
+  the app.
+- Same conventions as neutron2-android: A acts, B goes back, Start is the menu.
+
+## Open question
+
 - **Top while a screen is open:** dimmed world, or screen-specific content (item details,
   character portrait). Start with the dimmed world.
