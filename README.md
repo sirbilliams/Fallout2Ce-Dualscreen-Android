@@ -1,8 +1,8 @@
-# Fallout 2 CE Mobile (unofficial)
+# Fallout 2 CE Mobile + Dual Screen (unofficial)
 
 [Русская версия](README.ru.md)
 
-A fork of [Fallout 2: Community Engine](https://github.com/fallout2-ce/fallout2-ce) made for Android phones: every screen of the game rebuilt for a touch screen, in landscape. **Early beta.**
+A fork of [Fallout 2: Community Engine](https://github.com/fallout2-ce/fallout2-ce) made for Android phones: every screen of the game rebuilt for a touch screen, in landscape, plus a **bottom-screen companion for dual-screen handhelds like the AYN Thor**. **Early beta.**
 
 This is an **unofficial, fan-made, modified version** of Fallout 2 CE. It is not affiliated with or endorsed by Bethesda Softworks, ZeniMax Media or Interplay. Fallout is a trademark of its owners. The app contains **no game data**: you need your own copy of Fallout 2 ([GOG](https://www.gog.com/game/fallout_2), [Steam](https://store.steampowered.com/app/38410), [Epic Games](https://store.epicgames.com/p/fallout-2)).
 
@@ -11,6 +11,16 @@ This is an **unofficial, fan-made, modified version** of Fallout 2 CE. It is not
 <p><img src="docs/screenshots/combat.jpg" alt="Combat: an enemy picked, its hit chance" width="49%"> <img src="docs/screenshots/dialogue.jpg" alt="Dialogue: the drill sergeant at Navarro" width="49%"></p>
 
 <p><img src="docs/screenshots/inventory.jpg" alt="Inventory: an item's action menu" width="49%"> <img src="docs/screenshots/character.jpg" alt="Character" width="49%"></p>
+
+## Dual screen (AYN Thor)
+
+On a two-screen device the world gets the whole top screen and the bottom screen becomes a live console: the HUD, a live map that follows you, and the game's screens (inventory, character, Pip-Boy, map) open there while the world waits on top. Settings → Display has the **bottom screen layout** (Classic, Map first, Two columns) and **screen navigation** (Rail, Slim rail, Top bar).
+
+<p><img src="docs/screenshots/thor-bottom-dashboard.jpg" alt="Bottom screen: the dashboard with the live map" width="49%"> <img src="docs/screenshots/thor-bottom-combat.jpg" alt="Bottom screen in combat: your turn, AP, end turn" width="49%"></p>
+
+<p><img src="docs/screenshots/thor-bottom-columns.jpg" alt="Bottom screen: the two-columns layout" width="49%"> <img src="docs/screenshots/thor-bottom-character.jpg" alt="Bottom screen: the character screen with the top bar" width="49%"></p>
+
+Details: [docs/dualscreen.md](docs/dualscreen.md).
 
 ## What is changed (modified software notice)
 
@@ -22,17 +32,18 @@ On top of CE (its engine, fixes and sfall compatibility are kept and updated fro
 - **Mod features built in** where the mods can't run on CE: Inventory Filter's filters and party tabs in loot and barter.
 - **Saves.** A save list sorted by when saves were made, quick saves that never overwrite manual ones (their number is a setting), "Continue" in the main menu, saves interrupted midway are restored, optional marks for saves made with other game files or mods.
 - **Android app.** The game's files are imported from a folder or any archive (.zip, .7z, .rar, .tar...) copied from a computer, with RPU and other mods and the saves; "Replace game" for new builds and mod updates; export and import of saves.
+- **Dual screen.** The bottom-screen companion above (`[touch] dual_screen`, `dashboard_layout`, `screen_nav`).
 - **The port's own improvements** are settings (`[enhancements]` in `fallout2.cfg`).
 
 The full list of changes is the git history over upstream.
 
 ## Install on Android
 
-1. Download the APK from [Releases](https://github.com/imbaner/fallout2-ce-mobile/releases) and install it.
+1. Download the APK ([latest build](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/latest), `Fallout2-Dualscreen.apk`) and install it.
 2. Copy your Fallout 2 folder from a computer to the phone: as is, or as one archive (cable, cloud drive, messenger). Mods installed there (for example [RPU](https://github.com/BGforgeNet/Fallout2_Restoration_Project)) and saves come along.
 3. Start the app and choose that folder or archive.
 
-Tested on a Redmi 15C (Android 16). Android 7.0 or newer, arm64.
+Tested on a Redmi 15C (Android 16); the dual-screen companion is made for the AYN Thor. Android 7.0 or newer, arm64.
 
 **Recommended setup: Fallout 2 + [Restoration Project (RPU)](https://github.com/BGforgeNet/Fallout2_Restoration_Project) 2.4.34.** The port is played and tested with it. RPU relies on sfall, which this engine reimplements: Fallout 2: Community Engine, the continuation of the original Fallout 2 Community Edition. Install RPU into the game folder on a computer, then copy the folder to the phone.
 
