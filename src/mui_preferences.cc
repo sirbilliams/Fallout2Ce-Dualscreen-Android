@@ -96,6 +96,8 @@ namespace {
     constexpr int kTextWorldmapFollow = 322;
     constexpr int kTextWorldmapFollowNote = 323;
     constexpr int kTextTacticalView = 373;
+    constexpr int kTextDashboardLayout = 920;
+    constexpr int kTextScreenNav = 924;
     constexpr int kTextDualScreen = 900;
     constexpr int kTextDualScreenNote = 901;
     constexpr int kTextTacticalViewNote = 374;
@@ -201,6 +203,8 @@ namespace {
         bool worldmapFollow;
         bool tacticalView;
         bool dualScreen;
+        int dashboardLayout;
+        int screenNav;
         bool saveCompatibility;
         int interfaceSize;
         int mapFilter;
@@ -225,6 +229,8 @@ namespace {
         values.worldmapFollow = settings.enhancements.worldmap_follow_party;
         values.tacticalView = settings.enhancements.tactical_view;
         values.dualScreen = settings.touch.dual_screen;
+        values.dashboardLayout = settings.touch.dashboard_layout;
+        values.screenNav = settings.touch.screen_nav;
         values.saveCompatibility = settings.enhancements.save_compatibility;
         values.interfaceSize = settings.touch.hud_scale;
         values.mapFilter = settings.world_view.filter;
@@ -250,6 +256,8 @@ namespace {
         values.worldmapFollow = EnhancementSettings().worldmap_follow_party;
         values.tacticalView = EnhancementSettings().tactical_view;
         values.dualScreen = TouchSettings().dual_screen;
+        values.dashboardLayout = TouchSettings().dashboard_layout;
+        values.screenNav = TouchSettings().screen_nav;
         values.saveCompatibility = EnhancementSettings().save_compatibility;
         values.interfaceSize = TouchSettings().hud_scale;
         values.mapFilter = WorldViewSettings().filter;
@@ -325,6 +333,8 @@ namespace {
         settings.enhancements.worldmap_follow_party = values.worldmapFollow;
         settings.enhancements.tactical_view = values.tacticalView;
         settings.touch.dual_screen = values.dualScreen;
+        settings.touch.dashboard_layout = values.dashboardLayout;
+        settings.touch.screen_nav = values.screenNav;
         settings.enhancements.save_compatibility = values.saveCompatibility;
         settings.touch.hud_scale = values.interfaceSize;
         settings.world_view.filter = values.mapFilter;
@@ -630,6 +640,22 @@ namespace {
             rows.push_back(row);
         }
         {
+            Row row { Section::Display, RowKind::Choice, kTextDashboardLayout, "Bottom screen layout", Origin::Port };
+            row.options = { 921, 922, 923 };
+            row.optionsFromCe = true;
+            row.get = [](const Values& values) { return static_cast<float>(values.dashboardLayout); };
+            row.set = [](Values& values, float value) { values.dashboardLayout = static_cast<int>(value); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Display, RowKind::Choice, kTextScreenNav, "Screen navigation", Origin::Port };
+            row.options = { 925, 926, 927 };
+            row.optionsFromCe = true;
+            row.get = [](const Values& values) { return static_cast<float>(values.screenNav); };
+            row.set = [](Values& values, float value) { values.screenNav = static_cast<int>(value); };
+            rows.push_back(row);
+        }
+        {
             Row row { Section::Display, RowKind::Toggle, kTextWorldmapFollow, "Camera follows the party on the world map", Origin::Port, kTextWorldmapFollowNote, "Moving the map pauses it until the next destination" };
             row.get = [](const Values& values) { return values.worldmapFollow ? 1.0f : 0.0f; };
             row.set = [](Values& values, float value) { values.worldmapFollow = value != 0.0f; };
@@ -737,7 +763,12 @@ namespace {
         int id = row.options[index];
         if (row.optionsFromCe) {
             static const char* const kFallbacks[] = { "Pixels", "Smooth", "Sharp" };
-            return muiDecodeGameText(muiText(id, kFallbacks[std::min(index, 2)]));
+            static const char* const kDashboardFallbacks[] = { "Classic", "Map first", "Two columns" };
+            static const char* const kNavFallbacks[] = { "Rail", "Slim rail", "Top bar" };
+            const char* fallback = row.textId == kTextDashboardLayout ? kDashboardFallbacks[index]
+                : row.textId == kTextScreenNav                        ? kNavFallbacks[index]
+                                                                      : kFallbacks[std::min(index, 2)];
+            return muiDecodeGameText(muiText(id, fallback));
         }
 
         MessageListItem item;

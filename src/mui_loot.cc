@@ -124,7 +124,8 @@ namespace {
         MuiRect tabs;
         muiDialogLayout(ui, &content, &tabs);
 
-        MuiRect back = { tabs.x, tabs.y, tabs.w, tabs.w };
+        float tabSize = std::min(tabs.w, tabs.h);
+        MuiRect back = { tabs.x, tabs.y, tabSize, tabSize };
         bool backPressed;
         if (ui.touchable("loot.back", back, &backPressed)) {
             lootRequestClose();

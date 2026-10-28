@@ -98,6 +98,64 @@ static const HudLayout kDashboardLayout = {
     },
 };
 
+// Map first: controls along the top and bottom, leaving the map full width.
+static const HudLayout kMapFirstDashboardLayout = {
+    10.0f,
+    8.0f,
+    {
+        { HudGroupId::Screens, HudAnchor::TopLeft, HudFlow::Rows, HudAlign::Start,
+            { { { HudElementId::Inventory, kDashButton, kDashButton }, { HudElementId::Character, kDashButton, kDashButton }, { HudElementId::Pipboy, kDashButton, kDashButton }, { HudElementId::Map, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::System, HudAnchor::TopRight, HudFlow::Rows, HudAlign::End,
+            { { { HudElementId::Menu, kDashButton, kDashButton }, { HudElementId::QuickSave, kDashButton, kDashButton }, { HudElementId::QuickLoad, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::Tools, HudAnchor::BottomLeft, HudFlow::Rows, HudAlign::Start,
+            { { { HudElementId::PartyOrders, kDashButton, 44.0f }, { HudElementId::Skills, kDashButton, 44.0f }, { HudElementId::Highlight, kDashButton, 44.0f }, { HudElementId::Sneak, kDashButton, 44.0f }, { HudElementId::Log, kDashButton, 44.0f } } },
+            false },
+        { HudGroupId::Weapon, HudAnchor::BottomRight, HudFlow::Rows, HudAlign::End,
+            {
+                { { HudElementId::Indicators, kHudFill, 22.0f } },
+                { { HudElementId::Status, kHudFill, 24.0f } },
+                { { HudElementId::Modes, kHudFill, 44.0f }, { HudElementId::SwapHands, kDashButton, 44.0f }, { HudElementId::Weapon, 150.0f, 44.0f } },
+            },
+            false, 6.0f, 262.0f },
+        { HudGroupId::Combat, HudAnchor::Right, HudFlow::Columns, HudAlign::Start,
+            { { { HudElementId::TacticalView, 110.0f, 48.0f }, { HudElementId::EndTurn, 110.0f, 48.0f }, { HudElementId::EndCombat, 110.0f, 48.0f } } },
+            true },
+    },
+};
+
+// Two columns: tools on the left and weapon/status on the right.
+static const HudLayout kTwoColumnsDashboardLayout = {
+    10.0f,
+    8.0f,
+    {
+        { HudGroupId::Screens, HudAnchor::TopLeft, HudFlow::Rows, HudAlign::Start,
+            { { { HudElementId::Inventory, kDashButton, kDashButton }, { HudElementId::Character, kDashButton, kDashButton }, { HudElementId::Pipboy, kDashButton, kDashButton }, { HudElementId::Map, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::System, HudAnchor::TopRight, HudFlow::Rows, HudAlign::End,
+            { { { HudElementId::Menu, kDashButton, kDashButton }, { HudElementId::QuickSave, kDashButton, kDashButton }, { HudElementId::QuickLoad, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::Tools, HudAnchor::Left, HudFlow::Columns, HudAlign::Start,
+            { { { HudElementId::PartyOrders, kDashButton, kDashButton }, { HudElementId::Skills, kDashButton, kDashButton }, { HudElementId::Highlight, kDashButton, kDashButton }, { HudElementId::Sneak, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::Log, HudAnchor::BottomLeft, HudFlow::Rows, HudAlign::Start,
+            { { { HudElementId::Log, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::Weapon, HudAnchor::Right, HudFlow::Rows, HudAlign::End,
+            {
+                { { HudElementId::Indicators, kHudFill, 22.0f } },
+                { { HudElementId::Status, kHudFill, 24.0f } },
+                { { HudElementId::Modes, kHudFill, 44.0f } },
+                { { HudElementId::SwapHands, kDashButton, 64.0f }, { HudElementId::Weapon, 110.0f, 64.0f } },
+            },
+            false, 6.0f },
+        { HudGroupId::Combat, HudAnchor::Bottom, HudFlow::Rows, HudAlign::Start,
+            { { { HudElementId::TacticalView, 110.0f, 48.0f }, { HudElementId::EndTurn, 110.0f, 48.0f }, { HudElementId::EndCombat, 110.0f, 48.0f } } },
+            true },
+    },
+};
+
 const HudLayout& hudLayoutLandscape()
 {
     return kLandscapeLayout;
@@ -105,7 +163,14 @@ const HudLayout& hudLayoutLandscape()
 
 const HudLayout& hudLayoutDashboard()
 {
-    return kDashboardLayout;
+    switch (settings.touch.dashboard_layout) {
+    case 1:
+        return kMapFirstDashboardLayout;
+    case 2:
+        return kTwoColumnsDashboardLayout;
+    default:
+        return kDashboardLayout;
+    }
 }
 
 float hudGetScreenDensity()
@@ -240,7 +305,7 @@ static HudPlacedGroup hudLayoutPlaceGroupContent(const HudGroupSpec& group, cons
     // excluded from length.
     std::vector<int> lineLengths;
     std::vector<int> lineThicknesses;
-    int longest = 0;
+    int longest = hudDpToPixels(metrics, group.minLength);
     for (const auto& line : group.lines) {
         int length = 0;
         int thickness = 0;

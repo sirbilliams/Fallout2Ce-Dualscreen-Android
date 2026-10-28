@@ -544,7 +544,9 @@ namespace {
                     break;
                 }
                 muiDrawIcon(stat.icon, armor.x + iconSize / 2.0f, y + lineHeight / 2.0f, iconSize, ui.dp(1.5f), theme.accent);
-                muiDrawTextAligned(stat.value, { armor.x + iconSize + ui.dp(6.0f), y, armor.w, lineHeight }, ui.dp(13.0f), stat.color, MuiAlign::Start, MuiAlign::Center);
+                MuiRect valueRect = { armor.x + iconSize + ui.dp(6.0f), y, ui.surface == MuiSurface::Bottom ? std::max(armor.w - iconSize - ui.dp(6.0f), 0.0f) : armor.w, lineHeight };
+                float size = ui.surface == MuiSurface::Bottom ? muiFitTextSize(stat.value, valueRect.w, ui.dp(13.0f), ui.dp(1.0f)) : ui.dp(13.0f);
+                muiDrawTextAligned(stat.value, valueRect, size, stat.color, MuiAlign::Start, MuiAlign::Center);
                 y += lineHeight;
             }
         }
@@ -692,11 +694,12 @@ namespace {
         const MuiRect& content;
         float* y;
         bool draw;
+        bool fit;
 
         void text(const std::u32string& line, float size, MuiColor color)
         {
             if (draw) {
-                muiDrawText(line, content.x, *y, size, color);
+                muiDrawText(line, content.x, *y, fit ? muiFitTextSize(line, content.w, size, 1.0f) : size, color);
             }
             *y += muiLineHeight(size);
         }
@@ -705,8 +708,11 @@ namespace {
         {
             if (draw) {
                 MuiRect rect = { content.x, *y, content.w, muiLineHeight(size) };
-                muiDrawTextAligned(label, rect, size, labelColor, MuiAlign::Start, MuiAlign::Center);
-                muiDrawTextAligned(value, rect, size, valueColor, MuiAlign::End, MuiAlign::Center);
+                float valueSize = fit ? muiFitTextSize(value, rect.w * 0.6f, size, 1.0f) : size;
+                float labelWidth = fit ? std::max(rect.w - muiTextWidth(value, valueSize) - 4.0f, 0.0f) : rect.w;
+                float labelSize = fit ? muiFitTextSize(label, labelWidth, size, 1.0f) : size;
+                muiDrawTextAligned(label, { rect.x, rect.y, labelWidth, rect.h }, labelSize, labelColor, MuiAlign::Start, MuiAlign::Center);
+                muiDrawTextAligned(value, rect, valueSize, valueColor, MuiAlign::End, MuiAlign::Center);
             }
             *y += muiLineHeight(size);
         }
@@ -731,7 +737,7 @@ namespace {
 
         float size = ui.dp(13.0f);
         float start = *y;
-        InfoWriter writer = { content, y, draw };
+        InfoWriter writer = { content, y, draw, ui.surface == MuiSurface::Bottom };
         writer.text(muiDecodeGameText(summary.name.c_str()), ui.dp(15.0f), theme.accent);
         writer.separator(ui.dp(1.0f), ui.dp(4.0f), theme.panelBorder);
 
@@ -781,7 +787,7 @@ namespace {
         const MuiTheme& theme = muiTheme();
         float size = ui.dp(13.0f);
         float start = *y;
-        InfoWriter writer = { content, y, draw };
+        InfoWriter writer = { content, y, draw, ui.surface == MuiSurface::Bottom };
 
         for (const std::u32string& line : muiWrapText(muiDecodeGameText(info.name.c_str()), content.w, ui.dp(15.0f))) {
             writer.text(line, ui.dp(15.0f), theme.accent);

@@ -439,10 +439,12 @@ namespace {
         }
 
         // Dude's HP along the bottom.
-        float barHeight = ui.dp(16.0f);
-        MuiRect hitPoints = { inner.x, inner.bottom() - barHeight, inner.w, barHeight };
-        muiDualHitPointsBar(ui, hitPoints);
-        inner.h -= barHeight + ui.dp(4.0f);
+        if (ui.surface != MuiSurface::Bottom || settings.touch.dashboard_layout == 0) {
+            float barHeight = ui.dp(16.0f);
+            MuiRect hitPoints = { inner.x, inner.bottom() - barHeight, inner.w, barHeight };
+            muiDualHitPointsBar(ui, hitPoints);
+            inner.h -= barHeight + ui.dp(4.0f);
+        }
 
         gLiveMap.setTiles(key, gLiveMapView.tiles, HEX_GRID_WIDTH, HEX_GRID_HEIGHT);
         if (key != gLiveMapKey) {
@@ -1550,6 +1552,27 @@ namespace {
             muiCloseActionList();
         }
 
+        // Map first shares the bottom edge between tools and the weapon
+        // panel. Fit the tools to the space left, including party orders.
+        if (ui.surface == MuiSurface::Bottom && settings.touch.dashboard_layout == 1) {
+            float weaponWidth = 0.0f;
+            for (const HudPlacedGroup& group : hudLayoutPlace(layout, metrics)) {
+                if (group.id == HudGroupId::Weapon) {
+                    weaponWidth = static_cast<float>(group.rect.width);
+                }
+            }
+            for (HudGroupSpec& group : layout.groups) {
+                if (group.id == HudGroupId::Tools) {
+                    auto& line = group.lines.front();
+                    float available = safe.w - weaponWidth - ui.dp(layout.margin * 2.0f + layout.gap * line.size());
+                    float width = std::max(available / (metrics.pixelsPerDp * line.size()), 0.0f);
+                    for (HudElementSpec& element : line) {
+                        element.width = std::min(element.width, width);
+                    }
+                }
+            }
+        }
+
         std::vector<HudPlacedGroup> groups = hudLayoutPlace(layout, metrics);
 
         MuiRect logButton;
@@ -1597,6 +1620,9 @@ namespace {
                     static_cast<float>(element.rect.height),
                 };
                 gElementRects[static_cast<int>(element.id)] = rect;
+                if (element.id == HudElementId::Log) {
+                    logButton = rect;
+                }
 
                 switch (element.id) {
                 case HudElementId::Status:
@@ -1630,6 +1656,18 @@ namespace {
             float mapTop = std::max(screensGroup.bottom(), systemGroup.bottom()) + gap;
             float mapRight = (combatGroup.w > 0.0f ? combatGroup.x : safe.right()) - gap;
             float mapBottom = (weaponGroup.h > 0.0f ? weaponGroup.y : safe.bottom()) - gap;
+            switch (settings.touch.dashboard_layout) {
+            case 1:
+                mapLeft = safe.x;
+                mapBottom = std::min(toolsGroup.y, weaponGroup.y) - gap;
+                break;
+            case 2:
+                mapRight = weaponGroup.x - gap;
+                mapBottom = (combatGroup.h > 0.0f ? combatGroup.y : safe.bottom()) - gap;
+                break;
+            default:
+                break;
+            }
             buildLiveMap(ui, { mapLeft, mapTop, mapRight - mapLeft, mapBottom - mapTop });
         }
 
@@ -1638,6 +1676,11 @@ namespace {
         float left = logButton.right() + gap;
         float right = std::min(weaponGroup.x - gap, left + screen.w * 0.55f);
         float bottom = logButton.bottom();
+        if (ui.surface == MuiSurface::Bottom && settings.touch.dashboard_layout == 1 && right - left < ui.dp(120.0f)) {
+            left = safe.x;
+            right = std::min(safe.right(), left + screen.w * 0.55f);
+            bottom = std::min(toolsGroup.y, weaponGroup.y) - gap;
+        }
 
         if (gLogOpen) {
             float top = systemGroup.bottom() + gap;

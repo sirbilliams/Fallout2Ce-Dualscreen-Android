@@ -124,8 +124,16 @@ namespace {
         float size = ui.dp(14.0f);
         float padding = ui.dp(9.0f);
 
+        float buttonWidth = ui.dp(170.0f);
+        MuiRect sensor = { header.right() - buttonWidth, header.y, buttonWidth, header.h };
+        MuiRect details = { sensor.x - ui.dp(6.0f) - ui.dp(120.0f), header.y, ui.dp(120.0f), header.h };
+
         Map map = mapGetCurrentMap();
         float x = header.x;
+        MuiRect names = { header.x, header.y, std::max(details.x - header.x - ui.dp(6.0f), 0.0f), header.h };
+        if (ui.surface == MuiSurface::Bottom) {
+            muiPushClip(names);
+        }
         if (mapIsValid(map)) {
             std::u32string city = muiDecodeGameText(mapGetCityName(map));
             std::u32string name = muiDecodeGameText(mapGetName(map, gElevation));
@@ -134,17 +142,20 @@ namespace {
                     continue;
                 }
                 float width = muiTextWidth(chip.first, size) + padding * 2.0f;
+                if (ui.surface == MuiSurface::Bottom) {
+                    width = std::max(std::min(width, names.w / 2.0f - ui.dp(3.0f)), 0.0f);
+                }
                 MuiRect rect = { x, header.y, width, header.h };
                 muiFillRoundRect(rect, ui.dp(6.0f), kListBackground);
                 muiStrokeRoundRect(rect, ui.dp(6.0f), ui.dp(1.0f), theme.panelBorder);
-                muiDrawTextAligned(chip.first, rect, size, chip.second, MuiAlign::Center, MuiAlign::Center);
+                muiDrawTextAligned(chip.first, rect, muiFitTextSize(chip.first, std::max(width - padding * 2.0f, 0.0f), size, ui.dp(1.0f)), chip.second, MuiAlign::Center, MuiAlign::Center);
                 x += width + ui.dp(6.0f);
             }
         }
 
-        float buttonWidth = ui.dp(170.0f);
-        MuiRect sensor = { header.right() - buttonWidth, header.y, buttonWidth, header.h };
-        MuiRect details = { sensor.x - ui.dp(6.0f) - ui.dp(120.0f), header.y, ui.dp(120.0f), header.h };
+        if (ui.surface == MuiSurface::Bottom) {
+            muiPopClip();
+        }
 
         // High details: scenery too (the game's switch, remembered).
         if (toggle(ui, "automap.details", details, muiDecodeGameText(muiText(kTextDetails, "Details")), automapGetHighDetails(), true)) {

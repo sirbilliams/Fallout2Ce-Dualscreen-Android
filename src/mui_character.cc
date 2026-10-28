@@ -787,6 +787,18 @@ namespace {
                 continue;
             }
 
+            // Bottom screen: keep the name and value within their row.
+            if (ui.surface == MuiSurface::Bottom) {
+                std::u32string valueText = number(value);
+                float valueWidth = muiTextWidth(valueText, size);
+                MuiRect valueRect = { rowRect.right() - padding - valueWidth, rowRect.y, valueWidth, rowRect.h };
+                MuiRect labelRect = { rowRect.x + padding, rowRect.y, std::max(valueRect.x - rowRect.x - padding * 3.0f, 0.0f), rowRect.h };
+                float labelSize = muiFitTextSize(label, labelRect.w, size, ui.dp(1.0f));
+                muiDrawTextAligned(label, labelRect, labelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
+                muiDrawTextAligned(valueText, valueRect, size, theme.accent, MuiAlign::End, MuiAlign::Center);
+                continue;
+            }
+
             // Name, value, its description.
             std::u32string description = gameText(characterEditorGetPrimaryStatDescription(static_cast<Stat>(stat)));
             float descriptionSize = ui.dp(11.5f);
@@ -850,8 +862,9 @@ namespace {
             std::u32string value = gameText(characterEditorFormatDerivedStat(index, &warning).c_str());
             float valueWidth = muiTextWidth(value, size);
             std::u32string label = gameText(characterEditorGetDerivedStatName(index));
-            float labelSize = muiFitTextSize(label, rowRect.w - valueWidth - padding * 3.0f, size, ui.dp(10.0f));
-            muiDrawTextAligned(label, { rowRect.x + padding, rowRect.y, rowRect.w, rowRect.h }, labelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
+            float labelWidth = std::max(rowRect.w - valueWidth - padding * 3.0f, 0.0f);
+            float labelSize = muiFitTextSize(label, labelWidth, size, ui.dp(ui.surface == MuiSurface::Bottom ? 1.0f : 10.0f));
+            muiDrawTextAligned(label, { rowRect.x + padding, rowRect.y, labelWidth, rowRect.h }, labelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
             muiDrawTextAligned(value, { rowRect.x, rowRect.y, rowRect.w - padding, rowRect.h }, size, warning ? kWarning : theme.accent, MuiAlign::End, MuiAlign::Center);
         }
     }

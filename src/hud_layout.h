@@ -98,6 +98,8 @@ struct HudGroupSpec {
     // Space between the group edge and its elements, dp. Groups with
     // padding are drawn on a panel.
     float padding = 0.0f;
+    // Minimum line length, dp, for groups whose lines all contain fills.
+    float minLength = 0.0f;
 };
 
 struct HudLayout {

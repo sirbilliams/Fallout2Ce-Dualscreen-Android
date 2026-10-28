@@ -350,6 +350,9 @@ struct TouchSettings {
     // Dual-screen devices (AYN Thor): the bottom screen shows the dashboard
     // and the game's screens, see mui.h `muiBottomActive`.
     bool dual_screen = true;
+    // Bottom-screen dashboard and screen navigation (0 keeps the classic layout).
+    int dashboard_layout = 0;
+    int screen_nav = 0;
 };
 
 struct MapperSettings {

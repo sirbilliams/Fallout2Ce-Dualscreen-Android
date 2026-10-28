@@ -303,3 +303,13 @@
 {917}{}{STATUS}
 {918}{}{AUTOMAP}
 {919}{}{RADS}
+
+// Bottom-screen layouts and navigation.
+{920}{}{Bottom screen layout}
+{921}{}{Classic}
+{922}{}{Map first}
+{923}{}{Two columns}
+{924}{}{Screen navigation}
+{925}{}{Rail}
+{926}{}{Slim rail}
+{927}{}{Top bar}

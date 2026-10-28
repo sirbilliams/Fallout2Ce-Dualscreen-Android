@@ -20,6 +20,7 @@
 #include "mui_notify.h"
 #include "object.h"
 #include "pipboy.h"
+#include "settings.h"
 #include "skill.h"
 
 namespace fallout {
@@ -637,16 +638,22 @@ namespace {
 void muiDialogLayout(MuiContext& ui, MuiRect* content, MuiRect* tabs)
 {
     MuiRect safe = ui.safeRect().inset(ui.dp(10.0f));
-    float width = ui.dp(52.0f);
+    if (ui.surface == MuiSurface::Bottom && settings.touch.screen_nav == 2) {
+        *tabs = { safe.x, safe.y, safe.w, ui.dp(44.0f) };
+        *content = { safe.x, tabs->bottom() + ui.dp(10.0f), safe.w, safe.h - tabs->h - ui.dp(10.0f) };
+        return;
+    }
+    float width = ui.dp(ui.surface == MuiSurface::Bottom && settings.touch.screen_nav == 1 ? 40.0f : 52.0f);
     *tabs = { safe.right() - width, safe.y, width, safe.h };
     *content = { safe.x, safe.y, tabs->x - ui.dp(10.0f) - safe.x, safe.h };
 }
 
 int muiDialogTabs(MuiContext& ui, const MuiRect& column, MuiDialogTab active, bool barterAvailable, bool partyAvailable)
 {
-    float size = column.w;
+    bool horizontal = column.w > column.h;
+    float size = horizontal ? column.h : column.w;
     float gap = ui.dp(8.0f);
-    float y = column.y;
+    MuiRect rect = { column.x, column.y, size, size };
     int result = -1;
 
     struct Tab {
@@ -667,11 +674,13 @@ int muiDialogTabs(MuiContext& ui, const MuiRect& column, MuiDialogTab active, bo
             continue;
         }
 
-        MuiRect rect = { column.x, y, size, size };
-        y += size + gap;
-
         if (muiTabButton(ui, tab.id, rect, tab.icon, tab.tab == active)) {
             result = static_cast<int>(tab.tab);
+        }
+        if (horizontal) {
+            rect.x += size + gap;
+        } else {
+            rect.y += size + gap;
         }
     }
 
@@ -734,7 +743,8 @@ MuiGameScreenTab muiGameScreenTabs(MuiContext& ui, const MuiRect& column, const 
         { MuiGameScreenTab::Map, "map", MuiIcon::Map },
     };
 
-    float size = column.w;
+    bool horizontal = column.w > column.h;
+    float size = horizontal ? column.h : column.w;
     float gap = ui.dp(8.0f);
     MuiRect rect = { column.x, column.y, size, size };
     MuiGameScreenTab result = MuiGameScreenTab::None;
@@ -764,7 +774,11 @@ MuiGameScreenTab muiGameScreenTabs(MuiContext& ui, const MuiRect& column, const 
         } else if (tab.tab == MuiGameScreenTab::Pipboy && tab.tab != active && pipboyUnavailableReason() != PipboyUnavailable::None) {
             muiDrawUnavailableOverlay(ui, rect, muiTheme().radius);
         }
-        rect.y += size + gap;
+        if (horizontal) {
+            rect.x += size + gap;
+        } else {
+            rect.y += size + gap;
+        }
     }
 
     return result;
