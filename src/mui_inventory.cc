@@ -543,9 +543,17 @@ namespace {
                 if (y + lineHeight > figure.bottom()) {
                     break;
                 }
-                muiDrawIcon(stat.icon, armor.x + iconSize / 2.0f, y + lineHeight / 2.0f, iconSize, ui.dp(1.5f), theme.accent);
+                float valueWidth = muiTextWidth(stat.value, ui.dp(11.0f));
+                bool showIcon = ui.surface != MuiSurface::Bottom || valueWidth + iconSize + ui.dp(6.0f) <= armor.w;
+                if (showIcon) {
+                    muiDrawIcon(stat.icon, armor.x + iconSize / 2.0f, y + lineHeight / 2.0f, iconSize, ui.dp(1.5f), theme.accent);
+                }
                 MuiRect valueRect = { armor.x + iconSize + ui.dp(6.0f), y, ui.surface == MuiSurface::Bottom ? std::max(armor.w - iconSize - ui.dp(6.0f), 0.0f) : armor.w, lineHeight };
-                float size = ui.surface == MuiSurface::Bottom ? muiFitTextSize(stat.value, valueRect.w, ui.dp(13.0f), ui.dp(1.0f)) : ui.dp(13.0f);
+                if (!showIcon) {
+                    valueRect.x = armor.x;
+                    valueRect.w = armor.w;
+                }
+                float size = ui.surface == MuiSurface::Bottom ? muiFitTextSize(stat.value, valueRect.w, ui.dp(13.0f), ui.dp(11.0f)) : ui.dp(13.0f);
                 muiDrawTextAligned(stat.value, valueRect, size, stat.color, MuiAlign::Start, MuiAlign::Center);
                 y += lineHeight;
             }

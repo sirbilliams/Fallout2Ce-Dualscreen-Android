@@ -313,3 +313,15 @@
 {925}{}{Rail}
 {926}{}{Slim rail}
 {927}{}{Top bar}
+
+// Short derived-stat labels for the bottom screen.
+{928}{}{AC}
+{929}{}{AP}
+{930}{}{Carry Wt}
+{931}{}{Melee Dmg}
+{932}{}{Dmg Res}
+{933}{}{Poison}
+{934}{}{Rad Res}
+{935}{}{Sequence}
+{936}{}{Heal Rate}
+{937}{}{Crit}

@@ -1029,6 +1029,13 @@ namespace {
         }
 
         float gap = ui.dp(6.0f);
+        bool fitChips = ui.surface == MuiSurface::Bottom && settings.touch.dashboard_layout == 2 && count <= 4;
+        if (fitChips) {
+            float width = (rect.w - gap * (count - 1)) / count;
+            for (Chip& chip : chips) {
+                chip.chipWidth = width;
+            }
+        }
         float total = 0.0f;
         std::vector<float> starts;
         for (const Chip& chip : chips) {
@@ -1098,7 +1105,8 @@ namespace {
                 if (chip.icon != MuiIcon::Count) {
                     muiDrawIcon(chip.icon, chipRect.centerX(), chipRect.centerY(), strip.h * 0.56f, ui.dp(1.6f), color);
                 } else {
-                    muiDrawTextAligned(chip.label, chipRect, textSize, color, MuiAlign::Center, MuiAlign::Center);
+                    float size = fitChips ? muiFitTextSize(chip.label, chipRect.w - ui.dp(4.0f), textSize, ui.dp(10.0f)) : textSize;
+                    muiDrawTextAligned(chip.label, chipRect, size, color, MuiAlign::Center, MuiAlign::Center);
                 }
 
                 if (tapped && gEnabled) {

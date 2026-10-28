@@ -46,6 +46,7 @@ namespace {
     constexpr int kTextTag = 196;
     constexpr int kTextUntag = 197;
     constexpr int kTextTraits = 198;
+    constexpr int kTextDerivedShort = 928;
 
     // Texts in `game\editor.msg`.
     constexpr int kEditorName = 106;
@@ -358,7 +359,9 @@ namespace {
         buildHeader(ui, { content.x, content.y, content.w, headerHeight });
 
         MuiRect body = { content.x, content.y + headerHeight + gap, content.w, content.h - headerHeight - gap };
-        float cardWidth = std::clamp(body.w * 0.35f, ui.dp(220.0f), ui.dp(300.0f));
+        // Bottom screen: a narrower card leaves the stats their names.
+        float cardMinimum = ui.dp(ui.surface == MuiSurface::Bottom ? 160.0f : 220.0f);
+        float cardWidth = std::clamp(body.w * 0.35f, cardMinimum, ui.dp(300.0f));
         MuiRect main = { body.x, body.y, body.w - cardWidth - gap, body.h };
         MuiRect cardRect = { main.right() + gap, body.y, cardWidth, body.h };
 
@@ -745,6 +748,19 @@ namespace {
         // Creation: SPECIAL rows share the column alone (bigger steppers).
         float statHeight = creating ? std::min(left.h / PRIMARY_STAT_COUNT, ui.dp(40.0f)) : rowHeight;
 
+        // Bottom screen: one size for every name of a column (the longest
+        // one's fit, 11 dp at least), values in a column of their own.
+        bool bottom = ui.surface == MuiSurface::Bottom;
+        float minimumSize = ui.dp(11.0f);
+        float primaryValueWidth = muiTextWidth(number(10), size);
+        float primaryLabelSize = size;
+        if (bottom) {
+            float width = std::max(left.w - primaryValueWidth - padding * 4.0f, 0.0f);
+            for (int stat = 0; stat < PRIMARY_STAT_COUNT; stat++) {
+                primaryLabelSize = std::min(primaryLabelSize, muiFitTextSize(gameText(statGetName(static_cast<Stat>(stat))), width, size, minimumSize));
+            }
+        }
+
         for (int stat = 0; stat < PRIMARY_STAT_COUNT; stat++) {
             MuiRect rowRect = { left.x, left.y + stat * statHeight, left.w, statHeight };
             std::string id = "character.special." + std::to_string(stat);
@@ -789,13 +805,12 @@ namespace {
 
             // Bottom screen: keep the name and value within their row.
             if (ui.surface == MuiSurface::Bottom) {
-                std::u32string valueText = number(value);
-                float valueWidth = muiTextWidth(valueText, size);
-                MuiRect valueRect = { rowRect.right() - padding - valueWidth, rowRect.y, valueWidth, rowRect.h };
+                MuiRect valueRect = { rowRect.right() - padding - primaryValueWidth, rowRect.y, primaryValueWidth, rowRect.h };
                 MuiRect labelRect = { rowRect.x + padding, rowRect.y, std::max(valueRect.x - rowRect.x - padding * 3.0f, 0.0f), rowRect.h };
-                float labelSize = muiFitTextSize(label, labelRect.w, size, ui.dp(1.0f));
-                muiDrawTextAligned(label, labelRect, labelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
-                muiDrawTextAligned(valueText, valueRect, size, theme.accent, MuiAlign::End, MuiAlign::Center);
+                muiPushClip(labelRect);
+                muiDrawTextAligned(label, labelRect, primaryLabelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
+                muiPopClip();
+                muiDrawTextAligned(number(value), valueRect, size, theme.accent, MuiAlign::End, MuiAlign::Center);
                 continue;
             }
 
@@ -851,6 +866,31 @@ namespace {
             }
         }
 
+        // Bottom screen: the derived stats' names as the primary ones, a name
+        // that doesn't fit at 11 dp in its short form.
+        static const char* const kDerivedShortLabels[kCharacterEditorDerivedStatCount] = {
+            "AC", "AP", "Carry Wt", "Melee Dmg", "Dmg Res", "Poison", "Rad Res", "Sequence", "Heal Rate", "Crit"
+        };
+        std::u32string derivedLabels[kCharacterEditorDerivedStatCount];
+        std::u32string derivedValues[kCharacterEditorDerivedStatCount];
+        bool derivedWarnings[kCharacterEditorDerivedStatCount];
+        float derivedValueWidth = 0.0f;
+        for (int index = 0; index < kCharacterEditorDerivedStatCount; index++) {
+            derivedValues[index] = gameText(characterEditorFormatDerivedStat(index, &derivedWarnings[index]).c_str());
+            derivedValueWidth = std::max(derivedValueWidth, muiTextWidth(derivedValues[index], size));
+        }
+        float derivedLabelWidth = std::max(right.w - derivedValueWidth - padding * 3.0f, 0.0f);
+        float derivedLabelSize = size;
+        for (int index = 0; index < kCharacterEditorDerivedStatCount; index++) {
+            derivedLabels[index] = gameText(characterEditorGetDerivedStatName(index));
+            if (bottom) {
+                if (muiTextWidth(derivedLabels[index], minimumSize) > derivedLabelWidth) {
+                    derivedLabels[index] = ceText(kTextDerivedShort + index, kDerivedShortLabels[index]);
+                }
+                derivedLabelSize = std::min(derivedLabelSize, muiFitTextSize(derivedLabels[index], derivedLabelWidth, size, minimumSize));
+            }
+        }
+
         for (int index = 0; index < kCharacterEditorDerivedStatCount; index++) {
             MuiRect rowRect = { right.x, right.y + index * rowHeight, right.w, rowHeight };
             bool pressed;
@@ -858,12 +898,21 @@ namespace {
                 select(Item::DerivedStat, index);
             }
 
-            bool warning;
-            std::u32string value = gameText(characterEditorFormatDerivedStat(index, &warning).c_str());
+            bool warning = derivedWarnings[index];
+            const std::u32string& value = derivedValues[index];
+            std::u32string label = derivedLabels[index];
+            if (bottom) {
+                MuiRect labelRect = { rowRect.x + padding, rowRect.y, derivedLabelWidth, rowRect.h };
+                muiPushClip(labelRect);
+                muiDrawTextAligned(label, labelRect, derivedLabelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
+                muiPopClip();
+                muiDrawTextAligned(value, { rowRect.x, rowRect.y, rowRect.w - padding, rowRect.h }, size, warning ? kWarning : theme.accent, MuiAlign::End, MuiAlign::Center);
+                continue;
+            }
+
             float valueWidth = muiTextWidth(value, size);
-            std::u32string label = gameText(characterEditorGetDerivedStatName(index));
             float labelWidth = std::max(rowRect.w - valueWidth - padding * 3.0f, 0.0f);
-            float labelSize = muiFitTextSize(label, labelWidth, size, ui.dp(ui.surface == MuiSurface::Bottom ? 1.0f : 10.0f));
+            float labelSize = muiFitTextSize(label, labelWidth, size, ui.dp(10.0f));
             muiDrawTextAligned(label, { rowRect.x + padding, rowRect.y, labelWidth, rowRect.h }, labelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
             muiDrawTextAligned(value, { rowRect.x, rowRect.y, rowRect.w - padding, rowRect.h }, size, warning ? kWarning : theme.accent, MuiAlign::End, MuiAlign::Center);
         }

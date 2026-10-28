@@ -101,7 +101,7 @@ static const HudLayout kDashboardLayout = {
 // Map first: controls along the top and bottom, leaving the map full width.
 static const HudLayout kMapFirstDashboardLayout = {
     10.0f,
-    8.0f,
+    4.0f,
     {
         { HudGroupId::Screens, HudAnchor::TopLeft, HudFlow::Rows, HudAlign::Start,
             { { { HudElementId::Inventory, kDashButton, kDashButton }, { HudElementId::Character, kDashButton, kDashButton }, { HudElementId::Pipboy, kDashButton, kDashButton }, { HudElementId::Map, kDashButton, kDashButton } } },
@@ -114,11 +114,12 @@ static const HudLayout kMapFirstDashboardLayout = {
             false },
         { HudGroupId::Weapon, HudAnchor::BottomRight, HudFlow::Rows, HudAlign::End,
             {
-                { { HudElementId::Indicators, kHudFill, 22.0f } },
-                { { HudElementId::Status, kHudFill, 24.0f } },
-                { { HudElementId::Modes, kHudFill, 44.0f }, { HudElementId::SwapHands, kDashButton, 44.0f }, { HudElementId::Weapon, 150.0f, 44.0f } },
+                { { HudElementId::Indicators, kHudFill, 16.0f } },
+                { { HudElementId::Status, kHudFill, 18.0f } },
+                { { HudElementId::Modes, kHudFill, 44.0f } },
+                { { HudElementId::SwapHands, kDashButton, 44.0f }, { HudElementId::Weapon, 150.0f, 44.0f } },
             },
-            false, 6.0f, 262.0f },
+            false, 0.0f, 262.0f },
         { HudGroupId::Combat, HudAnchor::Right, HudFlow::Columns, HudAlign::Start,
             { { { HudElementId::TacticalView, 110.0f, 48.0f }, { HudElementId::EndTurn, 110.0f, 48.0f }, { HudElementId::EndCombat, 110.0f, 48.0f } } },
             true },
@@ -147,7 +148,7 @@ static const HudLayout kTwoColumnsDashboardLayout = {
                 { { HudElementId::Indicators, kHudFill, 22.0f } },
                 { { HudElementId::Status, kHudFill, 24.0f } },
                 { { HudElementId::Modes, kHudFill, 44.0f } },
-                { { HudElementId::SwapHands, kDashButton, 64.0f }, { HudElementId::Weapon, 110.0f, 64.0f } },
+                { { HudElementId::SwapHands, kDashButton, 64.0f }, { HudElementId::Weapon, 128.0f, 64.0f } },
             },
             false, 6.0f },
         { HudGroupId::Combat, HudAnchor::Bottom, HudFlow::Rows, HudAlign::Start,
