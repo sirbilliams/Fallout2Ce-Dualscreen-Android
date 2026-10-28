@@ -16,6 +16,7 @@
 #include "actions.h"
 #include "animation.h"
 #include "art.h"
+#include "bottom_screen.h"
 #include "character_editor.h"
 #include "combat.h"
 #include "critter.h"
@@ -1554,6 +1555,23 @@ static const DevAutotestStep kDevAutotestPipboySteps[] = {
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "y13_closed", "pipboy.back" },
 };
 
+// Dual-screen bottom screen (a test 1240 x 1080 screen, the AYN Thor's): the
+// dashboard while exploring, the game screens it shows, combat. Each capture
+// also saves the bottom screen as <name>_bottom.png.
+static const DevAutotestStep kDevAutotestDualScreenSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "d00_start" },
+    { DEV_AUTOTEST_ACTION_LOAD_GAME, 0, 0, 0, 120, "d01_dashboard" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Inventory), 0, 0, 60, "d02_inventory" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 30, "d02b_closed" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Character), 0, 0, 60, "d03_character" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 30, "d03b_closed" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Pipboy), 0, 0, 60, "d04_pipboy" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 30, "d04b_closed" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Automap), 0, 0, 60, "d05_map" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 30, "d05b_closed" },
+    { DEV_AUTOTEST_ACTION_START_COMBAT, 0, 0, 0, 60, "d06_combat" },
+};
+
 // Mobile map screen (automap of the current map).
 static const DevAutotestStep kDevAutotestAutomapSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "a00_start" },
@@ -2171,6 +2189,12 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "pipboy") == 0) {
         gDevAutotestSteps = kDevAutotestPipboySteps;
         gDevAutotestStepCount = sizeof(kDevAutotestPipboySteps) / sizeof(kDevAutotestPipboySteps[0]);
+    } else if (strcmp(name, "dualscreen") == 0) {
+        gDevAutotestSteps = kDevAutotestDualScreenSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDualScreenSteps) / sizeof(kDevAutotestDualScreenSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "automap") == 0) {
         gDevAutotestSteps = kDevAutotestAutomapSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestAutomapSteps) / sizeof(kDevAutotestAutomapSteps[0]);
@@ -3959,6 +3983,20 @@ void devAutotestCapture(SDL_Renderer* renderer)
     std::string path = gDevAutotestOutputPath + "/" + name + ".png";
     unsigned error = lodepng::encode(path, pixels, width, height, LCT_RGBA, 8);
     devAutotestLog("%s: saved %dx%d frame (%s)\n", name, width, height, error == 0 ? "ok" : "error");
+
+#ifndef __ANDROID__
+    // The bottom screen's last frame (desktop test screen, `dualscreen`).
+    const unsigned char* bottom = bottomScreenTestFrame();
+    if (bottom != nullptr) {
+        int bottomWidth;
+        int bottomHeight;
+        bottomScreenGetSize(&bottomWidth, &bottomHeight);
+        std::vector<unsigned char> bottomPixels(bottom, bottom + static_cast<size_t>(bottomWidth) * bottomHeight * 4);
+        std::string bottomPath = gDevAutotestOutputPath + "/" + name + "_bottom.png";
+        error = lodepng::encode(bottomPath, bottomPixels, bottomWidth, bottomHeight, LCT_RGBA, 8);
+        devAutotestLog("%s: saved %dx%d bottom frame (%s)\n", name, bottomWidth, bottomHeight, error == 0 ? "ok" : "error");
+    }
+#endif
 
     // The game's windows the screen shows besides the map: under the mobile
     // UI screens there should be none of the game's own.
