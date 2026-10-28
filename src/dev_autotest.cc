@@ -1570,6 +1570,9 @@ static const DevAutotestStep kDevAutotestDualScreenSteps[] = {
     { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Automap), 0, 0, 60, "d05_map" },
     { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 30, "d05b_closed" },
     { DEV_AUTOTEST_ACTION_START_COMBAT, 0, 0, 0, 60, "d06_combat" },
+    // The script ends (and the game quits) at its last step: one more inside
+    // the combat loop.
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 60, "d07_combat_turn" },
 };
 
 // Mobile map screen (automap of the current map).
