@@ -9,7 +9,7 @@ the same style (pixel art, scratched metal, brass, amber / green CRT). Code: `sr
 ## Setting
 
 `[touch] bottom_theme`: 0 = Fallout (default), 1 = classic (the old drawn-from-code look, unchanged).
-Settings -> Display -> "Bottom screen theme" (ce.msg 950..952). The theme applies only while drawing the
+Settings -> Display -> "Bottom screen theme" (ce.msg 960..962). The theme applies only while drawing the
 bottom surface (`muiSkinFallout()` = bottom active, current surface Bottom, setting 0); the top screen
 and phones keep the classic look. All stage 1 layout settings (`dashboard_layout`, `screen_nav`) work
 unchanged: the theme only changes how things are drawn, never rects or logic.
@@ -85,7 +85,7 @@ buttons (tinted onto the plate); warning `FF5A3C`; rust metal tint per use (`E6D
 HUD tabs, end turn, end combat: the game's lettered buttons at the largest whole scale that fits.
 Skills / stats / party: vault-boy drawings. Items (filters, quick save, reload, loot): item art scaled
 to fit. Action menu and steppers: the game's own. Pixel art in-style (9 px grid, black drop shadow,
-tinted): menu, back, play, pause, stop, expand, collapse, edit, eye (highlight), swap hands, spread,
+tinted): save, load and menu are the word in font 3; pixel art: back, play, pause, stop, expand (arrows to the corners), collapse, edit, eye (highlight), swap hands, spread,
 regroup, target, tactical tiles, cancel. No icon falls back to the vector set in this theme unless the
 art is missing from the install (then the classic icon is drawn).
 

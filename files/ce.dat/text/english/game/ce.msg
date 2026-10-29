@@ -313,9 +313,9 @@
 {925}{}{Rail}
 {926}{}{Slim rail}
 {927}{}{Top bar}
-{950}{}{Bottom screen theme}
-{951}{}{Fallout}
-{952}{}{Classic}
+{960}{}{Bottom screen theme}
+{961}{}{Fallout}
+{962}{}{Classic}
 
 // Short derived-stat labels for the bottom screen.
 {928}{}{AC}

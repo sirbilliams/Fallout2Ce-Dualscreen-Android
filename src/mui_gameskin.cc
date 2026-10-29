@@ -368,7 +368,7 @@ namespace {
     const PixelIcon kPixelPlay = { { "#........", "###......", "#####....", "#######..", "#########", "#######..", "#####....", "###......", "#........" } };
     const PixelIcon kPixelPause = { { "###...###", "###...###", "###...###", "###...###", "###...###", "###...###", "###...###", "###...###", nullptr } };
     const PixelIcon kPixelStop = { { "#########", "#########", "#########", "#########", "#########", "#########", "#########", "#########", "#########" } };
-    const PixelIcon kPixelExpand = { { "####...####", "#.........#", "#.........#", "#....#....#", "...#####...", "....###....", "#....#....#", "#.........#", "#.........#", "####...####", nullptr } };
+    const PixelIcon kPixelExpand = { { "####...####", "##.......##", "#.#.....#.#", "....#.#....", ".....#.....", "....#.#....", "#.#.....#.#", "##.......##", "####...####", nullptr } };
     const PixelIcon kPixelCollapse = { { "....###....", "....###....", "#....#....#", ".#########.", "...........", ".#########.", "#....#....#", "....###....", "....###....", nullptr } };
     const PixelIcon kPixelCancel = { { "##.....##", ".##...##.", "..##.##..", "...###...", "....#....", "...###...", "..##.##..", ".##...##.", "##.....##" } };
     const PixelIcon kPixelEdit = { { "......###", ".....####", "....###.#", "...###.#.", "..###.#..", ".###.#...", "####.....", "###......", "##.......", nullptr } };
@@ -417,6 +417,8 @@ namespace {
         Ink,
         Item,
         Pixel,
+        // Lettering in the game's heavy capitals ([name] is the word).
+        Text,
     };
 
     struct IconSpec {
@@ -432,14 +434,15 @@ namespace {
         auto ink = [](const char* name) { return IconSpec { IconKind::Ink, name, nullptr, nullptr }; };
         auto item = [](const char* name) { return IconSpec { IconKind::Item, name, nullptr, nullptr }; };
         auto pixel = [](const PixelIcon* pixel) { return IconSpec { IconKind::Pixel, nullptr, nullptr, pixel }; };
+        auto word = [](const char* name) { return IconSpec { IconKind::Text, name, nullptr, nullptr }; };
 
         switch (icon) {
         case MuiIcon::Menu:
-            return pixel(&kPixelMenu);
+            return word("MENU");
         case MuiIcon::QuickSave:
-            return item("disk1");
+            return word("SAVE");
         case MuiIcon::QuickLoad:
-            return item("disk3");
+            return word("LOAD");
         case MuiIcon::Inventory:
             return iface("invbutup", "invbutdn");
         case MuiIcon::Character:
@@ -571,8 +574,8 @@ namespace {
     // Art as it is, dimmed when the icon's color says it is not available.
     MuiColor iconTint(MuiColor color)
     {
-        if (color.r < 0x80 && color.g < 0x80) {
-            return muiRgb(0x6A6A6A, color.a);
+        if (color.r < 0x60 && color.g < 0x60) {
+            return muiRgb(0x9A9A9A, color.a);
         }
         return muiRgb(0xFFFFFF, color.a);
     }
@@ -792,10 +795,22 @@ bool muiGameDrawIcon(MuiIcon icon, float x, float y, float size, MuiColor color)
         if (!muiGameArtSize(MuiArtGroup::Inventory, spec.name, &width, &height)) {
             return false;
         }
-        float fit = std::min(size * 1.1f / width, size * 1.1f / height);
+        float fit = std::min(size * 1.9f / width, size * 1.9f / height);
         float w = width * fit;
         float h = height * fit;
         return muiGameDrawArt(MuiArtGroup::Inventory, spec.name, { roundf(x - w / 2.0f), roundf(y - h / 2.0f), roundf(w), roundf(h) }, iconTint(color));
+    }
+    case IconKind::Text: {
+        std::u32string word;
+        for (const char* ch = spec.name; *ch != '\0'; ch++) {
+            word.push_back(static_cast<char32_t>(*ch));
+        }
+        float scale = muiGameFitScale(word, MuiFontRole::Heading, size * 1.7f, 2.0f);
+        float w = muiGameRoleWidth(word, MuiFontRole::Heading, scale);
+        float h = muiGameRoleHeight(MuiFontRole::Heading, scale);
+        MuiColor lettering = isLit(color) ? muiRgb(0xFFE890) : muiRgb(0xD8BE4A, color.a);
+        muiGameDrawRole(word, x - w / 2.0f, y - h / 2.0f, MuiFontRole::Heading, scale, lettering);
+        return true;
     }
     case IconKind::Pixel:
         drawPixelIcon(*spec.pixel, x, y, size, color);

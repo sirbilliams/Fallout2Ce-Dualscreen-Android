@@ -98,7 +98,7 @@ namespace {
     constexpr int kTextTacticalView = 373;
     constexpr int kTextDashboardLayout = 920;
     constexpr int kTextScreenNav = 924;
-    constexpr int kTextBottomTheme = 950;
+    constexpr int kTextBottomTheme = 960;
     constexpr int kTextDualScreen = 900;
     constexpr int kTextDualScreenNote = 901;
     constexpr int kTextTacticalViewNote = 374;
@@ -662,7 +662,7 @@ namespace {
         }
         {
             Row row { Section::Display, RowKind::Choice, kTextBottomTheme, "Bottom screen theme", Origin::Port };
-            row.options = { 951, 952 };
+            row.options = { 961, 962 };
             row.optionsFromCe = true;
             row.get = [](const Values& values) { return static_cast<float>(values.bottomTheme); };
             row.set = [](Values& values, float value) { values.bottomTheme = static_cast<int>(value); };
