@@ -11,6 +11,26 @@ fail() { echo "::error::$*"; FAIL=1; }
 shot() { adb exec-out screencap -p > "$OUT/$1.png" || echo "screencap $1 failed"; }
 alive() { adb shell pidof "$1" > /dev/null 2>&1; }
 key() { adb shell input keyevent "$1"; sleep 2; }
+# Taps the view whose text is $1 (uiautomator finds it, so no hard-coded coordinates).
+tap_text() {
+  adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 || return 1
+  adb pull /sdcard/ui.xml "$OUT/ui.xml" > /dev/null 2>&1 || return 1
+  local xy
+  xy=$(python3 - "$1" "$OUT/ui.xml" <<'PY'
+import re, sys
+for m in re.finditer(r'<node [^>]*>', open(sys.argv[2], encoding="utf-8").read()):
+    n = m.group(0)
+    t = re.search(r' text="([^"]*)"', n)
+    b = re.search(r'bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', n)
+    if t and b and t.group(1).strip().lower() == sys.argv[1].lower():
+        x0, y0, x1, y1 = map(int, b.groups())
+        print((x0 + x1) // 2, (y0 + y1) // 2)
+        break
+PY
+)
+  [ -n "$xy" ] || return 1
+  adb shell input tap $xy; sleep 2
+}
 resumed() { adb shell dumpsys activity activities | grep -E "ResumedActivity|topResumedActivity" | head -3; }
 
 adb shell settings put secure immersive_mode_confirmations confirmed   # no 'Viewing full screen' hint in shots
@@ -20,11 +40,21 @@ LOGPID=$!
 
 adb install -r app-debug.apk || { echo "::error::install failed"; exit 1; }
 
-# 1. First start without the game's data: MainActivity hands over to the import screen (its own process).
+# 1. First start: the setup guide (4 pages). Driven like a user: a screenshot of each page, then Next by
+# tap (Start the game on the last page). Without the game's data MainActivity then hands over to the import screen.
 adb shell am start -W -n "$MAIN" || fail "MainActivity failed to start"
+sleep 8; shot guide-0
+resumed > "$OUT/resumed-0.txt"
+grep -q "SetupGuideActivity" "$OUT/resumed-0.txt" || fail "the setup guide is not in front on first start (resumed-0.txt)"
+for i in 1 2 3; do
+  tap_text "Next" || fail "guide page $i: no Next button found (ui.xml)"
+  shot "guide-$i"
+done
+[ "$(md5sum "$OUT"/guide-[0-3].png | awk '{print $1}' | sort -u | wc -l)" -ge 4 ] || fail "guide pages look identical (Next did nothing)"
+tap_text "Start the game" || fail "guide: no 'Start the game' button on the last page"
 sleep 8; shot import-00
 resumed > "$OUT/resumed-1.txt"
-grep -q "ImportActivity" "$OUT/resumed-1.txt" || fail "the import screen is not in front (see resumed-1.txt)"
+grep -q "ImportActivity" "$OUT/resumed-1.txt" || fail "the import screen is not in front after the guide (see resumed-1.txt)"
 alive "$PKG:import" || fail "import process not running"
 
 # 2. Its real controls: the d-pad focuses the buttons, Enter presses one (the folder picker opens), Back returns.
@@ -57,8 +87,14 @@ alive "$PKG" && echo "game process still running" || echo "note: game process en
 sleep 2; kill "$LOGPID" 2>/dev/null
 adb logcat -d -v threadtime > "$OUT/logcat.txt"
 rm -f "$OUT/logcat-live.txt"
-if grep -E "FATAL EXCEPTION|Fatal signal|SIGSEGV|SIGABRT|SIGILL|SIGBUS|UnsatisfiedLinkError|dlopen failed|>>> $PKG|ANR in $PKG|am_crash" "$OUT/logcat.txt" > "$OUT/crash-lines.txt"; then
-  echo "::error::crash markers in logcat:"; head -30 "$OUT/crash-lines.txt"; FAIL=1
+# Only our own package/process: system noise (WVCdm dlopen failed, other apps' ANRs) is ignored.
+{
+  grep -A3 "FATAL EXCEPTION" "$OUT/logcat.txt" | grep "Process: $PKG"
+  grep -E ">>> $PKG|ANR in $PKG|am_crash.*$PKG|Process $PKG.* has died" "$OUT/logcat.txt"
+  grep -E "UnsatisfiedLinkError|dlopen failed" "$OUT/logcat.txt" | grep -E "fallout2|SDL2|hidapi|$PKG"
+} > "$OUT/crash-lines.txt"
+if [ -s "$OUT/crash-lines.txt" ]; then
+  echo "::error::crash markers for $PKG in logcat:"; head -30 "$OUT/crash-lines.txt"; FAIL=1
 fi
 echo "smoke result: $([ $FAIL = 0 ] && echo PASS || echo FAIL)"
 exit $FAIL
