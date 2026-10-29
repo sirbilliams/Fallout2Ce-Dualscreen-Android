@@ -1575,6 +1575,18 @@ static const DevAutotestStep kDevAutotestDualScreenSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 60, "d07_combat_turn" },
 };
 
+// Bottom-screen theme captures: the game menu and the settings.
+static const DevAutotestStep kDevAutotestThemeSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "e00_start" },
+    { DEV_AUTOTEST_ACTION_LOAD_GAME, 0, 0, 0, 120, "e01_dashboard" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Menu), 0, 0, 60, "e02_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 60, "e03_settings", "menu.settings" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 40, "e04_back" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Menu), 0, 0, 60, "e05_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 60, "e06_load", "menu.load" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "e07_end" },
+};
+
 // Mobile map screen (automap of the current map).
 static const DevAutotestStep kDevAutotestAutomapSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "a00_start" },
@@ -2195,6 +2207,30 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "dualscreen") == 0) {
         gDevAutotestSteps = kDevAutotestDualScreenSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestDualScreenSteps) / sizeof(kDevAutotestDualScreenSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "themeshots") == 0) {
+        gDevAutotestSteps = kDevAutotestThemeSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestThemeSteps) / sizeof(kDevAutotestThemeSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "loot-bottom") == 0) {
+        gDevAutotestSteps = kDevAutotestLootSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestLootSteps) / sizeof(kDevAutotestLootSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "talk-bottom") == 0) {
+        gDevAutotestSteps = kDevAutotestTalkSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestTalkSteps) / sizeof(kDevAutotestTalkSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "barter-bottom") == 0) {
+        gDevAutotestSteps = kDevAutotestBarterSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestBarterSteps) / sizeof(kDevAutotestBarterSteps[0]);
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif

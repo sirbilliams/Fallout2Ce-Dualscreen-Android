@@ -1,4 +1,5 @@
 #include "mui_skin.h"
+#include "mui_gameskin.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -154,6 +155,10 @@ void muiSkinRivet(MuiContext& ui, float x, float y)
 
 void muiSkinPlate(MuiContext& ui, const MuiRect& rect, bool rivets)
 {
+    if (muiSkinFallout()) {
+        muiGamePlate(ui, rect, rivets);
+        return;
+    }
     const MuiTheme& theme = muiTheme();
     fillMetal(ui, rect, theme.metal);
     float bevel = std::max(ui.dp(1.5f), 1.0f);
@@ -171,6 +176,10 @@ void muiSkinPlate(MuiContext& ui, const MuiRect& rect, bool rivets)
 
 void muiSkinBackdrop(MuiContext& ui, const MuiRect& rect)
 {
+    if (muiSkinFallout()) {
+        muiGameBackdrop(ui, rect);
+        return;
+    }
     const MuiTheme& theme = muiTheme();
     muiFillRect(rect, theme.background);
     fillMetal(ui, rect, theme.metal.withAlpha(235));
@@ -194,6 +203,10 @@ void muiSkinBackdrop(MuiContext& ui, const MuiRect& rect)
 
 void muiSkinWell(MuiContext& ui, const MuiRect& rect)
 {
+    if (muiSkinFallout()) {
+        muiGameWell(ui, rect);
+        return;
+    }
     const MuiTheme& theme = muiTheme();
     muiFillRect(rect, theme.well);
 
@@ -251,6 +264,10 @@ void muiSkinWell(MuiContext& ui, const MuiRect& rect)
 
 void muiSkinLabel(MuiContext& ui, float x, float y, const std::u32string& text)
 {
+    if (muiSkinFallout()) {
+        muiGameNamePlate(ui, x, y, text);
+        return;
+    }
     float size = ui.dp(10.5f);
     float height = ui.dp(19.0f);
     float pin = ui.dp(2.2f);
@@ -276,6 +293,10 @@ void muiSkinLabel(MuiContext& ui, float x, float y, const std::u32string& text)
 
 void muiSkinButton(MuiContext& ui, const MuiRect& rect, bool pressed, bool primary)
 {
+    if (muiSkinFallout()) {
+        muiGameButton(ui, rect, pressed, primary);
+        return;
+    }
     const MuiTheme& theme = muiTheme();
     MuiColor tint = primary ? theme.buttonPrimary : theme.button;
     if (pressed) {

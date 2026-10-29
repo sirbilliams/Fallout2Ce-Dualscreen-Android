@@ -368,6 +368,8 @@ set(FALLOUT_PLATFORM_SOURCES
     "src/mui_dual.cc"
     "src/mui_dual.h"
     "src/mui_skin.cc"
+    "src/mui_gameskin.cc"
+    "src/mui_gameskin.h"
     "src/mui_skin.h"
     "src/gamepad.h"
     "src/touch_controls.cc"

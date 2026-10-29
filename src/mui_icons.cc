@@ -1,4 +1,5 @@
 #include "mui_icons.h"
+#include "mui_gameskin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -924,6 +925,9 @@ namespace {
 
 void muiDrawIcon(MuiIcon icon, float x, float y, float size, float thickness, MuiColor color)
 {
+    if (muiSkinFallout() && muiGameDrawIcon(icon, x, y, size, color)) {
+        return;
+    }
     SDL_Renderer* renderer = muiDrawGetRenderer();
     const IconTexture* entry = renderer != nullptr ? iconTexture(renderer, icon, size, thickness) : nullptr;
     if (entry == nullptr) {

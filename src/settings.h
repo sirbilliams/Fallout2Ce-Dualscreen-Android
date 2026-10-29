@@ -353,6 +353,8 @@ struct TouchSettings {
     // Bottom-screen dashboard and screen navigation (0 keeps the classic layout).
     int dashboard_layout = 0;
     int screen_nav = 0;
+    // Bottom-screen look: 0 - Fallout (the game's own art and fonts), 1 - classic (drawn from code).
+    int bottom_theme = 0;
 };
 
 struct MapperSettings {

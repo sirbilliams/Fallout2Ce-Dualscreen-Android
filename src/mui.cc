@@ -1,6 +1,7 @@
 #include "mui.h"
 #include "mui_dual.h"
 #include "mui_notify.h"
+#include "mui_gameskin.h"
 #include "mui_skin.h"
 
 #include <algorithm>
@@ -454,6 +455,11 @@ bool MuiContext::button(const std::string& id, const MuiRect& rect, const std::u
     // A metal button (mui_skin.h).
     muiSkinButton(*this, rect, pressed, primary);
     // Long labels (other languages, narrow buttons) get smaller.
+    if (muiSkinFallout()) {
+        // The game's lettering: heavy capitals in its button yellow.
+        muiGameButtonLabel(*this, rect, label, primary && !pressed ? muiRgb(0xFFF0B8) : muiRgb(0xD8BE4A));
+        return clicked;
+    }
     float size = muiFitTextSize(label, rect.w - dp(kTheme.padding), dp(kTheme.buttonTextSize), dp(10.0f));
     muiDrawTextAligned(label, rect, size, textColor, MuiAlign::Center, MuiAlign::Center);
 
@@ -721,6 +727,14 @@ float MuiContext::slider(const std::string& id, const MuiRect& rect, float value
     }
 
     float ratio = maxValue > minValue ? std::clamp((value - minValue) / (maxValue - minValue), 0.0f, 1.0f) : 0.0f;
+    if (muiSkinFallout()) {
+        float slot = dp(7.0f);
+        MuiRect groove = { rect.x, rect.centerY() - slot / 2.0f, rect.w, slot };
+        muiSkinWell(*this, groove);
+        muiFillRect({ groove.x + 2.0f, groove.y + 2.0f, std::max((groove.w - 4.0f) * ratio, 0.0f), groove.h - 4.0f }, kTheme.accent.withAlpha(210));
+        muiGameKnob(*this, rect.x + rect.w * ratio, rect.centerY(), pressed);
+        return value;
+    }
     float trackHeight = dp(6.0f);
     MuiRect track = { rect.x, rect.centerY() - trackHeight / 2.0f, rect.w, trackHeight };
     // A slot in the metal, lit amber up to the value; a metal knob.
@@ -743,6 +757,11 @@ bool MuiContext::toggle(const std::string& id, const MuiRect& rect, bool* value)
     bool tapped = touchable(id, rect.inset(-dp(6.0f)), &pressed);
     if (tapped) {
         *value = !*value;
+    }
+
+    if (muiSkinFallout()) {
+        muiGameLamp(*this, rect, *value, pressed);
+        return tapped;
     }
 
     // Track with the knob at the side of the value.
@@ -795,7 +814,10 @@ bool MuiContext::segmented(const std::string& id, const MuiRect& rect, const std
     bool changed = false;
     float radius = dp(kTheme.radius);
     // Joined metal keys; the chosen one lit amber.
-    muiSkinButton(*this, rect, false, false);
+    bool game = muiSkinFallout();
+    if (!game) {
+        muiSkinButton(*this, rect, false, false);
+    }
 
     float x = rect.x;
     for (size_t index = 0; index < labels.size(); index++) {
@@ -810,6 +832,11 @@ bool MuiContext::segmented(const std::string& id, const MuiRect& rect, const std
         }
 
         bool on = *selected == static_cast<int>(index);
+        if (game) {
+            muiSkinButton(*this, cell.inset(1.0f, 0.0f), on || pressed, false);
+            muiGameButtonLabel(*this, cell, labels[index], on ? muiRgb(0xFFE890) : muiRgb(0xB8A040));
+            continue;
+        }
         if (on) {
             muiFillRect(cell.inset(dp(3.0f)), kTheme.accent.withAlpha(220));
         } else if (pressed) {

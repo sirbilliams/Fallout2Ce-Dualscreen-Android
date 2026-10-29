@@ -125,6 +125,18 @@ int interfaceFontCount()
     return INTERFACE_FONT_MAX;
 }
 
+bool interfaceFontGetMetrics(int font, int* maxHeight, int* letterSpacing, int* wordSpacing)
+{
+    if (font < 0 || font >= INTERFACE_FONT_MAX || gInterfaceFontDescriptors[font].data == nullptr) {
+        return false;
+    }
+
+    *maxHeight = gInterfaceFontDescriptors[font].maxHeight;
+    *letterSpacing = gInterfaceFontDescriptors[font].letterSpacing;
+    *wordSpacing = gInterfaceFontDescriptors[font].wordSpacing;
+    return true;
+}
+
 bool interfaceFontGetGlyph(int font, unsigned char ch, int* width, int* height, const unsigned char** pixels)
 {
     if (font < 0 || font >= INTERFACE_FONT_MAX || gInterfaceFontDescriptors[font].data == nullptr) {

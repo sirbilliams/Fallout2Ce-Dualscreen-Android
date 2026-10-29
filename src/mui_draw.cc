@@ -13,6 +13,8 @@
 #include "db.h"
 #include "debug.h"
 #include "game_charset.h"
+#include "mui_gameskin.h"
+#include "mui_skin.h"
 #include "mui_icons.h"
 #include "svga.h"
 
@@ -379,6 +381,7 @@ void muiDrawReset()
     }
     gAtlases.clear();
     muiIconsReset();
+    muiGameSkinReset();
     gRenderer = nullptr;
 }
 
@@ -396,6 +399,20 @@ void muiFillRect(const MuiRect& rect, MuiColor color)
 
 void muiFillRoundRect(const MuiRect& rect, float radius, MuiColor color)
 {
+    if (muiSkinFallout() && radius >= 1.0f) {
+        // The game's art has square corners with a notch, not round ones.
+        float p = 2.0f;
+        if (rect.w > p * 6.0f && rect.h > p * 6.0f) {
+            muiFillRect({ rect.x + p * 2.0f, rect.y, rect.w - p * 4.0f, p }, color);
+            muiFillRect({ rect.x + p, rect.y + p, rect.w - p * 2.0f, p }, color);
+            muiFillRect({ rect.x, rect.y + p * 2.0f, rect.w, rect.h - p * 4.0f }, color);
+            muiFillRect({ rect.x + p, rect.bottom() - p * 2.0f, rect.w - p * 2.0f, p }, color);
+            muiFillRect({ rect.x + p * 2.0f, rect.bottom() - p, rect.w - p * 4.0f, p }, color);
+            return;
+        }
+        muiFillRect(rect, color);
+        return;
+    }
     if (radius < 1.0f) {
         muiFillRect(rect, color);
         return;
@@ -408,6 +425,23 @@ void muiFillRoundRect(const MuiRect& rect, float radius, MuiColor color)
 
 void muiStrokeRoundRect(const MuiRect& rect, float radius, float thickness, MuiColor color)
 {
+    if (muiSkinFallout() && radius >= 1.0f) {
+        float p = 2.0f;
+        float t = std::max(thickness, 1.0f);
+        if (rect.w > p * 6.0f && rect.h > p * 6.0f) {
+            muiFillRect({ rect.x + p * 2.0f, rect.y, rect.w - p * 4.0f, t }, color);
+            muiFillRect({ rect.x + p * 2.0f, rect.bottom() - t, rect.w - p * 4.0f, t }, color);
+            muiFillRect({ rect.x, rect.y + p * 2.0f, t, rect.h - p * 4.0f }, color);
+            muiFillRect({ rect.right() - t, rect.y + p * 2.0f, t, rect.h - p * 4.0f }, color);
+            muiFillRect({ rect.x + p, rect.y + p, t, t }, color);
+            muiFillRect({ rect.right() - p - t, rect.y + p, t, t }, color);
+            muiFillRect({ rect.x + p, rect.bottom() - p - t, t, t }, color);
+            muiFillRect({ rect.right() - p - t, rect.bottom() - p - t, t, t }, color);
+            return;
+        }
+        muiSkinBevel(rect, t, color, color, false);
+        return;
+    }
     // Same segment count, so outlines have the same point count.
     int segments = roundRectSegments(radius);
     std::vector<SDL_FPoint> outer;
@@ -609,12 +643,18 @@ std::u32string muiDecodeUtf8(const char* text)
 
 float muiLineHeight(float size)
 {
+    if (muiSkinFallout()) {
+        return muiGameLineHeight(size);
+    }
     FontAtlas* atlas = atlasForSize(size);
     return atlas != nullptr ? atlas->lineHeight : size * 1.2f;
 }
 
 float muiTextWidth(const std::u32string& text, float size)
 {
+    if (muiSkinFallout()) {
+        return muiGameTextWidth(text, size);
+    }
     FontAtlas* atlas = atlasForSize(size);
     if (atlas == nullptr) {
         return 0.0f;
@@ -637,6 +677,10 @@ float muiTextWidth(const std::u32string& text, float size)
 
 void muiDrawText(const std::u32string& text, float x, float y, float size, MuiColor color)
 {
+    if (muiSkinFallout()) {
+        muiGameDrawText(text, x, y, size, color);
+        return;
+    }
     FontAtlas* atlas = atlasForSize(size);
     if (atlas == nullptr || text.empty()) {
         return;
