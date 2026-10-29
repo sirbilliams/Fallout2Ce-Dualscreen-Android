@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "dev_autotest.h"
-#include "mui_pad.h"
 #include "game.h"
 #include "game_charset.h"
 #include "game_dialog.h"
@@ -18,6 +17,7 @@
 #include "input.h"
 #include "kb.h"
 #include "message.h"
+#include "mui_pad.h"
 #include "platform_compat.h"
 #include "settings.h"
 #include "svga.h"
@@ -1574,7 +1574,6 @@ bool muiGetWidgetCenter(const char* id, float* x, float* y, bool* onBottom)
     return true;
 }
 
-
 // Gamepad hooks (mui_pad.h).
 
 const std::vector<MuiPadWidget>& muiPadWidgets(MuiSurface surface)
@@ -1643,6 +1642,5 @@ void muiPadOutputSize(MuiSurface surface, int* width, int* height)
     *width = s.outputWidth;
     *height = s.outputHeight;
 }
-
 
 } // namespace fallout

@@ -220,32 +220,70 @@ namespace {
     bool toPadButton(SDL_GameControllerButton button, PadButton* out)
     {
         switch (button) {
-        case SDL_CONTROLLER_BUTTON_A: *out = PAD_A; return true;
-        case SDL_CONTROLLER_BUTTON_B: *out = PAD_B; return true;
-        case SDL_CONTROLLER_BUTTON_X: *out = PAD_X; return true;
-        case SDL_CONTROLLER_BUTTON_Y: *out = PAD_Y; return true;
-        case SDL_CONTROLLER_BUTTON_START: *out = PAD_START; return true;
-        case SDL_CONTROLLER_BUTTON_BACK: *out = PAD_BACK; return true;
-        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER: *out = PAD_LB; return true;
-        case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER: *out = PAD_RB; return true;
-        case SDL_CONTROLLER_BUTTON_LEFTSTICK: *out = PAD_LS; return true;
-        case SDL_CONTROLLER_BUTTON_RIGHTSTICK: *out = PAD_RS; return true;
-        case SDL_CONTROLLER_BUTTON_DPAD_UP: *out = PAD_UP; return true;
-        case SDL_CONTROLLER_BUTTON_DPAD_DOWN: *out = PAD_DOWN; return true;
-        case SDL_CONTROLLER_BUTTON_DPAD_LEFT: *out = PAD_LEFT; return true;
-        case SDL_CONTROLLER_BUTTON_DPAD_RIGHT: *out = PAD_RIGHT; return true;
-        default: return false;
+        case SDL_CONTROLLER_BUTTON_A:
+            *out = PAD_A;
+            return true;
+        case SDL_CONTROLLER_BUTTON_B:
+            *out = PAD_B;
+            return true;
+        case SDL_CONTROLLER_BUTTON_X:
+            *out = PAD_X;
+            return true;
+        case SDL_CONTROLLER_BUTTON_Y:
+            *out = PAD_Y;
+            return true;
+        case SDL_CONTROLLER_BUTTON_START:
+            *out = PAD_START;
+            return true;
+        case SDL_CONTROLLER_BUTTON_BACK:
+            *out = PAD_BACK;
+            return true;
+        case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+            *out = PAD_LB;
+            return true;
+        case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+            *out = PAD_RB;
+            return true;
+        case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+            *out = PAD_LS;
+            return true;
+        case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+            *out = PAD_RS;
+            return true;
+        case SDL_CONTROLLER_BUTTON_DPAD_UP:
+            *out = PAD_UP;
+            return true;
+        case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+            *out = PAD_DOWN;
+            return true;
+        case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+            *out = PAD_LEFT;
+            return true;
+        case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+            *out = PAD_RIGHT;
+            return true;
+        default:
+            return false;
         }
     }
 
     bool toDirection(PadButton button, MuiPadDir* direction)
     {
         switch (button) {
-        case PAD_UP: *direction = MuiPadDir::Up; return true;
-        case PAD_DOWN: *direction = MuiPadDir::Down; return true;
-        case PAD_LEFT: *direction = MuiPadDir::Left; return true;
-        case PAD_RIGHT: *direction = MuiPadDir::Right; return true;
-        default: return false;
+        case PAD_UP:
+            *direction = MuiPadDir::Up;
+            return true;
+        case PAD_DOWN:
+            *direction = MuiPadDir::Down;
+            return true;
+        case PAD_LEFT:
+            *direction = MuiPadDir::Left;
+            return true;
+        case PAD_RIGHT:
+            *direction = MuiPadDir::Right;
+            return true;
+        default:
+            return false;
         }
     }
 
