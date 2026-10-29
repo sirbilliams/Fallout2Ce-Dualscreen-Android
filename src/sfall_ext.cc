@@ -95,6 +95,7 @@ void sfallLoadMods()
 // Binary layout of sfallgv.sav (must match sfall's SaveGame2 / LoadGame_Before order):
 //   global vars | nextObjectId(4) | addedYears(4) | fakeTraitsCount(4) |
 //   fakePerksCount(4) | fakeSelectablePerksCount(4) | arrays | drugPidsCount(4)
+// Each fake* count is followed by that many packed 1096-byte records.
 //
 // Sections that CE doesn't implement are written/read as zero.
 
@@ -146,14 +147,23 @@ bool sfallLoadGameData(File* stream)
         return true; // old save, stop gracefully
     }
 
-    // Skip sections CE doesn't implement: addedYears, fakeTraitsCount,
-    // fakePerksCount, fakeSelectablePerksCount
+    // addedYears is one DWORD; each fake-perk section is a count followed
+    // by packed 1096-byte FakePerk records (Perks::Save in real sfall).
+    // Reading just the counts puts the arrays reader inside the first record.
     int32_t ignored;
-    for (int32_t i = 0; i < 4; i++) {
-        if (fileRead(&ignored, sizeof(ignored), 1, stream) != 1) {
+    if (fileRead(&ignored, sizeof(ignored), 1, stream) != 1) {
+        scriptsRestoreUniqueObjectIdCounter(nextObjectId);
+        return true; // old save, stop gracefully
+    }
+    for (int section = 0; section < 3; section++) {
+        int32_t count;
+        if (fileRead(&count, sizeof(count), 1, stream) != 1) {
             scriptsRestoreUniqueObjectIdCounter(nextObjectId);
             return true; // old save, stop gracefully
         }
+        constexpr int kFakePerkSize = 1096;
+        if (count < 0 || count > (fileGetSize(stream) - fileTell(stream)) / kFakePerkSize) return false;
+        if (fileSeek(stream, count * kFakePerkSize, SEEK_CUR) != 0) return false;
     }
 
     if (!sfallArraysLoad(stream)) {

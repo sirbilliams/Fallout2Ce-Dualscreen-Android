@@ -1217,24 +1217,28 @@ namespace {
         muiDrawTextAligned(title, { content.x, y, content.w, muiLineHeight(titleSize) }, titleSize, theme.accent, MuiAlign::Start, MuiAlign::Start);
         y += muiLineHeight(titleSize) + ui.dp(3.0f);
 
-        float textSize = ui.dp(13.5f);
-        float lineHeight = muiLineHeight(textSize);
-        std::vector<std::u32string> lines;
-        size_t subtitleLines = 0;
-        if (!card.subtitle.empty()) {
-            lines = muiWrapText(gameText(card.subtitle.c_str()), content.w, textSize);
-            subtitleLines = lines.size();
-        }
-
         muiDrawLine(content.x, y, content.right(), y, ui.dp(1.0f), theme.panelBorder);
         y += ui.dp(6.0f);
 
-        for (const std::u32string& line : muiWrapText(gameText(card.description.c_str()), content.w, textSize)) {
-            lines.push_back(line);
+        MuiRect textRect = { content.x, y, content.w, std::max(content.bottom() - y, 0.0f) };
+        float gapAfterSubtitle = !card.subtitle.empty() ? ui.dp(6.0f) : 0.0f;
+        float textSize = ui.dp(13.5f);
+        float lineHeight;
+        std::vector<std::u32string> lines;
+        size_t subtitleLines;
+        // The top navigation leaves a shorter card on the Thor. Fit the
+        // wrapped text to its remaining height, keeping a readable minimum;
+        // longer mod descriptions still use the existing drag scroll.
+        for (;;) {
+            lines = card.subtitle.empty() ? std::vector<std::u32string>() : muiWrapText(gameText(card.subtitle.c_str()), content.w, textSize);
+            subtitleLines = lines.size();
+            for (const std::u32string& line : muiWrapText(gameText(card.description.c_str()), content.w, textSize)) {
+                lines.push_back(line);
+            }
+            lineHeight = muiLineHeight(textSize);
+            if (lines.size() * lineHeight + gapAfterSubtitle <= textRect.h || textSize <= ui.dp(10.5f)) break;
+            textSize = std::max(textSize - ui.dp(0.5f), ui.dp(10.5f));
         }
-
-        MuiRect textRect = { content.x, y, content.w, content.bottom() - y };
-        float gapAfterSubtitle = subtitleLines != 0 ? ui.dp(6.0f) : 0.0f;
         float offset = ui.scroll(id, textRect, lines.size() * lineHeight + gapAfterSubtitle);
 
         muiPushClip(textRect);
