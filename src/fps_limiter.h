@@ -11,7 +11,9 @@ public:
 
 private:
     const unsigned int _fps;
-    unsigned int _ticks;
+    unsigned long long _ticks;
+    mutable double _deadline = 0;
+    mutable unsigned int _lastFps = 0;
 };
 
 } // namespace fallout

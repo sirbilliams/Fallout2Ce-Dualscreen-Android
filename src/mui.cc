@@ -1,4 +1,5 @@
 #include "mui.h"
+#include "mui_display_settings.h"
 #include "mui_dual.h"
 #include "mui_gameskin.h"
 #include "mui_notify.h"
@@ -379,7 +380,12 @@ bool muiIsEnabled()
 
 const MuiTheme& muiTheme()
 {
-    return kTheme;
+    static const MuiTheme safe = [] {
+        MuiTheme theme = kTheme;
+        theme.warning = muiRgb(0xFFB000);
+        return theme;
+    }();
+    return settings.touch.colour_blind_safe ? safe : kTheme;
 }
 
 float MuiContext::appear() const
@@ -1261,6 +1267,13 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
         muiNotifyRender(context);
     }
 
+    if (surface == MuiSurface::Bottom && muiBottomDimmed()) {
+        muiFillRect(context.screen, muiRgb(0, 190));
+    }
+    if (surface == MuiSurface::Top && settings.touch.top_scanlines) {
+        for (float y = 0; y < context.screen.h; y += 4.0f)
+            muiFillRect({ 0, y, context.screen.w, 1 }, muiRgb(0, 55));
+    }
     muiDrawEnd();
 
     if (logicalWidth != 0 && logicalHeight != 0) {
@@ -1314,11 +1327,7 @@ namespace {
     int gBottomTextureHeight = 0;
     unsigned int gBottomTextureGeneration = 0;
     std::vector<unsigned char> gBottomPixels;
-    unsigned int gBottomLastFrame = 0;
-
-    // The bottom screen is redrawn at most this often: reading a frame back
-    // waits for the GPU, the panels don't need the game's frame rate.
-    constexpr unsigned int kBottomFrameMs = 33;
+    // Both surfaces follow the same paced presentation (60 Hz or 30 Hz).
 } // namespace
 
 void muiRenderBottom(SDL_Renderer* renderer)
@@ -1332,12 +1341,6 @@ void muiRenderBottom(SDL_Renderer* renderer)
         resetSurfaceInput(surfaceOf(MuiSurface::Bottom));
         return;
     }
-
-    unsigned int now = SDL_GetTicks();
-    if (gBottomLastFrame != 0 && now - gBottomLastFrame < kBottomFrameMs) {
-        return;
-    }
-    gBottomLastFrame = now;
 
     int width;
     int height;
@@ -1428,6 +1431,7 @@ void muiHandleTextInput(const char* text)
 
 bool muiHandleFingerEvent(const SDL_Event* event)
 {
+    muiDisplayActivity();
     const SDL_TouchFingerEvent& finger = event->tfinger;
 
     // The bottom screen's fingers (bottom_screen.cc) are its own: all of

@@ -372,3 +372,12 @@
 {1065}{}{Write a quicksave of the current game?}
 {1066}{}{Save the current game to this slot? Existing contents will be replaced.}
 {1067}{}{Load this save and leave the current game?}
+
+# Display and readability (settings lane).
+{1080}{}{Performance mode}
+{1081}{}{Dim bottom after seconds (0: never)}
+{1082}{}{Bottom text size (%)}
+{1083}{}{Colour-blind safe palette}
+{1084}{}{Top screen CRT scanlines}
+{1085}{}{Balanced (60)}
+{1086}{}{Saver (30)}

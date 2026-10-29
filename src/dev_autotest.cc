@@ -52,6 +52,7 @@
 #include "save_storage.h"
 #include "scripts.h"
 #include "settings.h"
+#include "mui_display_settings.h"
 #include "skill.h"
 #include "sound.h"
 #include "stat.h"
@@ -349,6 +350,8 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_DIALOG_LONG_FIXTURE,
     DEV_AUTOTEST_ACTION_DIALOG_NOTICE,
     DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT,
+    DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE,
+    DEV_AUTOTEST_ACTION_DISPLAY_CHECK,
 };
 
 struct DevAutotestStep {
@@ -1555,6 +1558,78 @@ static const DevAutotestStep kDevAutotestGameFilesSteps[] = {
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "g08_game", "prefs.sections.0" },
 };
 
+// Capture both displays and log timings around idle intervals; fixtures change
+// only display settings, leaving the loaded save untouched.
+static const DevAutotestStep kDevAutotestFramePaceSteps[] = {
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 0, 0, 0, 30, "f00_balanced" },
+    { DEV_AUTOTEST_ACTION_PERF_LOG, 0, 0, 0, 180, "f01_begin" },
+    { DEV_AUTOTEST_ACTION_PERF_LOG, 60, 0, 0, 1, "f02_balanced_timing" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 1, 0, 0, 30, "f03_saver" },
+    { DEV_AUTOTEST_ACTION_PERF_LOG, 0, 0, 0, 180, "f04_begin" },
+    { DEV_AUTOTEST_ACTION_PERF_LOG, 30, 0, 0, 1, "f05_saver_timing" },
+};
+
+static const DevAutotestStep kDevAutotestReadabilitySteps[] = {
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 0, 0, 0, 30, "r00_normal" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 5, 0, 0, 30, "r01_large_safe_crt" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 7, 0, 0, 15, "r02_low_hp_label" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "r03_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 30, "r04_reaction_symbols" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "r05_options_assert", "talk.options.0" },
+    { DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM, 40, 6, 0, 1, "r06_trader_stock" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "r07_barter", "dialog.tab.barter" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 10, "r08_request", "barter.barterer.pid.40" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "r09_total_warning", "quantity.done" },
+    { DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT, 2, 40, 1, 1, "r10_request_assert" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "r11_talk", "barter.talk.button" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 8, 0, 0, 20, "r12_empathy_reactions" },
+};
+
+static const DevAutotestStep kDevAutotestLayoutPreviewSteps[] = {
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 0, 0, 0, 20, "l00_start" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 6, 0, 0, 20, "l01_defaults" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 30, "l02_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "l03_settings", "menu.settings" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l04_display", "prefs.sections.3" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 9, 450, 0, 10, "l05_layout_rows" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "l07_layout_visible", "prefs.rows.920.2" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l08_layout_preview", "prefs.rows.920.2" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l09_nav_preview", "prefs.rows.924.2" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l10_dialogue_preview", "prefs.rows.940.2" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 9, 700, 0, 10, "l11_theme_rows" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l13_theme_preview", "prefs.rows.960.1" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_CHECK, 0, 2, 0, 1, "l14_preview_assert" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l15_cancel", "prefs.back" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l16_discard", "dialog.secondary" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_CHECK, 0, 3, 0, 1, "l17_restored_assert" },
+};
+
+static const DevAutotestStep kDevAutotestDisplaySteps[] = {
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 0, 0, 0, 30, "d00_balanced" },
+    { DEV_AUTOTEST_ACTION_PERF_LOG, 0, 0, 0, 120, "d01_begin" },
+    { DEV_AUTOTEST_ACTION_PERF_LOG, 0, 0, 0, 1, "d02_balanced_timing" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 1, 0, 0, 30, "d03_saver" },
+    { DEV_AUTOTEST_ACTION_PERF_LOG, 0, 0, 0, 120, "d04_begin" },
+    { DEV_AUTOTEST_ACTION_PERF_LOG, 0, 0, 0, 1, "d05_saver_timing" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 2, 0, 0, 10, "d06_idle_dim" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_CHECK, 1, 0, 0, 1, "d07_dim_assert" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 3, 0, 0, 5, "d08_touch_wake" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_CHECK, 0, 0, 0, 1, "d09_touch_assert" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 2, 0, 0, 5, "d10_dim_again" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 4, 0, 0, 5, "d11_pad_wake" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_CHECK, 0, 0, 0, 1, "d12_pad_assert" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 5, 0, 0, 15, "d13_readability" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 30, "d14_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "d15_settings", "menu.settings" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "d15_settings_assert", "prefs.apply" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "d16_display", "prefs.sections.3" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "d17_scanlines_preview", "prefs.rows.1084" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_CHECK, 0, 4, 0, 1, "d17_scanlines_assert" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "d18_cancel", "prefs.back" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "d19_discard", "dialog.secondary" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_CHECK, 0, 1, 0, 1, "d20_restored" },
+};
+
 static const DevAutotestStep kDevAutotestPreferencesSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "p00_start" },
     { DEV_AUTOTEST_ACTION_LOG_PREFERENCES, 0, 0, 0, 1, "p01_before" },
@@ -2465,6 +2540,25 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "gamefiles") == 0) {
         gDevAutotestSteps = kDevAutotestGameFilesSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestGameFilesSteps) / sizeof(kDevAutotestGameFilesSteps[0]);
+    } else if (strcmp(name, "framepace") == 0 || strcmp(name, "readabilityproof") == 0) {
+        bool readability = strcmp(name, "readabilityproof") == 0;
+        gDevAutotestSteps = readability ? kDevAutotestReadabilitySteps : kDevAutotestFramePaceSteps;
+        gDevAutotestStepCount = readability ? sizeof(kDevAutotestReadabilitySteps) / sizeof(kDevAutotestReadabilitySteps[0]) : sizeof(kDevAutotestFramePaceSteps) / sizeof(kDevAutotestFramePaceSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "layoutpreview") == 0) {
+        gDevAutotestSteps = kDevAutotestLayoutPreviewSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestLayoutPreviewSteps) / sizeof(kDevAutotestLayoutPreviewSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "displayproof") == 0) {
+        gDevAutotestSteps = kDevAutotestDisplaySteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDisplaySteps) / sizeof(kDevAutotestDisplaySteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "preferences") == 0) {
         gDevAutotestSteps = kDevAutotestPreferencesSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestPreferencesSteps) / sizeof(kDevAutotestPreferencesSteps[0]);
@@ -3485,6 +3579,69 @@ void devAutotestTick()
             }
             break;
         }
+        case DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE: {
+            int fixture = int(step->a);
+            if (fixture == 0) {
+                settings.touch.perf_mode = "balanced";
+                settings.touch.bottom_dim_seconds = 0;
+                settings.touch.bottom_text_size = 100;
+                settings.touch.colour_blind_safe = false;
+                settings.touch.top_scanlines = false;
+            } else if (fixture == 1) {
+                settings.touch.perf_mode = "saver";
+            } else if (fixture == 2) {
+                settings.touch.bottom_dim_seconds = 1;
+                muiLastDisplayActivity = SDL_GetTicks() - 2000;
+            } else if (fixture == 3) {
+                SDL_Event event = {};
+                event.type = SDL_FINGERMOTION;
+                muiHandleFingerEvent(&event);
+            } else if (fixture == 4) {
+                SDL_Event event = {};
+                event.type = SDL_CONTROLLERBUTTONDOWN;
+                event.cbutton.button = SDL_CONTROLLER_BUTTON_GUIDE;
+                SDL_PushEvent(&event);
+            } else if (fixture == 9) {
+                // Position the list without fling timing depending on GPU speed.
+                // All preference changes still go through the real widgets.
+                MuiContext ui;
+                ui.setScroll("prefs.rows", step->b * hudGetScreenDensity());
+            } else if (fixture == 8) {
+                // Synthetic reaction fixture, with the perk the engine requires.
+                perkAddForce(gDude, PERK_EMPATHY);
+                gameDialogSetTextReply(nullptr, -4, "Developer fixture: Empathy reaction palette.");
+                gameDialogAddTextOptionWithProc(-4, "Friendly response", 0, 49);
+                gameDialogAddTextOptionWithProc(-4, "Neutral response", 0, 50);
+                gameDialogAddTextOptionWithProc(-4, "Hostile response", 0, 51);
+            } else if (fixture == 7) {
+                critterAdjustHitPoints(gDude, 1 - critterGetHitPoints(gDude));
+            } else if (fixture == 6) {
+                settings.touch.dashboard_layout = 0;
+                settings.touch.screen_nav = 0;
+                settings.touch.dialogue_layout = 1;
+                settings.touch.bottom_theme = 0;
+            } else if (fixture == 5) {
+                settings.touch.perf_mode = "balanced";
+                settings.touch.bottom_dim_seconds = 0;
+                settings.touch.bottom_text_size = 125;
+                settings.touch.colour_blind_safe = true;
+                settings.touch.top_scanlines = true;
+            }
+            devAutotestLog("  display fixture %d: %s text %d palette %d scanlines %d\n", fixture,
+                settings.touch.perf_mode.c_str(), settings.touch.bottom_text_size,
+                settings.touch.colour_blind_safe, settings.touch.top_scanlines);
+            break;
+        }
+        case DEV_AUTOTEST_ACTION_DISPLAY_CHECK:
+            if (muiBottomDimmed() != (step->a != 0) || (step->b == 1 && !settings.touch.top_scanlines)
+                || (step->b == 4 && settings.touch.top_scanlines)
+                || (step->b == 2 && (settings.touch.dashboard_layout != 2 || settings.touch.screen_nav != 2 || settings.touch.dialogue_layout != 2 || settings.touch.bottom_theme != 1))
+                || (step->b == 3 && (settings.touch.dashboard_layout != 0 || settings.touch.screen_nav != 0 || settings.touch.dialogue_layout != 1 || settings.touch.bottom_theme != 0))) {
+                devAutotestLog("autotest failed: display dim/preview restoration assertion\n");
+                exit(1);
+            }
+            devAutotestLog("  display assertion passed: dim=%d scanlines=%d\n", muiBottomDimmed(), settings.touch.top_scanlines);
+            break;
         case DEV_AUTOTEST_ACTION_LOG_PREFERENCES: {
             PreferenceValues values = preferencesGetValues();
             devAutotestLog("  preferences: combat speed %d, player speedup %d, master volume %d, brightness %.3f, text delay %.1f, violence %d\n",
@@ -3603,6 +3760,16 @@ void devAutotestTick()
                     static_cast<double>(drawn - gDevAutotestPerfDrawn) / frames / 1000.0,
                     static_cast<double>(uploads - gDevAutotestPerfUploads) / frames,
                     static_cast<double>(pixels - gDevAutotestPerfPixels) / frames / 1000.0);
+            }
+            if (step->a > 0 && frames > 0 && gDevAutotestPerfTime != 0) {
+                double ms = static_cast<double>(getTicksBetween(now, gDevAutotestPerfTime)) / frames;
+                double target = 1000.0 / step->a;
+                // Capture/readback overhead is included, allow slow headless GPUs.
+                if (ms < target - 2.0 || ms > target + 10.0) {
+                    devAutotestLog("autotest failed: pacing %.2f ms, target %.2f ms\n", ms, target);
+                    exit(1);
+                }
+                devAutotestLog("  PASS: pacing target %.2f ms, measured %.2f ms\n", target, ms);
             }
             gDevAutotestPerfDrawn = drawn;
             gDevAutotestPerfFrame = gDevAutotestFrames;
