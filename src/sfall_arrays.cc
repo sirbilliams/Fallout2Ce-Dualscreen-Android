@@ -1084,9 +1084,15 @@ bool sfallArraysLoad(File* stream)
         return true;
     }
 
+    // Pre-3.4 saves can end immediately after the old (zero) count.
+    // Match sfall's LoadArrays: absence of the new section is valid, but a
+    // partial count or truncated elements in a present section are not.
+    if (fileTell(stream) == fileGetSize(stream)) return true;
+
     int count;
     if (fileRead(&count, sizeof(count), 1, stream) != 1) return false;
-    if (count <= 0) return true;
+    if (count < 0) return false;
+    if (count == 0) return true;
     if (count > ARRAY_MAX_SIZE) return false; // sanity bound against corrupt data
 
     for (int i = 0; i < count; i++) {
@@ -1099,6 +1105,7 @@ bool sfallArraysLoad(File* stream)
         int elCount;
         if (fileRead(&elCount, sizeof(elCount), 1, stream) != 1) return false;
         if (elCount < 0 || elCount > ARRAY_MAX_SIZE * 2) return false; // sanity bound
+        if ((flags & SFALL_ARRAYFLAG_ASSOC) != 0 && elCount % 2 != 0) return false;
 
         std::vector<ArrayElement> elements;
         elements.reserve(elCount);

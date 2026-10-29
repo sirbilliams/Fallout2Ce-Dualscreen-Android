@@ -970,4 +970,15 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
 
     ce_add_test(save_catalog_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(sound_tempo_test "src/sound_tempo.cc")
+    ce_add_test(sfall_arrays_test "src/sfall_arrays.cc" "src/sfall_global_vars.cc" "src/sfall_ext.cc")
+    target_include_directories(sfall_arrays_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(sfall_arrays_test ${SDL2_LIBRARIES})
+    # Keep this unit test independent of the engine's mod loader and VM.
+    target_compile_options(sfall_arrays_test PRIVATE -ffunction-sections -fdata-sections)
+    if(APPLE)
+        target_link_options(sfall_arrays_test PRIVATE -Wl,-dead_strip)
+    else()
+        target_link_options(sfall_arrays_test PRIVATE -Wl,--gc-sections)
+    endif()
+    set_tests_properties(sfall_arrays_test PROPERTIES TIMEOUT 10)
 endif()
