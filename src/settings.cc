@@ -410,6 +410,11 @@ void initSettingsRegistry(bool isMapper)
     SETTING(dual_screen);
     SETTING_P(dashboard_layout, clamp(0, 2));
     SETTING_P(screen_nav, clamp(0, 2));
+    SETTING_P(dialogue_layout, clamp(0, 2));
+    SETTING_P(dialogue_option_size, clamp(0, 1));
+    SETTING_P(barter_layout, clamp(0, 1));
+    SETTING(dialogue_tap_skip);
+    SETTING(barter_confirm);
 #undef SECT
 
 #define SECT world_view

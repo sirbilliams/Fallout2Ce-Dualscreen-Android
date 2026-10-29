@@ -98,6 +98,11 @@ namespace {
     constexpr int kTextTacticalView = 373;
     constexpr int kTextDashboardLayout = 920;
     constexpr int kTextScreenNav = 924;
+    constexpr int kTextDialogueLayout = 940;
+    constexpr int kTextDialogueOptionSize = 944;
+    constexpr int kTextBarterLayout = 947;
+    constexpr int kTextDialogueTapSkip = 950;
+    constexpr int kTextBarterConfirm = 951;
     constexpr int kTextDualScreen = 900;
     constexpr int kTextDualScreenNote = 901;
     constexpr int kTextTacticalViewNote = 374;
@@ -205,6 +210,11 @@ namespace {
         bool dualScreen;
         int dashboardLayout;
         int screenNav;
+        int dialogueLayout;
+        int dialogueOptionSize;
+        int barterLayout;
+        bool dialogueTapSkip;
+        bool barterConfirm;
         bool saveCompatibility;
         int interfaceSize;
         int mapFilter;
@@ -231,6 +241,11 @@ namespace {
         values.dualScreen = settings.touch.dual_screen;
         values.dashboardLayout = settings.touch.dashboard_layout;
         values.screenNav = settings.touch.screen_nav;
+        values.dialogueLayout = settings.touch.dialogue_layout;
+        values.dialogueOptionSize = settings.touch.dialogue_option_size;
+        values.barterLayout = settings.touch.barter_layout;
+        values.dialogueTapSkip = settings.touch.dialogue_tap_skip;
+        values.barterConfirm = settings.touch.barter_confirm;
         values.saveCompatibility = settings.enhancements.save_compatibility;
         values.interfaceSize = settings.touch.hud_scale;
         values.mapFilter = settings.world_view.filter;
@@ -258,6 +273,11 @@ namespace {
         values.dualScreen = TouchSettings().dual_screen;
         values.dashboardLayout = TouchSettings().dashboard_layout;
         values.screenNav = TouchSettings().screen_nav;
+        values.dialogueLayout = TouchSettings().dialogue_layout;
+        values.dialogueOptionSize = TouchSettings().dialogue_option_size;
+        values.barterLayout = TouchSettings().barter_layout;
+        values.dialogueTapSkip = TouchSettings().dialogue_tap_skip;
+        values.barterConfirm = TouchSettings().barter_confirm;
         values.saveCompatibility = EnhancementSettings().save_compatibility;
         values.interfaceSize = TouchSettings().hud_scale;
         values.mapFilter = WorldViewSettings().filter;
@@ -335,6 +355,11 @@ namespace {
         settings.touch.dual_screen = values.dualScreen;
         settings.touch.dashboard_layout = values.dashboardLayout;
         settings.touch.screen_nav = values.screenNav;
+        settings.touch.dialogue_layout = values.dialogueLayout;
+        settings.touch.dialogue_option_size = values.dialogueOptionSize;
+        settings.touch.barter_layout = values.barterLayout;
+        settings.touch.dialogue_tap_skip = values.dialogueTapSkip;
+        settings.touch.barter_confirm = values.barterConfirm;
         settings.enhancements.save_compatibility = values.saveCompatibility;
         settings.touch.hud_scale = values.interfaceSize;
         settings.world_view.filter = values.mapFilter;
@@ -656,6 +681,42 @@ namespace {
             rows.push_back(row);
         }
         {
+            Row row { Section::Display, RowKind::Choice, kTextDialogueLayout, "Dialogue layout", Origin::Port };
+            row.options = { 941, 942, 943 };
+            row.optionsFromCe = true;
+            row.get = [](const Values& values) { return static_cast<float>(values.dialogueLayout); };
+            row.set = [](Values& values, float value) { values.dialogueLayout = static_cast<int>(value); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Display, RowKind::Choice, kTextDialogueOptionSize, "Dialogue option size", Origin::Port };
+            row.options = { 945, 946 };
+            row.optionsFromCe = true;
+            row.get = [](const Values& values) { return static_cast<float>(values.dialogueOptionSize); };
+            row.set = [](Values& values, float value) { values.dialogueOptionSize = static_cast<int>(value); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Display, RowKind::Choice, kTextBarterLayout, "Barter layout", Origin::Port };
+            row.options = { 948, 949 };
+            row.optionsFromCe = true;
+            row.get = [](const Values& values) { return static_cast<float>(values.barterLayout); };
+            row.set = [](Values& values, float value) { values.barterLayout = static_cast<int>(value); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Display, RowKind::Toggle, kTextDialogueTapSkip, "Tap the reply to skip it", Origin::Port };
+            row.get = [](const Values& values) { return values.dialogueTapSkip ? 1.0f : 0.0f; };
+            row.set = [](Values& values, float value) { values.dialogueTapSkip = value != 0.0f; };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Display, RowKind::Toggle, kTextBarterConfirm, "Confirm lossy trades", Origin::Port };
+            row.get = [](const Values& values) { return values.barterConfirm ? 1.0f : 0.0f; };
+            row.set = [](Values& values, float value) { values.barterConfirm = value != 0.0f; };
+            rows.push_back(row);
+        }
+        {
             Row row { Section::Display, RowKind::Toggle, kTextWorldmapFollow, "Camera follows the party on the world map", Origin::Port, kTextWorldmapFollowNote, "Moving the map pauses it until the next destination" };
             row.get = [](const Values& values) { return values.worldmapFollow ? 1.0f : 0.0f; };
             row.set = [](Values& values, float value) { values.worldmapFollow = value != 0.0f; };
@@ -765,8 +826,14 @@ namespace {
             static const char* const kFallbacks[] = { "Pixels", "Smooth", "Sharp" };
             static const char* const kDashboardFallbacks[] = { "Classic", "Map first", "Two columns" };
             static const char* const kNavFallbacks[] = { "Rail", "Slim rail", "Top bar" };
+            static const char* const kDialogueFallbacks[] = { "Top", "Split", "Split, mirrored" };
+            static const char* const kSizeFallbacks[] = { "Normal", "Large" };
+            static const char* const kBarterFallbacks[] = { "Top", "Bottom" };
             const char* fallback = row.textId == kTextDashboardLayout ? kDashboardFallbacks[index]
                 : row.textId == kTextScreenNav                        ? kNavFallbacks[index]
+                : row.textId == kTextDialogueLayout                   ? kDialogueFallbacks[index]
+                : row.textId == kTextDialogueOptionSize               ? kSizeFallbacks[index]
+                : row.textId == kTextBarterLayout                     ? kBarterFallbacks[index]
                                                                       : kFallbacks[std::min(index, 2)];
             return muiDecodeGameText(muiText(id, fallback));
         }

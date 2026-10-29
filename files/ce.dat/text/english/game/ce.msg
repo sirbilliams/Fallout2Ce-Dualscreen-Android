@@ -325,3 +325,24 @@
 {935}{}{Sequence}
 {936}{}{Heal Rate}
 {937}{}{Crit}
+
+// Dialogue and barter on the bottom screen.
+{940}{}{Dialogue layout}
+{941}{}{Top}
+{942}{}{Split}
+{943}{}{Split, mirrored}
+{944}{}{Dialogue option size}
+{945}{}{Normal}
+{946}{}{Large}
+{947}{}{Barter layout}
+{948}{}{Top}
+{949}{}{Bottom}
+{950}{}{Tap the reply to skip it}
+{951}{}{Confirm lossy trades}
+{952}{}{Barter}
+{953}{}{End conversation}
+{954}{}{Talk}
+{955}{}{This offer is worth much less than the request. Offer anyway?}
+{956}{}{Offer}
+{957}{}{Cancel}
+{958}{}{Total}

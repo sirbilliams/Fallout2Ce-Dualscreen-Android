@@ -353,6 +353,19 @@ struct TouchSettings {
     // Bottom-screen dashboard and screen navigation (0 keeps the classic layout).
     int dashboard_layout = 0;
     int screen_nav = 0;
+    // Dialogue and barter on the bottom screen (QOL stage 2). Applied only
+    // while the bottom screen is in use, a single screen keeps the top layouts.
+    // dialogue_layout: 0 top, 1 split (head and reply on top, options on the
+    // bottom), 2 split with the options mirrored dimmed on top.
+    int dialogue_layout = 1;
+    // 0 normal (16 dp), 1 large (20 dp).
+    int dialogue_option_size = 0;
+    // 0 top, 1 bottom.
+    int barter_layout = 1;
+    // A tap on the reply skips its typing / speech.
+    bool dialogue_tap_skip = false;
+    // Ask before an offer that is clearly lossy.
+    bool barter_confirm = false;
 };
 
 struct MapperSettings {
