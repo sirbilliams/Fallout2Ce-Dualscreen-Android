@@ -91,6 +91,12 @@
             -->
         </activity>
 
+        <!-- First-run setup guide (shown once, or from the game's settings). -->
+        <activity android:name=".SetupGuideActivity"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+
         <!-- Its own process: "Replace game" chosen in the game closes the
              game's (MainActivity exits the process), the import goes on. -->
         <activity android:name=".ImportActivity"

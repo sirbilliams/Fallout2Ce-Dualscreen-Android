@@ -349,3 +349,6 @@
 {956}{}{Offer}
 {957}{}{Cancel}
 {958}{}{Total}
+{1100}{}{Setup guide}
+{1101}{}{Game files, layout, theme and controls, step by step}
+{1102}{}{Open}

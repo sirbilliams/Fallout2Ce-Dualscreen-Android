@@ -127,6 +127,10 @@ namespace {
     constexpr int kTextDeleteSavesFailed = 351;
     constexpr int kTextReplaceButton = 352;
     constexpr int kTextImportButton = 353;
+    // Setup guide row (pipboy lane, ce.msg 1100-1119).
+    constexpr int kTextSetupGuide = 1100;
+    constexpr int kTextSetupGuideNote = 1101;
+    constexpr int kTextSetupGuideButton = 1102;
     constexpr int kTextExportButton = 354;
     constexpr int kTextDeleteButton = 355;
     constexpr int kTextKarmaChanges = 356;
@@ -404,6 +408,7 @@ namespace {
         ImportSaves,
         ExportSaves,
         DeleteSaves,
+        SetupGuide,
     };
 
     // The section is there on Android (the app's import screen does the
@@ -414,6 +419,30 @@ namespace {
         return true;
 #else
         return devAutotestIsEnabled();
+#endif
+    }
+
+    // Opens the app's first-run setup guide (Android only).
+    void openSetupGuide()
+    {
+#ifdef __ANDROID__
+        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+        if (env == nullptr || activity == nullptr) {
+            return;
+        }
+        jclass activityClass = env->GetObjectClass(activity);
+        jmethodID method = env->GetMethodID(activityClass, "openSetupGuide", "()V");
+        if (method != nullptr) {
+            env->CallVoidMethod(activity, method);
+        }
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+        }
+        env->DeleteLocalRef(activityClass);
+        env->DeleteLocalRef(activity);
+#else
+        debugPrint("setup guide\n");
 #endif
     }
 
@@ -1117,6 +1146,7 @@ namespace {
             { FilesAction::ReplaceGame, "prefs.files.replace", kTextReplaceGame, "Replace game", kTextReplaceGameNote, "New build or new mods; saves and settings stay", kTextReplaceButton, "Replace" },
             { FilesAction::ImportSaves, "prefs.files.import", kTextImportSaves, "Import saves", kTextImportSavesNote, "From a folder or an archive: add or replace all", kTextImportButton, "Import" },
             { FilesAction::ExportSaves, "prefs.files.export", kTextExportSaves, "Export saves", kTextExportSavesNote, "All saves in one archive", kTextExportButton, "Export" },
+            { FilesAction::SetupGuide, "prefs.files.guide", kTextSetupGuide, "Setup guide", kTextSetupGuideNote, "Game files, layout, theme and controls, step by step", kTextSetupGuideButton, "Open" },
             { FilesAction::DeleteSaves, "prefs.files.delete", kTextDeleteSaves, "Delete all saves", kTextDeleteSavesNote, "Export them first if they may be needed", kTextDeleteButton, "Delete" },
         };
         constexpr int kActionCount = sizeof(kActions) / sizeof(kActions[0]);
@@ -1197,6 +1227,11 @@ namespace {
                 const char* failure[] = { muiText(kTextDeleteSavesFailed, "Not all saves could be deleted.") };
                 showDialogBox(muiText(kTextDeleteSavesTitle, "Delete all saves?"), failure, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, 0);
             }
+            return;
+        }
+
+        if (action == FilesAction::SetupGuide) {
+            openSetupGuide();
             return;
         }
 
