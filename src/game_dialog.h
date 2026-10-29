@@ -130,6 +130,8 @@ void gameDialogGetReviewEntry(int index, const char** reply, const char** option
 // Talking head / map around the speaker as drawn by the game.
 bool gameDialogGetHeadImage(const unsigned char** data, int* width, int* height, int* pitch);
 bool gameDialogSpeakerCanBarter();
+// Cuts the speaker's voice / lip-sync short (the reply stays shown).
+void gameDialogSkipSpeech();
 
 } // namespace fallout
 

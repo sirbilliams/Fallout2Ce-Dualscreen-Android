@@ -1083,6 +1083,11 @@ void gameDialogEndLips()
     }
 }
 
+void gameDialogSkipSpeech()
+{
+    gameDialogEndLips();
+}
+
 // 0x4450EC
 int gameDialogEnable()
 {

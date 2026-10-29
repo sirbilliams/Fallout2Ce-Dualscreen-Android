@@ -1227,3 +1227,22 @@ only in combat), swap hands (exists), sneak (skilldex).
 - Xiaomi phones block `adb install` and `adb shell input` without a SIM card
   ("Install via USB" / "USB debugging (security settings)"), so touch testing
   on the device is manual.
+
+## Dual screen: dialogue and barter (QOL stage 2)
+
+- `TalkScreen` (top) plus `BottomTalkScreen` (bottom) share one model; `TalkScreen::split()`
+  is true with the bottom screen in use, `dialogue_layout != 0` and at least one option
+  (otherwise the old top layout shows the talk). The bottom side tracks its own reply
+  (scroll state is per surface) and ignores taps for 120 ms after a new reply.
+- `BarterScreen::surface()` follows `barter_layout`; `TopBarterBackdrop` draws the head,
+  caps and reply on the top. Bottom barter uses 2 columns per side and a Talk / OFFER footer.
+- `barter_confirm` asks (in-screen card) when the offer is worth over 30% less than the request
+  or all of the player's weapons and armor are on the table.
+- `dialogue_tap_skip`: a tap on the reply (top) or the speaker header (bottom) calls
+  `gameDialogSkipSpeech` (ends the lip-sync / voice).
+- Not done: quantity picker price line, long press / drag picker changes, "more" sheet for
+  options over 600 characters, the End row's special styling for options other than the
+  game's `[Done]`.
+- Autotest: `dualtalk` and `dualbarter` scenarios (bottom screen at 1240 x 1080); `MUI_TAP`
+  finds widgets on the bottom screen too and sends the touch there. Run with
+  `--dev-new-game --dev-map=arvillag.map` (Elder) for talk, `--dev-new-game` (Klint) for barter.

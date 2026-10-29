@@ -112,8 +112,10 @@ what the screen is about:
 
 | Game screen | Top | Bottom |
 |---|---|---|
-| Dialogue | talking head (or the map around the speaker) and the reply | options, review, barter / party tabs |
-| Barter | talking head | the trade tables |
+| Dialogue (`dialogue_layout` 1, default on dual screen) | talking head (or the map around the speaker) and the large reply; mode 2 also a dimmed copy of the options | numbered options (wrapped, reaction tint, scroll thumb), Barter / End shortcuts, review, barter / party tabs |
+| Barter (`barter_layout` 1, default) | talking head, trader, caps, last reply (nothing touchable) | the trade: 2-column lists, tables, Talk / OFFER footer, red request total when the trade is lossy |
+
+Setting 0 for either keeps the whole screen on the top (phones and single-screen devices always do).
 | Loot | world, container in view | the loot screen |
 | Inventory, character, Pip-Boy, automap | world, dimmed | the screen |
 | World map | the world map, large | towns, car, travel controls |

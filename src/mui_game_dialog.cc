@@ -420,6 +420,9 @@ namespace {
             std::u32string name = muiDecodeGameText(objectGetName(gGameDialogSpeaker));
             muiDrawTextAligned(name, header, muiFitTextSize(name, header.w, ui.dp(19.0f), ui.dp(12.0f)), theme.accent, MuiAlign::Start, MuiAlign::Center);
         }
+        if (settings.touch.dialogue_tap_skip && ui.touchable("talk.header.skip", header)) {
+            gameDialogSkipSpeech();
+        }
         MuiRect body = { content.x, header.bottom() + gap, content.w, content.h - header.h - gap };
 
         PartyControlView partyView;
@@ -561,6 +564,11 @@ namespace {
         float height = lines.size() * lineHeight;
 
         float offset = ui.scroll("talk.reply", content, height);
+
+        // `[touch] dialogue_tap_skip`: a tap on the reply cuts the speech.
+        if (settings.touch.dialogue_tap_skip && ui.touchable("talk.reply.skip", content) && !ui.isScrolling("talk.reply")) {
+            gameDialogSkipSpeech();
+        }
 
         muiPushClip(content);
         float y = content.y - offset;

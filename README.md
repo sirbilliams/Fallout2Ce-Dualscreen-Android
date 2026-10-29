@@ -36,7 +36,7 @@ On top of CE (its engine, fixes and sfall compatibility are kept and updated fro
 - **Mod features built in** where the mods can't run on CE: Inventory Filter's filters and party tabs in loot and barter.
 - **Saves.** A save list sorted by when saves were made, quick saves that never overwrite manual ones (their number is a setting), "Continue" in the main menu, saves interrupted midway are restored, optional marks for saves made with other game files or mods.
 - **Android app.** The game's files are imported from a folder or any archive (.zip, .7z, .rar, .tar...) copied from a computer, with RPU and other mods and the saves; "Replace game" for new builds and mod updates; export and import of saves.
-- **Dual screen.** The bottom-screen companion above (`[touch] dual_screen`, `dashboard_layout`, `screen_nav`).
+- **Dual screen.** The bottom-screen companion above (`[touch] dual_screen`, `dashboard_layout`, `screen_nav`). Dialogue and barter use the bottom screen too: head and reply on top, large numbered options (and the Barter / End shortcuts) below; barter gets the whole bottom screen with the head on top. Settings: `dialogue_layout` (0 top, 1 split, 2 split with the options mirrored dimmed on top), `dialogue_option_size`, `barter_layout` (0 top, 1 bottom), `dialogue_tap_skip`, `barter_confirm`. The layouts only apply while the bottom screen is in use.
 - **The port's own improvements** are settings (`[enhancements]` in `fallout2.cfg`).
 
 The full list of changes is the git history over upstream.

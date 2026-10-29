@@ -685,6 +685,8 @@ static const DevAutotestStep kDevAutotestDualTalkSteps[] = {
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "t05_talk", "dialog.tab.talk" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "t06_option_1", "talk.options.1" },
     { DEV_AUTOTEST_ACTION_WAIT_TALKING, 600, 0, 0, 60, "t06b_talking" },
+    // Only with `dialogue_tap_skip=1` (cuts the speech, shows nothing new).
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "t07_tap_skip", "talk.header.skip" },
 };
 
 static const DevAutotestStep kDevAutotestDualBarterSteps[] = {
