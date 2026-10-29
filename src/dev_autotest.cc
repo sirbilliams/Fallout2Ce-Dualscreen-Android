@@ -228,6 +228,9 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_SET_NAME,
     // Saves the game to slot `a` (0-based) with description `widget`.
     DEV_AUTOTEST_ACTION_SAVE_GAME,
+    DEV_AUTOTEST_ACTION_CHECK_SAVE_SLOT,
+    DEV_AUTOTEST_ACTION_CHECK_LOOT,
+    DEV_AUTOTEST_ACTION_SUSPEND,
     DEV_AUTOTEST_ACTION_QUICK_SAVE,
     DEV_AUTOTEST_ACTION_QUICK_LOAD,
     DEV_AUTOTEST_ACTION_CHECK_SAVE_SESSION,
@@ -1291,6 +1294,64 @@ static const DevAutotestStep kDevAutotestPcInventorySteps[] = {
     { DEV_AUTOTEST_ACTION_LOG_INVENTORY, 0, 0, 0, 1, "w11_inventory" },
 };
 
+// Saves lane: confirmations stay on the bottom, including cancellation.
+static const DevAutotestStep kDevAutotestSavesBottomSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "s00_map" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Menu), 0, 0, 30, "s01_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "s02_manager", "menu.save" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "s03_save_confirm", "loadsave.action" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s04_cancel_save", "dialog.secondary" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s05_quicksave_confirm", "loadsave.quicksave" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 60, "s06_quicksaved", "dialog.primary" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Menu), 0, 0, 30, "s07_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "s08_load_manager", "menu.load" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "s09_quickload_confirm", "loadsave.quickload" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s10_cancel_load", "dialog.secondary" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "s11_delete_confirm", "loadsave.delete" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s12_keep_save", "dialog.secondary" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 20, "s13_back" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 20, "s14_map" },
+    { DEV_AUTOTEST_ACTION_SAVE_GAME, 949, 0, 0, 10, "s15_fixture", "Saves lane fixture" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Menu), 0, 0, 20, "s16_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s17_save_manager", "menu.save" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s18_existing_slot", "loadsave.slots.950" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s19_overwrite_confirm", "loadsave.action" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "s20_overwritten", "dialog.primary" },
+    { DEV_AUTOTEST_ACTION_CHECK_SAVE_SLOT, 949, 1, 1, 1, "s21_metadata_thumbnail" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Menu), 0, 0, 20, "s22_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s23_load_manager", "menu.load" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s24_select_load", "loadsave.slots.950" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s25_load_confirm", "loadsave.action" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 80, "s26_loaded", "dialog.primary" },
+    { DEV_AUTOTEST_ACTION_CHECK_LOADED_WORLD, 0, 0, 0, 1, "s27_loaded_world" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Menu), 0, 0, 20, "s28_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s29_delete_manager", "menu.load" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s30_select_delete", "loadsave.slots.950" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s31_delete_confirm", "loadsave.delete" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "s32_deleted", "dialog.primary" },
+    { DEV_AUTOTEST_ACTION_CHECK_SAVE_SLOT, 949, 0, 0, 1, "s33_empty_slot" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s34_import", "loadsave.import" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 10, "s35_close_import" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 10, "s36_close_manager" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 10, "s37_map" },
+};
+
+static const DevAutotestStep kDevAutotestSuspendSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 60, "u00_map" },
+    { DEV_AUTOTEST_ACTION_SUSPEND, 1, 0, 0, 30, "u01_suspend_saved" },
+    { DEV_AUTOTEST_ACTION_SUSPEND, 1, 4, 0, 30, "u01b_lid_saved" },
+    { DEV_AUTOTEST_ACTION_SUSPEND, 1, 5, 0, 30, "u01c_foreign_slot_preserved" },
+    { DEV_AUTOTEST_ACTION_SUSPEND, 0, 1, 0, 10, "u02_dialogue_unsafe" },
+    { DEV_AUTOTEST_ACTION_SUSPEND, 0, 2, 0, 10, "u03_barter_unsafe" },
+    { DEV_AUTOTEST_ACTION_SUSPEND, 0, 0, 1, 10, "u04_setting_off" },
+    { DEV_AUTOTEST_ACTION_SUSPEND, 0, 3, 0, 10, "u04b_combat_animation_unsafe" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Menu), 0, 0, 30, "u05_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "u06_dedicated_slot", "menu.load" },
+    { DEV_AUTOTEST_ACTION_SUSPEND, 0, 0, 0, 10, "u07_manager_unsafe" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 10, "u08_back" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 10, "u09_map" },
+};
+
 // Mobile UI loot screen: moving items both ways, filtered "Take all", a
 // bag opened on the looted side, "Give all".
 static const DevAutotestStep kDevAutotestLootSteps[] = {
@@ -1301,10 +1362,15 @@ static const DevAutotestStep kDevAutotestLootSteps[] = {
     { DEV_AUTOTEST_ACTION_GIVE_CORPSE_ITEM, 8, 0, 0, 1, "l04_corpse_pistol" },
     { DEV_AUTOTEST_ACTION_GIVE_CORPSE_ITEM, 29, 0, 0, 1, "l05_corpse_ammo" },
     { DEV_AUTOTEST_ACTION_GIVE_CORPSE_ITEM, 46, 0, 0, 1, "l06_corpse_bag" },
-    { DEV_AUTOTEST_ACTION_GIVE_CORPSE_ITEM, 40, 0, 0, 1, "l07_corpse_stimpak" },
+    { DEV_AUTOTEST_ACTION_GIVE_CORPSE_ITEM, 40, 3, 0, 1, "l07_corpse_stimpak" },
     { DEV_AUTOTEST_ACTION_CENTER_CORPSE, 0, 0, 0, 10, "l08_center" },
     { DEV_AUTOTEST_ACTION_TOUCH_TAP_CORPSE, 0, 0, 0, 240, "l09_open_loot" },
     { DEV_AUTOTEST_ACTION_LOG_INVENTORY, 0, 0, 0, 1, "l09b_log" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "l09c_quantity", "loot.right.pid.40" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "l09d_picker_present", "quantity.plus" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 10, "l09e_two", "quantity.plus" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l09f_take_two", "quantity.done" },
+    { DEV_AUTOTEST_ACTION_CHECK_LOOT, 40, 1, 0, 1, "l09g_one_remains" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "l10_take_pistol", "loot.right.pid.8" },
     { DEV_AUTOTEST_ACTION_MUI_DRAG, 0, 0, 0, 30, "l11_give_knife", "loot.left.pid.4", "loot.right" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l12_filter_ammo", "loot.filter.right.5" },
@@ -1315,6 +1381,7 @@ static const DevAutotestStep kDevAutotestLootSteps[] = {
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "l17_close_bag", "loot.container.right" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "l18_take_all", "loot.take_all" },
     { DEV_AUTOTEST_ACTION_LOG_INVENTORY, 0, 0, 0, 1, "l18b_log" },
+    { DEV_AUTOTEST_ACTION_CHECK_LOOT, 0, 0, 0, 1, "l18c_container_empty" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "l19_filter_drugs", "loot.filter.left.4" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "l20_give_all", "loot.give_all" },
     { DEV_AUTOTEST_ACTION_LOG_INVENTORY, 0, 0, 0, 1, "l20b_log" },
@@ -2335,6 +2402,13 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "themeshots") == 0) {
         gDevAutotestSteps = kDevAutotestThemeSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestThemeSteps) / sizeof(kDevAutotestThemeSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "saves-bottom") == 0 || strcmp(name, "suspend-bottom") == 0) {
+        bool suspend = strcmp(name, "suspend-bottom") == 0;
+        gDevAutotestSteps = suspend ? kDevAutotestSuspendSteps : kDevAutotestSavesBottomSteps;
+        gDevAutotestStepCount = suspend ? sizeof(kDevAutotestSuspendSteps) / sizeof(DevAutotestStep) : sizeof(kDevAutotestSavesBottomSteps) / sizeof(DevAutotestStep);
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif
@@ -3677,6 +3751,89 @@ void devAutotestTick()
                 devAutotestLog("  party member pid %d, items %d, script %d, in hand pid %d\n", member->pid, member->data.inventory.length, member->sid, weapon != nullptr ? weapon->pid : -1);
             }
             break;
+        case DEV_AUTOTEST_ACTION_CHECK_SAVE_SLOT: {
+            lsgMobileRefreshSlots();
+            MobileSaveSlotInfo info;
+            int slot = static_cast<int>(step->a);
+            bool ok = lsgMobileGetSlotInfo(slot, &info) && (info.state == MobileSaveSlotState::Occupied) == (step->b != 0);
+            if (step->c > 0) {
+                std::vector<unsigned char> pixels(kMobileSavePreviewWidth * kMobileSavePreviewHeight);
+                ok = ok && info.level == static_cast<int>(step->c) && lsgMobileReadPreview(slot, pixels.data(), pixels.size());
+            }
+            devAutotestLog("  slot=%d state=%d level=%d thumbnail: %s\n", slot + 1, static_cast<int>(info.state), info.level, ok ? "PASS" : "FAIL");
+            if (!ok) exit(EXIT_FAILURE);
+            break;
+        }
+        case DEV_AUTOTEST_ACTION_CHECK_LOOT: {
+            LootView view;
+            bool active = lootGetView(&view);
+            int quantity = 0;
+            if (active) {
+                for (int index = 0; index < view.rightOwner->data.inventory.length; index++) {
+                    auto& entry = view.rightOwner->data.inventory.items[index];
+                    if (step->a == 0 || entry.item->pid == static_cast<int>(step->a)) quantity += entry.quantity;
+                }
+            }
+            bool ok = active && quantity == static_cast<int>(step->b);
+            devAutotestLog("  loot pid=%d quantity=%d expected=%d: %s\n", static_cast<int>(step->a), quantity, static_cast<int>(step->b), ok ? "PASS" : "FAIL");
+            if (!ok) exit(EXIT_FAILURE);
+            break;
+        }
+        case DEV_AUTOTEST_ACTION_SUSPEND: {
+            bool enabled = settings.enhancements.auto_quicksave_on_suspend;
+            settings.enhancements.auto_quicksave_on_suspend = step->c == 0;
+            GameMode::Flags mode = step->b == 1 ? GameMode::kDialog : step->b == 2 ? GameMode::kBarter : GameMode::kNone;
+            if (step->b == 5 && lsgSaveGameToSlot(lsgGetTotalSlotCount() - 1, "Automatic suspend") != 0) exit(EXIT_FAILURE);
+            lsgMobileRefreshSlots();
+            MobileSaveSlotInfo before, after;
+            int slot = lsgGetTotalSlotCount() - 1;
+            lsgMobileGetSlotInfo(slot, &before);
+            {
+                ScopedGameMode guard(mode);
+                CombatState combatState = gCombatState;
+                if (step->b == 3) {
+                    gCombatState |= COMBAT_STATE_IN_COMBAT;
+                    _combat_anim_begin();
+                    if (combatSaveIsSafe()) { devAutotestLog("FAIL: combat animation accepted\n"); exit(EXIT_FAILURE); }
+                }
+                SDL_Event event = {};
+                event.type = step->b == 4 ? SDL_WINDOWEVENT : SDL_APP_WILLENTERBACKGROUND;
+                event.window.event = SDL_WINDOWEVENT_MINIMIZED;
+                SDL_PushEvent(&event);
+                _GNW95_process_message();
+                unsigned int time = gameTimeGetTime();
+                _process_bk();
+                if (time != gameTimeGetTime()) {
+                    devAutotestLog("FAIL: suspended game advanced\n");
+                    exit(EXIT_FAILURE);
+                }
+                if (step->b == 3) {
+                    _combat_anim_finished();
+                    gCombatState = combatState;
+                }
+                event.type = step->b == 4 ? SDL_WINDOWEVENT : SDL_APP_DIDENTERFOREGROUND;
+                event.window.event = SDL_WINDOWEVENT_FOCUS_GAINED;
+                SDL_PushEvent(&event);
+                _GNW95_process_message();
+            }
+            lsgMobileRefreshSlots();
+            lsgMobileGetSlotInfo(slot, &after);
+            bool wrote = after.order > before.order;
+            bool ok = wrote == (step->a != 0);
+            if (step->b == 5) {
+                bool preserved = false;
+                for (int candidate = 0; candidate < slot; ++candidate) {
+                    MobileSaveSlotInfo moved;
+                    if (lsgMobileGetSlotInfo(candidate, &moved) && moved.state == MobileSaveSlotState::Occupied && moved.order == before.order) preserved = true;
+                }
+                devAutotestLog("  foreign dedicated-slot save preserved: %s\n", preserved ? "PASS" : "FAIL");
+                ok = ok && preserved;
+            }
+            devAutotestLog("  suspend mode=%d disabled=%d wrote=%d expected=%d: %s\n", static_cast<int>(step->b), static_cast<int>(step->c), wrote, step->a != 0, ok ? "PASS" : "FAIL");
+            settings.enhancements.auto_quicksave_on_suspend = enabled;
+            if (!ok) exit(EXIT_FAILURE);
+            break;
+        }
         case DEV_AUTOTEST_ACTION_QUICK_SAVE:
             if (lsgSaveGame(LOAD_SAVE_MODE_QUICK) != 1) {
                 devAutotestLog("FAIL: quick save\n");
@@ -3729,7 +3886,7 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_GIVE_CORPSE_ITEM: {
             Object* item;
             if (gDevAutotestCorpse != nullptr && objectCreateWithProtoId(&item, ProtoId(static_cast<int>(step->a))) == 0) {
-                itemAdd(gDevAutotestCorpse, item, 1);
+                itemAdd(gDevAutotestCorpse, item, step->b > 0 ? static_cast<int>(step->b) : 1);
                 devAutotestLog("  gave corpse item pid %d\n", static_cast<int>(step->a));
             }
             break;

@@ -19,6 +19,7 @@ void combatExit();
 int _find_cid(int a1, int a2, Object** a3, int a4);
 int combatLoad(File* stream);
 int combatSave(File* stream);
+bool combatSaveIsSafe();
 bool _combat_safety_invalidate_weapon(Object* attacker, Object* weapon, HitMode hitMode, Object* defender, int* safeDistancePtr);
 bool _combatTestIncidentalHit(Object* attacker, Object* defender, Object* attackerFriend, Object* weapon);
 Object* _combat_whose_turn();

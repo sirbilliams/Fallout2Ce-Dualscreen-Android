@@ -3,7 +3,7 @@
 
 namespace fallout {
 
-bool ceSaveGameData(const char* path);
+bool ceSaveGameData(const char* path, bool automaticSuspend = false);
 void ceLoadGameData(const char* path);
 
 } // namespace fallout

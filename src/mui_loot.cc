@@ -1,5 +1,6 @@
 #include "mui_screens.h"
 #include "mui_skin.h"
+#include "mui_gameskin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -66,6 +67,8 @@ namespace {
             LootView view;
             bool active = muiIsEnabled() && lootGetView(&view);
             if (active && !wasActive) {
+                previews[SIDE_LEFT].clear();
+                previews[SIDE_RIGHT].clear();
                 filters[SIDE_LEFT] = MuiItemFilterState();
                 filters[SIDE_RIGHT] = MuiItemFilterState();
             }
@@ -78,6 +81,7 @@ namespace {
 
     private:
         bool wasActive = false;
+        std::u32string previews[SIDE_COUNT];
         MuiItemFilterState filters[SIDE_COUNT];
         std::vector<MuiListItem> lists[SIDE_COUNT];
         MuiRect listRects[SIDE_COUNT];
@@ -130,12 +134,13 @@ namespace {
         if (ui.touchable("loot.back", back, &backPressed)) {
             lootRequestClose();
         }
-        muiFillRoundRect(back, ui.dp(theme.radius), backPressed ? theme.buttonPressed : theme.button);
+        themedButton(ui, back, backPressed);
         muiStrokeRoundRect(back, ui.dp(theme.radius), ui.dp(theme.borderWidth), backPressed ? theme.accent : theme.buttonBorder);
         muiDrawIcon(MuiIcon::Back, back.centerX(), back.centerY(), back.w * 0.46f, ui.dp(2.2f), theme.accent);
 
         lists[SIDE_LEFT] = muiInventoryItems(view.leftOwner, filters[SIDE_LEFT]);
         lists[SIDE_RIGHT] = muiInventoryItems(view.rightOwner, filters[SIDE_RIGHT]);
+        for (int side = 0; side < SIDE_COUNT; ++side) if (lists[side].empty()) previews[side].clear();
 
         float gap = ui.dp(12.0f);
         float sideWidth = (content.w - gap) / 2.0f;
@@ -153,8 +158,11 @@ namespace {
             muiItemFilterRow(ui, filterId, { x, y, sideWidth, rowHeight }, &filters[side]);
             y += rowHeight + rowGap;
 
-            float listHeight = content.bottom() - bottomHeight - rowGap - y;
+            float listHeight = content.bottom() - bottomHeight - rowGap - ui.dp(32.0f) - y;
             buildList(ui, view, static_cast<Side>(side), { x, y, sideWidth, listHeight });
+            MuiRect preview = {x, content.bottom() - bottomHeight - ui.dp(32.0f), sideWidth, ui.dp(28.0f)};
+            themedWell(ui, preview);
+            muiDrawTextAligned(previews[side], preview.inset(ui.dp(4.0f), 0), ui.dp(11.0f), theme.accent, MuiAlign::Center, MuiAlign::Center);
             buildBottom(ui, view, static_cast<Side>(side), { x, content.bottom() - bottomHeight, sideWidth, bottomHeight });
         }
 
@@ -207,9 +215,8 @@ namespace {
 
             bool reachable = inventoryPartyMemberIsReachable(view.party[index]);
             bool target = dragFromLeft && !active && reachable;
-            MuiColor fill = pressed ? theme.buttonPressed : (active ? theme.buttonPrimary : theme.button);
             MuiColor color = active && !pressed ? theme.buttonPrimaryText : theme.accent;
-            muiFillRoundRect(tab, ui.dp(5.0f), fill);
+            themedButton(ui, tab, pressed, active);
             muiStrokeRoundRect(tab, ui.dp(5.0f), ui.dp(target ? 2.0f : 1.0f), target || active ? theme.accent : theme.buttonBorder);
 
             MuiRect label = tab.inset(ui.dp(4.0f), 0.0f);
@@ -262,7 +269,7 @@ namespace {
             queue(LootActionType::CloseContainer, nullptr, side == SIDE_RIGHT);
         }
 
-        muiFillRoundRect(rect, ui.dp(5.0f), pressed ? theme.buttonPressed : theme.button);
+        themedButton(ui, rect, pressed);
         muiStrokeRoundRect(rect, ui.dp(5.0f), ui.dp(1.0f), pressed ? theme.accent : theme.buttonBorder);
         float iconSize = rect.h * 0.5f;
         muiDrawIcon(MuiIcon::Back, rect.x + ui.dp(8.0f) + iconSize / 2.0f, rect.centerY(), iconSize, ui.dp(1.8f), theme.accent);
@@ -325,6 +332,9 @@ namespace {
             }
 
             muiDrawItemCell(ui, cellRect, item, items[index].quantity, pressed);
+            if ((pressed && !scrolling) || previews[side].empty()) {
+                previews[side] = muiDecodeGameText(objectGetName(item)) + U"  " + number(itemGetWeight(item)) + U" lb  $" + number(itemGetCost(item));
+            }
 
             if (longPressed && !scrolling) {
                 LootAction action;
@@ -377,9 +387,8 @@ namespace {
         }
 
         bool primary = side == SIDE_RIGHT;
-        MuiColor fill = pressed ? theme.buttonPressed : (primary ? theme.buttonPrimary : theme.button);
         MuiColor color = primary && !pressed ? theme.buttonPrimaryText : theme.accent;
-        muiFillRoundRect(button, ui.dp(6.0f), fill);
+        themedButton(ui, button, pressed, primary);
         muiStrokeRoundRect(button, ui.dp(6.0f), ui.dp(1.0f), primary || pressed ? theme.accent : theme.buttonBorder);
 
         // Arrow towards where the items go.
@@ -466,6 +475,7 @@ namespace {
         std::u32string weight = number(itemGetWeight(entry.item));
         float textSize = ui.dp(13.0f);
         float iconSize = ui.dp(13.0f);
+        text += U"  $" + number(itemGetCost(entry.item));
         float width = muiTextWidth(text, textSize) + ui.dp(10.0f) + iconSize + ui.dp(4.0f) + muiTextWidth(weight, textSize) + ui.dp(20.0f);
         MuiRect bubble = { std::clamp(ui.pointerX() - width / 2.0f, 0.0f, ui.screenRect().w - width), cell.y - ui.dp(30.0f), width, ui.dp(26.0f) };
         muiFillRoundRect(bubble, ui.dp(6.0f), theme.panel);

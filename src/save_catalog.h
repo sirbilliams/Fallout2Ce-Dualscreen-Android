@@ -52,6 +52,7 @@ public:
     // and recovers interrupted writes. False when a recovery failed.
     bool refresh();
 
+    void reserveSlot(int slot) { reservedSlot = slot; }
     bool isQuick(int slot) const;
     // The SAVE.DAT of [slot] (whether it's there or not).
     std::string saveDatPath(int slot) const;
@@ -107,6 +108,7 @@ public:
 private:
     std::string saveRoot;
     SaveRecords* records = nullptr;
+    int reservedSlot = -1;
     int firstQuickSlot = 0;
     int quickSlotCount = 0;
     std::vector<Entry> entries;

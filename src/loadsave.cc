@@ -14,6 +14,7 @@
 #include "action_log.h"
 #include <SDL.h>
 
+#include "animation.h"
 #include "art.h"
 #include "automap.h"
 #include "ce_save_game.h"
@@ -412,6 +413,8 @@ static bool autoQuickSaveSlots = false;
 // CE: Which slots hold saves, their order, where quick and new saves go and
 // what quick load loads (save_catalog.h).
 static SaveCatalog gSaveCatalog;
+static unsigned int gMobileSlotsRevision = 0;
+static bool gSuspendSaveInProgress = false;
 
 static constexpr char kLoadSaveSlotDataSection[] = "POSITION";
 static constexpr char kLoadSaveSlotDataKey[] = "CurrentSlot";
@@ -568,6 +571,7 @@ void _InitLoadSave()
     gameSaveRecords().configure(portDataPath("saves.txt"));
     gLoadSaveReady = true;
     gSaveCatalog.configure(saveRoot, saveLoadTotalSlots, quickSaveFirstSlot, quickSaveSlots, &gameSaveRecords());
+    gSaveCatalog.reserveSlot(saveLoadTotalSlots - 1);
 
     // What the game is made of now, for the app's import of saves (its
     // compatibility marks).
@@ -590,6 +594,44 @@ void _ResetLoadSave()
     MapDirErase("MAPS\\", "SAV");
     MapDirErase(PROTO_DIR_NAME "\\" CRITTERS_DIR_NAME "\\", PROTO_FILE_EXT);
     MapDirErase(PROTO_DIR_NAME "\\" ITEMS_DIR_NAME "\\", PROTO_FILE_EXT);
+}
+
+bool lsgCanSuspendSave()
+{
+    // Ordinary saves are reached through game input, after the combat loop's
+    // animation wait. System events also arrive inside nested modal loops.
+    return gLoadSaveReady && gDude != nullptr && gMapHeader.name[0] != '\0'
+        && gameGetState() == GameState::Normal
+        && (GameMode::getCurrentGameMode() & ~(GameMode::kCombat | GameMode::kPlayerTurn)) == GameMode::kNone
+        && interfaceBarEnabled() && !gameUiIsDisabled() && combatSaveIsSafe()
+        && animationIsBusy(gDude) == 0 && !_isLoadingGame();
+}
+
+bool lsgSuspendSave()
+{
+    if (gSuspendSaveInProgress || !settings.enhancements.auto_quicksave_on_suspend || !lsgCanSuspendSave()) {
+        actionLog("suspend save skipped (disabled or unsafe)");
+        return false;
+    }
+    constexpr int slot = saveLoadTotalSlots - 1;
+    lsgMobileRefreshSlots();
+    // Preserve a pre-existing Steam/manual save in our dedicated slot.
+    MobileSaveSlotInfo info;
+    lsgMobileGetSlotInfo(slot, &info);
+    std::string sidecar = gSaveCatalog.saveDatPath(slot);
+    sidecar = sidecar.substr(0, sidecar.find_last_of("/\\") + 1) + "ce.sav";
+    ScopedConfig metadata { sidecar.c_str(), false };
+    bool owned = false;
+    if (metadata) configGetBool(metadata.get(), "player", "automatic_suspend", &owned);
+    if (info.state != MobileSaveSlotState::Empty && !owned) {
+        int free = gSaveCatalog.freeManual();
+        if (free == -1 || !gSaveCatalog.move(slot, free)) return false;
+    }
+    gSuspendSaveInProgress = true;
+    bool saved = lsgSaveGameToSlot(slot, "Automatic suspend") == 0;
+    gSuspendSaveInProgress = false;
+    actionLog("suspend save %s", saved ? "written" : "failed");
+    return saved;
 }
 
 int lsgSaveGameToSlot(int slot, const char* description)
@@ -2201,7 +2243,7 @@ static int lsgWriteGameFiles()
 
     char ceSavePath[COMPAT_MAX_PATH];
     snprintf(ceSavePath, sizeof(ceSavePath), "%s\\SAVEGAME\\SLOT%.2d\\ce.sav", _patches, _slot_cursor + 1);
-    if (!ceSaveGameData(ceSavePath)) {
+    if (!ceSaveGameData(ceSavePath, gSuspendSaveInProgress)) {
         debugPrint("LOADSAVE (CE): ** Error saving %s **\n", ceSavePath);
         _RestoreSave();
         backgroundSoundResume();
@@ -2658,8 +2700,11 @@ static int lsgMobileDevLoad(int slot)
     return rc;
 }
 
+unsigned int lsgMobileSlotsRevision() { return gMobileSlotsRevision; }
+
 void lsgMobileRefreshSlots()
 {
+    ++gMobileSlotsRevision;
     gameSaveRecords().reload();
     if (!gSaveCatalog.refresh()) {
         debugPrint("\nLOADSAVE: ** Interrupted save writes not recovered! **\n");
@@ -2708,6 +2753,10 @@ bool lsgMobileGetSlotInfo(int slot, MobileSaveSlotInfo* info)
         info->gameTime = data.gameTime;
         info->map = static_cast<int>(data.map);
         info->elevation = data.elevation;
+        std::string sidecar = gSaveCatalog.saveDatPath(slot);
+        sidecar = sidecar.substr(0, sidecar.find_last_of("/\\") + 1) + "ce.sav";
+        ScopedConfig metadata { sidecar.c_str(), false };
+        if (metadata) configGetInt(metadata.get(), "player", "level", &info->level);
     }
 
     const SaveCatalog::Entry& entry = gSaveCatalog.entry(slot);

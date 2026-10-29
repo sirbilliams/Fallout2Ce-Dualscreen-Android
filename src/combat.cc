@@ -2248,6 +2248,12 @@ int combatLoad(File* stream)
 }
 
 // 0x421244
+bool combatSaveIsSafe()
+{
+    // The combat loop waits for this counter before accepting player input.
+    return !isInCombat() || (_combat_turn_running == 0 && _combat_whose_turn() == gDude);
+}
+
 int combatSave(File* stream)
 {
     if (fileWriteInt32(stream, gCombatState) == -1) return -1;

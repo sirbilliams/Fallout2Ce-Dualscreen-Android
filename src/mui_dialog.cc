@@ -17,6 +17,8 @@ namespace {
     // with title, text and one or two buttons.
     class DialogBoxScreen : public MuiScreen {
     public:
+        MuiSurface dialogSurface = MuiSurface::Top;
+        MuiSurface surface() override { return dialogSurface; }
         std::u32string title;
         std::vector<std::u32string> body;
         std::u32string primaryLabel;
@@ -143,6 +145,7 @@ namespace {
 int muiShowDialogBox(const char* title, const char** body, int bodyLength, const char* secondaryButtonText, int flags)
 {
     DialogBoxScreen screen;
+    if (muiHasModalOn(MuiSurface::Bottom)) screen.dialogSurface = MuiSurface::Bottom;
     if (title != nullptr) {
         screen.title = muiDecodeGameText(title);
     }

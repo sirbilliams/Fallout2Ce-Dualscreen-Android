@@ -8,6 +8,7 @@
 
 #include "character_editor.h"
 #include "config.h"
+#include "stat.h"
 #include "debug.h"
 #include "platform_compat.h"
 
@@ -60,13 +61,15 @@ static bool parseOwedPerkLevels(const char* value, std::vector<int>& levels)
     return true;
 }
 
-bool ceSaveGameData(const char* path)
+bool ceSaveGameData(const char* path, bool automaticSuspend)
 {
     ScopedConfig config;
     if (!config) {
         return false;
     }
 
+    configSetInt(config.get(), "player", "level", pcGetStat(PC_STAT_LEVEL));
+    configSetBool(config.get(), "player", "automatic_suspend", automaticSuspend);
     std::string owedLevels = serializeOwedPerkLevels(characterEditorGetOwedPerkLevels());
     if (!configSetString(config.get(), kPerksSection, kOwedLevelsKey, owedLevels.c_str())) {
         return false;
