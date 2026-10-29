@@ -87,6 +87,8 @@ std::u32string muiDecodeGameText(const char* text);
 std::u32string muiDecodeUtf8(const char* text);
 // Text in the game's charset (characters it hasn't are left out).
 std::string muiEncodeGameText(const std::u32string& text);
+// Whether the UI font has [codepoint] (else text shows '?').
+bool muiFontHasGlyph(char32_t codepoint);
 float muiTextWidth(const std::u32string& text, float size);
 float muiLineHeight(float size);
 void muiDrawText(const std::u32string& text, float x, float y, float size, MuiColor color);

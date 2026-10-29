@@ -22,9 +22,12 @@ c++ -g "$OUT/preview.o" $OBJS CMakeFiles/fallout2-ce.dir/third_party/lodepng/lod
     _deps/zlib-build/libz.a _deps/sdl2-build/libSDL2d.a -lm -pthread -ldl
 # The UI's font is read from the engine's own data.
 cd "$ROOT/files/ce.dat"
-"$OUT/preview" "$OUT/bottom.bmp" "$OUT/companion.bmp" "$OUT/widgets.bmp" "$OUT/pieces.bmp" "$OUT/poweron.bmp"
+"$OUT/preview" "$OUT/bottom.bmp" "$OUT/companion.bmp" "$OUT/widgets.bmp" "$OUT/pieces.bmp" "$OUT/poweron.bmp" "$ROOT/files/ce.dat/text" || GLYPHS=$?
 cd "$OUT"
 for name in bottom companion widgets pieces poweron; do
-    convert "$name.bmp" "$name.png" && rm "$name.bmp"
+    magick "$name.bmp" "$name.png" 2>/dev/null || convert "$name.bmp" "$name.png"
+    rm "$name.bmp"
 done
 echo "Previews in $OUT"
+# 2 = the engine's texts use characters the UI font lacks (shown as '?').
+exit "${GLYPHS:-0}"

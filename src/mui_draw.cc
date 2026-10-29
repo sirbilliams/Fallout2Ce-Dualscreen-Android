@@ -650,6 +650,17 @@ float muiLineHeight(float size)
     return atlas != nullptr ? atlas->lineHeight : size * 1.2f;
 }
 
+bool muiFontHasGlyph(char32_t codepoint)
+{
+    for (int index = 0; index < kRangeCount; index++) {
+        int offset = static_cast<int>(codepoint) - kGlyphRanges[index].first;
+        if (offset >= 0 && offset < kGlyphRanges[index].count) {
+            return true;
+        }
+    }
+    return false;
+}
+
 float muiTextWidth(const std::u32string& text, float size)
 {
     if (muiSkinFallout()) {

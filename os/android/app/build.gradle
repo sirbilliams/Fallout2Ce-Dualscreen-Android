@@ -24,9 +24,13 @@ def findFetchedSdlJavaBindingsDirs = { String variantName ->
         throw new GradleException("SDL sync check failed: could not list active CXX intermediates under ${intermediatesVariantDir}.")
     }
 
+    // Any ABI's copy will do (the CI emulator build is x86_64 only).
     List<File> fetchedDirs = activeHashDirs.findAll { it.isDirectory() }.sort { a, b -> a.name <=> b.name }.collect { hashDir ->
-        file(".cxx/${variantCap}/${hashDir.name}/arm64-v8a/_deps/sdl2-src/android-project/app/src/main/java/org/libsdl/app")
-    }.findAll { it.isDirectory() }
+        List<File> abiDirs = (file(".cxx/${variantCap}/${hashDir.name}").listFiles() ?: new File[0]).findAll { it.isDirectory() }.sort { a, b -> a.name <=> b.name }
+        abiDirs.collect { abiDir ->
+            new File(abiDir, "_deps/sdl2-src/android-project/app/src/main/java/org/libsdl/app")
+        }.find { it.isDirectory() }
+    }.findAll { it != null }
 
     if (fetchedDirs.isEmpty()) {
         throw new GradleException("SDL sync check failed: could not locate fetched SDL Java bindings under .cxx/${variantCap}.")

@@ -1,0 +1,84 @@
+name: Emulator smoke test
+
+# Separate from ci-build.yml on purpose: a flaky emulator can never block the
+# APK build or the "latest" release. Builds its own x86_64 debug APK (nothing
+# of it is published), boots an API 34 emulator and checks the app installs,
+# starts, shows the import screen (the game's data can't be in CI) and does
+# not crash; the bottom-screen display (1240x1080 overlay) is captured too.
+
+concurrency:
+  group: emulator-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: Android emulator smoke (API 34 x86_64)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    continue-on-error: true      # red in the run, never a failed check
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Cache cmake build
+        uses: actions/cache@v4
+        with:
+          path: os/android/app/.cxx
+          key: android-cmake-emu-x86_64-v1
+
+      - name: Build x86_64 debug APK
+        working-directory: os/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace -PabiFilters=x86_64 assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ../../app-debug.apk
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Smoke test in the emulator
+        uses: reactivecircus/android-emulator-runner@v2.33.0
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: bash .github/ci/emu-smoke.sh
+
+      - name: Upload screenshots and logcat
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: emulator-smoke
+          path: smoke/
+          if-no-files-found: warn
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Emulator smoke: job status \`${{ job.status }}\`"
+            echo "Screenshots + logcat are in the \`emulator-smoke\` artifact."
+            if [ -s smoke/crash-lines.txt ]; then echo '```'; head -20 smoke/crash-lines.txt; echo '```'; fi
+          } >> "$GITHUB_STEP_SUMMARY"

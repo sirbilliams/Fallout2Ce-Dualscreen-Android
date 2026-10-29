@@ -1,0 +1,60 @@
+name: UI regression
+
+# The bottom-screen UI without the game's data: tools/mui_preview renders its
+# fixtures (skin, widgets, map, gauges, power-on) off-screen, checks that every
+# engine text only uses characters the UI font has (else it shows '?'), and
+# compares the PNGs with tools/mui_preview/golden. A moved, overflowing or
+# overlapping element fails; the diffs (golden | new | red) are uploaded.
+# After an intended UI change: tools/mui_preview/regress.sh <build dir> <out> --update
+# and commit the new goldens. Separate from ci-build.yml: never blocks a release.
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
+  workflow_dispatch:
+
+concurrency:
+  group: ui-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regress:
+    name: Bottom-screen screenshot regression
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake g++ make imagemagick python3-pil python3-numpy
+
+      - name: Cache desktop build
+        uses: actions/cache@v4
+        with:
+          path: build-desktop
+          key: ui-regress-desktop-${{ hashFiles('CMakeLists.txt', 'third_party/**', 'cmake/**') }}
+
+      - name: Build the engine (desktop, Debug)
+        run: |
+          cmake -S . -B build-desktop -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXE_LINKER_FLAGS=-no-pie -DFALLOUT_DIAGNOSTICS=ON -DFALLOUT_VENDORED=ON
+          cmake --build build-desktop -j"$(nproc)" --target fallout2-ce
+
+      - name: Render and compare
+        run: tools/mui_preview/regress.sh build-desktop preview
+
+      - name: Upload renders and diffs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-regression
+          path: |
+            preview/*.png
+            preview/diff/
+          if-no-files-found: warn

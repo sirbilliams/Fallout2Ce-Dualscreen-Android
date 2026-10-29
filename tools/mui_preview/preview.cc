@@ -2,6 +2,9 @@
 // the game): renders with SDL's software renderer to BMP files.
 #include <SDL.h>
 
+#include <cstdio>
+#include <fstream>
+#include <string>
 #include <vector>
 
 #include "automap.h"
@@ -28,6 +31,43 @@ static void save(SDL_Renderer* renderer, SDL_Surface* surface, const char* path)
 {
     SDL_RenderPresent(renderer);
     SDL_SaveBMP(surface, path);
+}
+
+// Layout check without game data: every string of the engine's own texts
+// (argv[6] = files/ce.dat/text) must only use characters the UI font has,
+// else the screen shows '?'. Returns the number of missing characters.
+static int checkGlyphs(const char* textDir)
+{
+    static const char* languages[] = { "english", "french", "german", "italian", "polish", "portuguese", "russian", "spanish" };
+    int missing = 0;
+    for (const char* language : languages) {
+        std::string path = std::string(textDir) + "/" + language + "/game/ce.msg";
+        std::ifstream file(path);
+        std::string line;
+        int lineNumber = 0;
+        while (std::getline(file, line)) {
+            lineNumber++;
+            if (line.empty() || line[0] != '{') {
+                continue;
+            }
+            // {id}{audio}{text}; the text is in the game charset.
+            size_t third = line.find('{', line.find('}', line.find('}') + 1) + 1);
+            if (third == std::string::npos) {
+                continue;
+            }
+            std::u32string text = muiDecodeGameText(line.substr(third + 1).c_str());
+            for (char32_t ch : text) {
+                if (ch == U'}' || ch == U'\r') {
+                    break;
+                }
+                if (ch >= 0x20 && !muiFontHasGlyph(ch)) {
+                    printf("MISSING GLYPH U+%04X in %s:%d\n", static_cast<unsigned>(ch), path.c_str(), lineNumber);
+                    missing++;
+                }
+            }
+        }
+    }
+    return missing;
 }
 
 int main(int argc, char** argv)
@@ -219,6 +259,13 @@ int main(int argc, char** argv)
         save(renderer, surface, argc > 5 ? argv[5] : "poweron.bmp");
     }
 
+    if (argc > 6) {
+        int missing = checkGlyphs(argv[6]);
+        if (missing != 0) {
+            printf("%d missing glyph(s)\n", missing);
+            return 2;
+        }
+    }
     return 0;
 }
 
