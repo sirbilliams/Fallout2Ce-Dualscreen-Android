@@ -269,7 +269,7 @@ namespace {
         std::u32string prefix = view.partyMemberBarter ? weightLabel + U" " : U"$";
         bool lossy = bottom && view.requestValue > view.offerValue;
         muiDrawTextAligned(prefix + number(view.offerValue), { offerX, tableInfoY, unit, infoHeight }, ui.dp(13.0f), theme.text, MuiAlign::Center, MuiAlign::Center);
-        muiDrawTextAligned(prefix + number(view.requestValue), { requestX, tableInfoY, unit, infoHeight }, ui.dp(13.0f), lossy ? theme.warning : theme.text, MuiAlign::Center, MuiAlign::Center);
+        muiDrawTextAligned((lossy && settings.touch.colour_blind_safe ? U"! " : U"") + prefix + number(view.requestValue), { requestX, tableInfoY, unit, infoHeight }, ui.dp(13.0f), lossy ? (settings.touch.colour_blind_safe ? muiRgb(0xFFB000) : theme.warning) : theme.text, MuiAlign::Center, MuiAlign::Center);
 
         // The trader's shown items' weight, every filter ("All" too).
         muiDrawTextAligned(weightLabel + U" " + number(muiItemsWeight(lists[LIST_BARTERER])), { bartererX, sideInfoY, sideWidth, infoHeight }, infoSize, theme.textDim, MuiAlign::Start, MuiAlign::Center);

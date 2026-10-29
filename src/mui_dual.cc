@@ -1,4 +1,5 @@
 #include "mui_dual.h"
+#include "settings.h"
 #include "mui_gameskin.h"
 #include "mui_skin.h"
 
@@ -247,6 +248,9 @@ namespace {
 
     MuiColor hitPointsColor(float fraction)
     {
+        if (settings.touch.colour_blind_safe) {
+            return fraction <= kLowHitPoints ? muiRgb(0xFFB000) : muiRgb(0x78B4FF);
+        }
         if (fraction <= kLowHitPoints) {
             return kHpLow;
         }
@@ -271,7 +275,7 @@ void muiDualHitPointsBar(MuiContext& ui, const MuiRect& rect)
     muiStrokeRoundRect(rect, radius, ui.dp(1.0f), theme.panelBorder);
 
     char label[48];
-    snprintf(label, sizeof(label), "HP %d/%d", critterGetHitPoints(gDude), critterGetStat(gDude, STAT_MAXIMUM_HIT_POINTS));
+    snprintf(label, sizeof(label), "%sHP %d/%d", settings.touch.colour_blind_safe && fraction <= kLowHitPoints ? "! LOW " : "", critterGetHitPoints(gDude), critterGetStat(gDude, STAT_MAXIMUM_HIT_POINTS));
     muiDrawTextAligned(muiDecodeUtf8(label), rect, rect.h * 0.62f, muiSkinFallout() ? muiRgb(0xF0FFE0) : muiRgb(0x041006), MuiAlign::Center, MuiAlign::Center);
 }
 
@@ -462,8 +466,8 @@ void muiDualBottomOverlay(MuiContext& ui, MuiScreen* top)
     if (inGame() && fraction > 0.0f && fraction <= kLowHitPoints) {
         float phase = fmodf(static_cast<float>(ui.now), kPulseMs) / kPulseMs;
         float strength = 0.5f + 0.5f * sinf(phase * 6.2831853f);
-        MuiColor edgeColor = kWarningRed.withAlpha(static_cast<Uint8>(40.0f + 110.0f * strength));
-        MuiColor clear = kWarningRed.withAlpha(0);
+        MuiColor edgeColor = (settings.touch.colour_blind_safe ? muiRgb(0xFFB000) : kWarningRed).withAlpha(static_cast<Uint8>(40.0f + 110.0f * strength));
+        MuiColor clear = (settings.touch.colour_blind_safe ? muiRgb(0xFFB000) : kWarningRed).withAlpha(0);
         float edge = ui.dp(28.0f);
         muiFillGradient({ screen.x, screen.y, edge, screen.h }, edgeColor, clear, clear, edgeColor);
         muiFillGradient({ screen.right() - edge, screen.y, edge, screen.h }, clear, edgeColor, edgeColor, clear);

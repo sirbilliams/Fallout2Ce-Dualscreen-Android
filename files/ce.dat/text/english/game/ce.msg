@@ -349,3 +349,12 @@
 {956}{}{Offer}
 {957}{}{Cancel}
 {958}{}{Total}
+
+# Display and readability (settings lane).
+{1080}{}{Performance mode}
+{1081}{}{Dim bottom after seconds (0: never)}
+{1082}{}{Bottom text size (%)}
+{1083}{}{Colour-blind safe palette}
+{1084}{}{Top screen CRT scanlines}
+{1085}{}{Balanced (60)}
+{1086}{}{Saver (30)}

@@ -416,6 +416,13 @@ void initSettingsRegistry(bool isMapper)
     SETTING(dialogue_tap_skip);
     SETTING(barter_confirm);
     SETTING_P(bottom_theme, clamp(0, 1));
+    SETTING_P(perf_mode, [](std::string& value, const char*, const char*) {
+        if (value != "saver") value = "balanced";
+    });
+    SETTING_P(bottom_dim_seconds, clamp(0, 600));
+    SETTING_P(bottom_text_size, clamp(100, 130));
+    SETTING(colour_blind_safe);
+    SETTING(top_scanlines);
 #undef SECT
 
 #define SECT world_view

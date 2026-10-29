@@ -368,6 +368,11 @@ struct TouchSettings {
     bool barter_confirm = false;
     // Bottom-screen look: 0 - Fallout (the game's own art and fonts), 1 - classic (drawn from code).
     int bottom_theme = 0;
+    std::string perf_mode = "balanced"; // balanced: 60 Hz; saver: 30 Hz.
+    int bottom_dim_seconds = 60; // 0 disables idle dimming.
+    int bottom_text_size = 100; // Percent of the bottom screen game fonts.
+    bool colour_blind_safe = false;
+    bool top_scanlines = false;
 };
 
 struct MapperSettings {

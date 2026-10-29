@@ -217,6 +217,12 @@ namespace {
         bool dialogueTapSkip;
         bool barterConfirm;
         int bottomTheme;
+        int perfMode;
+        int bottomDimSeconds;
+        int bottomTextSize;
+        bool colourBlindSafe;
+        bool topScanlines;
+
         bool saveCompatibility;
         int interfaceSize;
         int mapFilter;
@@ -248,6 +254,11 @@ namespace {
         values.barterLayout = settings.touch.barter_layout;
         values.dialogueTapSkip = settings.touch.dialogue_tap_skip;
         values.barterConfirm = settings.touch.barter_confirm;
+        values.perfMode = settings.touch.perf_mode == "saver" ? 1 : 0;
+        values.bottomDimSeconds = settings.touch.bottom_dim_seconds;
+        values.bottomTextSize = settings.touch.bottom_text_size;
+        values.colourBlindSafe = settings.touch.colour_blind_safe;
+        values.topScanlines = settings.touch.top_scanlines;
         values.bottomTheme = settings.touch.bottom_theme;
         values.saveCompatibility = settings.enhancements.save_compatibility;
         values.interfaceSize = settings.touch.hud_scale;
@@ -281,6 +292,11 @@ namespace {
         values.barterLayout = TouchSettings().barter_layout;
         values.dialogueTapSkip = TouchSettings().dialogue_tap_skip;
         values.barterConfirm = TouchSettings().barter_confirm;
+        values.perfMode = 0;
+        values.bottomDimSeconds = 60;
+        values.bottomTextSize = 100;
+        values.colourBlindSafe = false;
+        values.topScanlines = false;
         values.bottomTheme = TouchSettings().bottom_theme;
         values.saveCompatibility = EnhancementSettings().save_compatibility;
         values.interfaceSize = TouchSettings().hud_scale;
@@ -365,6 +381,12 @@ namespace {
         settings.touch.dialogue_tap_skip = values.dialogueTapSkip;
         settings.touch.barter_confirm = values.barterConfirm;
         settings.touch.bottom_theme = values.bottomTheme;
+        settings.touch.perf_mode = values.perfMode ? "saver" : "balanced";
+        settings.touch.bottom_dim_seconds = values.bottomDimSeconds;
+        settings.touch.bottom_text_size = values.bottomTextSize;
+        settings.touch.colour_blind_safe = values.colourBlindSafe;
+        settings.touch.top_scanlines = values.topScanlines;
+
         settings.enhancements.save_compatibility = values.saveCompatibility;
         settings.touch.hud_scale = values.interfaceSize;
         settings.world_view.filter = values.mapFilter;
@@ -640,6 +662,34 @@ namespace {
         volume(kTextSpeechVolume, "Speech", &PreferenceValues::speechVolume, Sample::Speech);
 
         // Display.
+        toggle(Section::Display, 1083, "Colour-blind safe palette", Origin::Port, &Values::colourBlindSafe);
+        toggle(Section::Display, 1084, "Top screen CRT scanlines", Origin::Port, &Values::topScanlines);
+        {
+            Row row { Section::Display, RowKind::Choice, 1080, "Performance mode", Origin::Port };
+            row.options = {1085, 1086}; row.optionsFromCe = true;
+            row.minValue = 0; row.maxValue = 1;
+            row.get = [](const Values& v) { return float(v.perfMode); };
+            row.set = [](Values& v, float n) { v.perfMode = int(std::lround(n)); };
+            row.format = [](float n) { return std::to_string(int(std::lround(n))); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Display, RowKind::Slider, 1081, "Dim bottom after seconds (0: never)", Origin::Port };
+            row.minValue = 0; row.maxValue = 600;
+            row.get = [](const Values& v) { return float(v.bottomDimSeconds); };
+            row.set = [](Values& v, float n) { v.bottomDimSeconds = int(std::lround(n)); };
+            row.format = [](float n) { return std::to_string(int(std::lround(n))); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Display, RowKind::Slider, 1082, "Bottom text size (%)", Origin::Port };
+            row.minValue = 100; row.maxValue = 130;
+            row.get = [](const Values& v) { return float(v.bottomTextSize); };
+            row.set = [](Values& v, float n) { v.bottomTextSize = int(std::lround(n)); };
+            row.format = [](float n) { return std::to_string(int(std::lround(n))); };
+            rows.push_back(row);
+        }
+
         {
             Row row { Section::Display, RowKind::Slider, kTextBrightness, "Brightness" };
             row.minValue = 1.0f;
@@ -829,6 +879,9 @@ namespace {
 
     PreferencesScreen::~PreferencesScreen()
     {
+        Values before = edited;
+        edited = applied;
+        previewChanges(before);
         messageListFree(&optionsMessages);
     }
 
@@ -843,7 +896,8 @@ namespace {
             static const char* const kSizeFallbacks[] = { "Normal", "Large" };
             static const char* const kBarterFallbacks[] = { "Top", "Bottom" };
             static const char* const kThemeFallbacks[] = { "Fallout", "Classic" };
-            const char* fallback = row.textId == kTextDashboardLayout ? kDashboardFallbacks[index]
+            const char* fallback = row.textId == 1080 ? (index == 0 ? "Balanced (60)" : "Saver (30)")
+                : row.textId == kTextDashboardLayout ? kDashboardFallbacks[index]
                 : row.textId == kTextScreenNav                        ? kNavFallbacks[index]
                 : row.textId == kTextDialogueLayout                   ? kDialogueFallbacks[index]
                 : row.textId == kTextDialogueOptionSize               ? kSizeFallbacks[index]
@@ -879,6 +933,16 @@ namespace {
     // Volumes and brightness are heard and seen while they change.
     void PreferencesScreen::previewChanges(const Values& before)
     {
+        settings.touch.dashboard_layout = edited.dashboardLayout;
+        settings.touch.screen_nav = edited.screenNav;
+        settings.touch.dialogue_layout = edited.dialogueLayout;
+        settings.touch.bottom_theme = edited.bottomTheme;
+        settings.touch.perf_mode = edited.perfMode ? "saver" : "balanced";
+        settings.touch.bottom_dim_seconds = edited.bottomDimSeconds;
+        settings.touch.bottom_text_size = edited.bottomTextSize;
+        settings.touch.colour_blind_safe = edited.colourBlindSafe;
+        settings.touch.top_scanlines = edited.topScanlines;
+
         const PreferenceValues& a = before.preferences;
         const PreferenceValues& b = edited.preferences;
         if (a.masterVolume != b.masterVolume || a.musicVolume != b.musicVolume
@@ -1227,9 +1291,10 @@ namespace {
 
     void PreferencesScreen::buildRows(MuiContext& ui, const MuiRect& rect)
     {
+        const MuiTheme& theme = muiTheme();
         float rowHeight = ui.dp(50.0f);
         float headerHeight = ui.dp(30.0f);
-        bool showPreview = section == Section::Display && previewValid;
+        bool showPreview = section == Section::Display;
         float previewSpace = showPreview ? std::min(rect.h * 0.45f, ui.dp(130.0f)) + ui.dp(8.0f) : 0.0f;
 
         float contentHeight = previewSpace;
@@ -1247,16 +1312,37 @@ namespace {
 
         muiPushClip(rect);
 
-        float y = rect.y - offset;
+        float y = rect.y;
         if (showPreview) {
             // The map with the brightness being chosen.
             MuiRect frame = { rect.x, y, rect.w, previewSpace - ui.dp(8.0f) };
             SDL_Texture* texture = muiRgbaTexture("prefs.preview", preview.data(), previewWidth, previewHeight, previewVersion);
-            if (texture != nullptr) {
-                muiDrawTexture(texture, muiFitRect(frame, static_cast<float>(previewWidth), static_cast<float>(previewHeight)));
+            muiSkinWell(ui, frame);
+            MuiRect thumb = frame.inset(ui.dp(6));
+            float nav = ui.dp(edited.screenNav == 1 ? 8 : 16);
+            if (edited.screenNav == 2) {
+                muiFillRect({thumb.x, thumb.y, thumb.w, nav}, theme.panelBorder);
+                thumb.y += nav + ui.dp(3); thumb.h -= nav + ui.dp(3);
+            } else {
+                muiFillRect({thumb.right() - nav, thumb.y, nav, thumb.h}, theme.panelBorder);
+                thumb.w -= nav + ui.dp(3);
             }
+            float mapPart = edited.dashboardLayout == 1 ? 0.72f : edited.dashboardLayout == 2 ? 0.5f : 0.38f;
+            MuiRect map = { thumb.x, thumb.y, thumb.w * mapPart, thumb.h };
+            if (texture != nullptr && previewValid)
+                muiDrawTexture(texture, muiFitRect(map, float(previewWidth), float(previewHeight)));
+            muiStrokeRoundRect(map, 0, ui.dp(1), theme.accent);
+            MuiRect info = {map.right() + ui.dp(4), thumb.y, thumb.right() - map.right() - ui.dp(4), thumb.h};
+            std::u32string label = edited.dashboardLayout == 1 ? U"MAP FIRST" : edited.dashboardLayout == 2 ? U"TWO COLUMNS" : U"CLASSIC";
+            muiDrawText(label, info.x, info.y, ui.dp(10), theme.accent);
+            muiDrawText(U"HP 42/60", info.x, info.y + ui.dp(18), ui.dp(10), theme.text);
+            std::u32string talk = edited.dialogueLayout == 0 ? U"DIALOGUE: TOP" : edited.dialogueLayout == 1 ? U"DIALOGUE: SPLIT" : U"DIALOGUE: MIRROR";
+            muiDrawText(talk, info.x, info.y + ui.dp(36), ui.dp(9), theme.text);
             y += previewSpace;
         }
+        y -= offset;
+        MuiRect rowsClip = {rect.x, rect.y + previewSpace, rect.w, rect.h - previewSpace};
+        muiPushClip(rowsClip);
 
         for (size_t index = 0; index < rows.size(); index++) {
             const Row& row = rows[index];
@@ -1266,12 +1352,13 @@ namespace {
 
             float height = row.kind == RowKind::Header ? headerHeight : rowHeight;
             MuiRect rowRect = { rect.x, y, rect.w, height };
-            if (rowRect.bottom() >= rect.y && rowRect.y <= rect.bottom()) {
+            if (rowRect.bottom() >= rowsClip.y && rowRect.y <= rowsClip.bottom()) {
                 buildRow(ui, index, rowRect);
             }
             y += height;
         }
 
+        muiPopClip();
         muiPopClip();
     }
 
@@ -1424,6 +1511,7 @@ namespace {
             pendingBack = false;
             if (confirmApply(edited, true)) {
                 applyValues(edited);
+                applied = edited;
             } else {
                 // Volumes and brightness as they were.
                 preferencesPreview(applied.preferences);

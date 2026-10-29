@@ -1,4 +1,5 @@
 #include "input.h"
+#include "mui_display_settings.h"
 #include "dev_autotest.h"
 
 #include <string.h>
@@ -1130,6 +1131,11 @@ void _GNW95_process_message()
     KeyboardData keyboardData;
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
+        if (e.type == SDL_FINGERDOWN || e.type == SDL_FINGERMOTION || e.type == SDL_KEYDOWN
+            || e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_MOUSEBUTTONDOWN
+            || (e.type == SDL_CONTROLLERAXISMOTION && (e.caxis.value > 8000 || e.caxis.value < -8000))) {
+            muiDisplayActivity();
+        }
         // CE: Game controllers (gamepad.h).
         if (gamepadHandleEvent(&e)) {
             continue;

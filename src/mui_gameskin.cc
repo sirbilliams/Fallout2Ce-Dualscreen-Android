@@ -284,6 +284,8 @@ namespace {
 
     // The face and scale for a size (`muiDrawText`'s output pixels): small
     // sizes - the spaced font 1, the rest - the condensed font 2.
+    float bottomTextScale() { return muiCurrentSurface() == MuiSurface::Bottom ? settings.touch.bottom_text_size / 100.0f : 1.0f; }
+
     Pick pickForSize(float size)
     {
         float height = size * 1.05f;
@@ -742,12 +744,14 @@ bool muiSkinFallout()
 float muiGameTextWidth(const std::u32string& text, float size)
 {
     Pick pick = pickForSize(size);
+    pick.scale *= bottomTextScale();
     return textWidth(text, pick.font, pick.scale);
 }
 
 float muiGameLineHeight(float size)
 {
     Pick pick = pickForSize(size);
+    pick.scale *= bottomTextScale();
     GameFont* font = loadFont(pick.font);
     return font != nullptr ? (font->maxHeight + 2) * pick.scale : size * 1.2f;
 }
@@ -755,23 +759,24 @@ float muiGameLineHeight(float size)
 void muiGameDrawText(const std::u32string& text, float x, float y, float size, MuiColor color)
 {
     Pick pick = pickForSize(size);
+    pick.scale *= bottomTextScale();
     drawText(text, x, y, pick.font, pick.scale, color, true);
 }
 
 float muiGameRoleWidth(const std::u32string& text, MuiFontRole role, float scale)
 {
-    return textWidth(text, fontIndexOf(role), scale);
+    return textWidth(text, fontIndexOf(role), scale * bottomTextScale());
 }
 
 float muiGameRoleHeight(MuiFontRole role, float scale)
 {
     GameFont* font = loadFont(fontIndexOf(role));
-    return font != nullptr ? font->maxHeight * scale : 0.0f;
+    return font != nullptr ? font->maxHeight * scale * bottomTextScale() : 0.0f;
 }
 
 void muiGameDrawRole(const std::u32string& text, float x, float y, MuiFontRole role, float scale, MuiColor color)
 {
-    drawText(text, x, y, fontIndexOf(role), scale, color, true);
+    drawText(text, x, y, fontIndexOf(role), scale * bottomTextScale(), color, true);
 }
 
 float muiGameFitScale(const std::u32string& text, MuiFontRole role, float width, float maxScale)
