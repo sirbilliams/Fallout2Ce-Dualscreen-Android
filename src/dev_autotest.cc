@@ -3005,7 +3005,8 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_DIALOG_LONG_FIXTURE: {
             // Explicit synthetic text fixture, through the engine model; no game files.
             std::string option = "[Developer long-option fixture] ";
-            while (option.size() < 850) option += "A long option must stay readable, scroll in its sheet, and require a second tap to choose. ";
+            while (option.size() < 850)
+                option += "A long option must stay readable, scroll in its sheet, and require a second tap to choose. ";
             gameDialogSetTextReply(nullptr, -4, "Developer fixture: long-option sheet. No script choice has been made.");
             gameDialogAddTextOptionWithProc(-4, option.c_str(), 0, 50);
             devAutotestLog("  synthetic long option: %zu characters\n", strlen(gameDialogGetOptionText(0)));

@@ -151,6 +151,7 @@ namespace {
         void buildIconButtons(MuiContext& ui, const MuiRect& column);
         void buildReply(MuiContext& ui, const MuiRect& rect, float textSize = 0.0f);
         void buildSplitTop(MuiContext& ui, bool barter = false);
+
     public:
         void buildBarterTop(MuiContext& ui) { buildSplitTop(ui, true); }
 
@@ -214,7 +215,6 @@ namespace {
 
         buildIconButtons(ui, iconColumn);
     }
-
 
     // Texts in `game\ce.msg` of the split layout.
     constexpr int kTextTalkBarter = 952;

@@ -14,8 +14,8 @@
 #include "debug.h"
 #include "game_charset.h"
 #include "mui_gameskin.h"
-#include "mui_skin.h"
 #include "mui_icons.h"
+#include "mui_skin.h"
 #include "svga.h"
 
 #define STB_TRUETYPE_IMPLEMENTATION

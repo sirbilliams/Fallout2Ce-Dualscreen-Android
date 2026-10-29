@@ -6859,9 +6859,7 @@ static int barterGetMovedQuantity(Object* item, int maxQuantity, bool fromPlayer
             unit = 1;
             factor = 1.0;
         }
-        return muiQuantitySelect(item, 1, maxQuantity, 1, suggestedValue, false,
-            [unit, factor](int count) { return static_cast<int>(unit * factor * count); },
-            gGameDialogSpeakerIsPartyMember);
+        return muiQuantitySelect(item, 1, maxQuantity, 1, suggestedValue, false, [unit, factor](int count) { return static_cast<int>(unit * factor * count); }, gGameDialogSpeakerIsPartyMember);
     }
     return inventoryQuantitySelect(INVENTORY_WINDOW_TYPE_MOVE_ITEMS, item, maxQuantity, suggestedValue);
 }

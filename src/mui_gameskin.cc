@@ -181,20 +181,55 @@ namespace {
         }
         const char32_t* replacement = nullptr;
         switch (cp) {
-        case U'\u2212': case U'\u2010': case U'\u2011':
-        case U'\u2012': case U'\u2013': case U'\u2014':
-        case U'\u00ad': replacement = U"-"; break;
-        case U'\u2018': case U'\u2019': case U'\u201a':
-        case U'\u2032': replacement = U"'"; break;
-        case U'\u201c': case U'\u201d': case U'\u201e':
-        case U'\u2033': replacement = U"\""; break;
-        case U'\u2026': replacement = U"..."; break;
-        case U'\u00b7': case U'\u2022': case U'\u2219': replacement = U"-"; break;
-        case U'\u00a0': case U'\u2007': case U'\u202f': replacement = U" "; break;
-        case U'\u2039': case U'\u00ab': case U'\u2190': replacement = U"<"; break;
-        case U'\u203a': case U'\u00bb': case U'\u2192': replacement = U">"; break;
-        case U'\u00d7': replacement = U"x"; break;
-        default: break;
+        case U'\u2212':
+        case U'\u2010':
+        case U'\u2011':
+        case U'\u2012':
+        case U'\u2013':
+        case U'\u2014':
+        case U'\u00ad':
+            replacement = U"-";
+            break;
+        case U'\u2018':
+        case U'\u2019':
+        case U'\u201a':
+        case U'\u2032':
+            replacement = U"'";
+            break;
+        case U'\u201c':
+        case U'\u201d':
+        case U'\u201e':
+        case U'\u2033':
+            replacement = U"\"";
+            break;
+        case U'\u2026':
+            replacement = U"...";
+            break;
+        case U'\u00b7':
+        case U'\u2022':
+        case U'\u2219':
+            replacement = U"-";
+            break;
+        case U'\u00a0':
+        case U'\u2007':
+        case U'\u202f':
+            replacement = U" ";
+            break;
+        case U'\u2039':
+        case U'\u00ab':
+        case U'\u2190':
+            replacement = U"<";
+            break;
+        case U'\u203a':
+        case U'\u00bb':
+        case U'\u2192':
+            replacement = U">";
+            break;
+        case U'\u00d7':
+            replacement = U"x";
+            break;
+        default:
+            break;
         }
         if (replacement != nullptr) {
             for (; *replacement != 0; replacement++) {

@@ -1,7 +1,7 @@
 #include "mui.h"
 #include "mui_dual.h"
-#include "mui_notify.h"
 #include "mui_gameskin.h"
+#include "mui_notify.h"
 #include "mui_skin.h"
 
 #include <algorithm>
@@ -11,8 +11,8 @@
 
 #include "dev_autotest.h"
 #include "game.h"
-#include "game_dialog.h"
 #include "game_charset.h"
+#include "game_dialog.h"
 #include "hud_layout.h"
 #include "input.h"
 #include "kb.h"
