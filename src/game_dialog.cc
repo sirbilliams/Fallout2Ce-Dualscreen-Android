@@ -5345,6 +5345,11 @@ const char* gameDialogGetOptionText(int index)
     return dialogOptionEntries[index].text;
 }
 
+bool gameDialogOptionIsDone(int index)
+{
+    return index >= 0 && index < gameDialogOptionEntriesLength && dialogOptionEntries[index].messageListId == -2;
+}
+
 int gameDialogGetOptionReaction(int index)
 {
     if (index < 0 || index >= gameDialogOptionEntriesLength || perkGetRank(gDude, PERK_EMPATHY) == 0) {

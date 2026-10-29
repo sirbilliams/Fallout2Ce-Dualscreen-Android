@@ -673,6 +673,34 @@ static const DevAutotestStep kDevAutotestTalkSteps[] = {
     { DEV_AUTOTEST_ACTION_MUI_TAP, 1, 0, 0, 90, "t06_option_0_quick", "talk.options.0" },
 };
 
+// Dialogue and barter on the dual-screen rig (the bottom screen's frames are
+// saved as <step>_bottom.png).
+static const DevAutotestStep kDevAutotestDualTalkSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "t00_map" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 13, 0, 0, 30, "t01_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 60, "t02_talking" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "t03_option_0", "talk.options.0" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 600, 0, 0, 60, "t03b_talking" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "t04_review", "dialog.tab.review" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "t05_talk", "dialog.tab.talk" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "t06_option_1", "talk.options.1" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 600, 0, 0, 60, "t06b_talking" },
+};
+
+static const DevAutotestStep kDevAutotestDualBarterSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "b00_map" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 40, 3, 0, 1, "b01_give_stimpak" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 4, 0, 0, 1, "b02_give_knife" },
+    { DEV_AUTOTEST_ACTION_CENTER_CRITTER, 0, 0, 0, 10, "b03_center_critter" },
+    { DEV_AUTOTEST_ACTION_TOUCH_TAP_CRITTER, 0, 0, 0, 300, "b04_talk" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "b05_barter", "dialog.tab.barter" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b06_tap_item", "barter.player.pid.4" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b07_request", "barter.barterer.0" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b08_quantity_done", "quantity.done" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b09_offer", "barter.offer.button" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "b10_talk", "barter.talk.button" },
+};
+
 static const DevAutotestStep kDevAutotestBarterSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "b00_map" },
     { DEV_AUTOTEST_ACTION_GIVE_ITEM, 40, 0, 0, 1, "b01_give_stimpak" },
@@ -888,12 +916,15 @@ static long long gDevAutotestPerfDrawn = 0;
 static const char* gDevAutotestPendingCapture = nullptr;
 static int gDevAutotestPinchFrame = -1;
 
+// The touch being sent goes to the bottom screen (widgets found there).
+static bool gDevAutotestBottomTouch = false;
+
 static void devAutotestPushFinger(Uint32 type, SDL_FingerID finger, float x, float y)
 {
     SDL_Event event;
     SDL_zero(event);
     event.type = type;
-    event.tfinger.touchId = 1;
+    event.tfinger.touchId = gDevAutotestBottomTouch ? kMuiBottomTouchId : 1;
     event.tfinger.fingerId = finger;
     event.tfinger.x = x;
     event.tfinger.y = y;
@@ -2330,6 +2361,18 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "dialogtrace") == 0) {
         gDevAutotestSteps = kDevAutotestDialogTraceSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestDialogTraceSteps) / sizeof(kDevAutotestDialogTraceSteps[0]);
+    } else if (strcmp(name, "dualtalk") == 0) {
+        gDevAutotestSteps = kDevAutotestDualTalkSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDualTalkSteps) / sizeof(kDevAutotestDualTalkSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "dualbarter") == 0) {
+        gDevAutotestSteps = kDevAutotestDualBarterSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDualBarterSteps) / sizeof(kDevAutotestDualBarterSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "barter") == 0) {
         gDevAutotestSteps = kDevAutotestBarterSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestBarterSteps) / sizeof(kDevAutotestBarterSteps[0]);
@@ -2625,6 +2668,7 @@ void devAutotestTick()
     if (!gDevAutotestStepStarted) {
         gDevAutotestStepStarted = true;
         gDevAutotestDelay = step->delay;
+        gDevAutotestBottomTouch = false;
 
         Rect visibleRect;
         switch (step->action) {
@@ -3741,10 +3785,10 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_MUI_TAP: {
             float x;
             float y;
-            if (step->widget != nullptr && muiGetWidgetCenter(step->widget, &x, &y)) {
+            if (step->widget != nullptr && muiGetWidgetCenter(step->widget, &x, &y, &gDevAutotestBottomTouch)) {
                 x *= screenGetWidth();
                 y *= screenGetHeight();
-                devAutotestLog("  mui %s at (%.0f, %.0f)\n", step->widget, x, y);
+                devAutotestLog("  mui %s at (%.0f, %.0f)%s\n", step->widget, x, y, gDevAutotestBottomTouch ? " (bottom)" : "");
                 devAutotestStartTouch(x, y, x, y, step->a == 1 ? -1 : 1, 0);
             } else {
                 devAutotestLog("  mui %s: NOT FOUND\n", step->widget != nullptr ? step->widget : "?");
@@ -3754,7 +3798,7 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_MUI_LONG_PRESS: {
             float x;
             float y;
-            if (step->widget != nullptr && muiGetWidgetCenter(step->widget, &x, &y)) {
+            if (step->widget != nullptr && muiGetWidgetCenter(step->widget, &x, &y, &gDevAutotestBottomTouch)) {
                 static std::string heldName;
                 heldName = std::string(step->name) + "_held";
                 int hold = static_cast<int>(step->a);
@@ -3773,7 +3817,7 @@ void devAutotestTick()
             float targetX;
             float targetY;
             if (step->widget != nullptr && step->target != nullptr
-                && muiGetWidgetCenter(step->widget, &x, &y) && muiGetWidgetCenter(step->target, &targetX, &targetY)) {
+                && muiGetWidgetCenter(step->widget, &x, &y, &gDevAutotestBottomTouch) && muiGetWidgetCenter(step->target, &targetX, &targetY)) {
                 float width = static_cast<float>(screenGetWidth());
                 float height = static_cast<float>(screenGetHeight());
                 devAutotestLog("  mui drag %s -> %s\n", step->widget, step->target);

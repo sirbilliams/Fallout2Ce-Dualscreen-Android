@@ -509,7 +509,7 @@ int muiShowDialogBox(const char* title, const char** body, int bodyLength, const
 
 // Automated tests: center of widget [id] of the last frame in normalized
 // screen coordinates.
-bool muiGetWidgetCenter(const char* id, float* x, float* y);
+bool muiGetWidgetCenter(const char* id, float* x, float* y, bool* onBottom = nullptr);
 
 } // namespace fallout
 

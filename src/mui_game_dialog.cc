@@ -83,7 +83,24 @@ namespace {
         bool partyOpen = false;
         bool partyPending = false;
 
+        // Bottom-screen side (split layout): its own reply tracking, the
+        // time the current reply came up.
+        std::string bottomLastReply;
+        int bottomLastOptionCount = -1;
+        unsigned int bottomReplyAt = 0;
+
         bool coversScreen() override { return true; }
+
+        // Dialogue split over the two screens (`[touch] dialogue_layout`):
+        // head and reply on top, options and tabs on the bottom. Only with
+        // the bottom screen in use and a conversation that has options
+        // (otherwise the top layout shows it).
+        bool split() const
+        {
+            return muiBottomActive() && settings.touch.dialogue_layout != 0 && gameDialogIsTalking() && gameDialogGetOptionCount() > 0;
+        }
+
+        void buildBottom(MuiContext& ui);
 
         // Closes the review or party panel (the game's talk has no back:
         // answers end it).
@@ -130,7 +147,9 @@ namespace {
     private:
         void buildHead(MuiContext& ui, const MuiRect& rect);
         void buildIconButtons(MuiContext& ui, const MuiRect& column);
-        void buildReply(MuiContext& ui, const MuiRect& rect);
+        void buildReply(MuiContext& ui, const MuiRect& rect, float textSize = 0.0f);
+        void buildSplitTop(MuiContext& ui);
+        void buildOptionRows(MuiContext& ui, const MuiRect& rect, bool mirror);
         void buildOptions(MuiContext& ui, const MuiRect& rect);
         void buildReview(MuiContext& ui, const MuiRect& rect);
         void buildPartyStats(MuiContext& ui, const MuiRect& rect, const PartyControlView& view);
@@ -142,6 +161,11 @@ namespace {
 
     void TalkScreen::build(MuiContext& ui)
     {
+        if (split()) {
+            buildSplitTop(ui);
+            return;
+        }
+
         // Opaque over the map.
         muiSkinBackdrop(ui, ui.screenRect());
 
@@ -184,6 +208,270 @@ namespace {
 
         buildIconButtons(ui, iconColumn);
     }
+
+
+    // Texts in `game\ce.msg` of the split layout.
+    constexpr int kTextTalkBarter = 952;
+    constexpr int kTextEndConversation = 953;
+
+    // The option's text without the game's bullet or sfall's "1. ".
+    std::u32string optionDisplayText(int index)
+    {
+        const char* text = gameDialogGetOptionText(index);
+        if (static_cast<unsigned char>(text[0]) == 0x95 && text[1] == ' ') {
+            text += 2;
+        } else {
+            const char* digits = text;
+            while (*digits >= '0' && *digits <= '9') {
+                digits++;
+            }
+            if (digits != text && digits[0] == '.' && digits[1] == ' ') {
+                text = digits + 2;
+            }
+        }
+        return muiDecodeGameText(text);
+    }
+
+    MuiColor dimmed(MuiColor color, bool mirror)
+    {
+        return mirror ? color.withAlpha(static_cast<Uint8>(color.a * 0.35f)) : color;
+    }
+
+    // Split layout, top screen: the head, the speaker and the reply large
+    // under it; with the mirrored setting the options dimmed on the right.
+    void TalkScreen::buildSplitTop(MuiContext& ui)
+    {
+        muiSkinBackdrop(ui, ui.screenRect());
+
+        const char* reply = gameDialogGetReplyText();
+        int optionCount = gameDialogGetOptionCount();
+        if (lastReply != reply || lastOptionCount != optionCount) {
+            lastReply = reply;
+            lastOptionCount = optionCount;
+            ui.setScroll("talk.reply", 0.0f);
+        }
+
+        bool mirror = settings.touch.dialogue_layout == 2;
+        float gap = ui.dp(14.0f);
+        MuiRect main = ui.safeRect().inset(ui.dp(16.0f));
+        MuiRect side = { 0.0f, 0.0f, 0.0f, 0.0f };
+        if (mirror) {
+            float sideWidth = main.w * 0.36f;
+            side = { main.right() - sideWidth, main.y, sideWidth, main.h };
+            main.w -= sideWidth + gap;
+        }
+
+        // The head keeps the game's aspect, the reply is as wide as it.
+        float headHeight = std::min(main.w * 200.0f / 388.0f, main.h * 0.5f);
+        float columnWidth = headHeight * 388.0f / 200.0f;
+        MuiRect column = { main.x + (main.w - columnWidth) / 2.0f, main.y, columnWidth, main.h };
+        buildHead(ui, { column.x, column.y, column.w, headHeight });
+        MuiRect below = { column.x, column.y + headHeight + gap, column.w, column.h - headHeight - gap };
+
+        PartyControlView partyView;
+        if (partyOpen && gameDialogGetPartyControlView(&partyView)) {
+            buildPartyStats(ui, below, partyView);
+        } else {
+            buildReply(ui, below, ui.dp(22.0f));
+        }
+
+        if (mirror) {
+            buildOptionRows(ui, side, true);
+        }
+    }
+
+    // Options as large rows: number badge, wrapped text, reaction tint. Not
+    // touchable and dimmed when [mirror] (the top screen's copy).
+    void TalkScreen::buildOptionRows(MuiContext& ui, const MuiRect& rect, bool mirror)
+    {
+        const MuiTheme& theme = muiTheme();
+
+        bool large = settings.touch.dialogue_option_size == 1;
+        float size = ui.dp(large ? 20.0f : 16.0f);
+        float padding = ui.dp(10.0f);
+        float gap = ui.dp(8.0f);
+        float badge = ui.dp(36.0f);
+        float minHeight = ui.dp(large ? 56.0f : 48.0f);
+        float lineHeight = muiLineHeight(size);
+        float thumbSpace = ui.dp(8.0f);
+        float textWidth = rect.w - thumbSpace - badge - padding * 3.0f - ui.dp(4.0f);
+
+        int count = gameDialogGetOptionCount();
+        std::vector<std::vector<std::u32string>> texts;
+        std::vector<float> heights;
+        float total = 0.0f;
+        for (int index = 0; index < count; index++) {
+            texts.push_back(muiWrapText(optionDisplayText(index), textWidth, size));
+            heights.push_back(std::max(texts.back().size() * lineHeight + padding * 1.4f, minHeight));
+            total += heights.back() + (index > 0 ? gap : 0.0f);
+        }
+
+        float offset = 0.0f;
+        bool scrolling = false;
+        if (!mirror) {
+            offset = ui.scroll("talk.options", rect, total);
+            scrolling = ui.isScrolling("talk.options");
+        }
+        // The finger that tapped the last option must not hit the next one.
+        bool justShown = !mirror && ui.now - bottomReplyAt < 120;
+
+        muiPushClip(rect);
+        float y = rect.y - offset;
+        for (int index = 0; index < count; index++) {
+            MuiRect row = { rect.x, y, rect.w - thumbSpace, heights[index] };
+            y += heights[index] + gap;
+            if (row.bottom() < rect.y || row.y > rect.bottom()) {
+                continue;
+            }
+
+            bool pressed = false;
+            bool tapped = false;
+            if (!mirror) {
+                MuiRect touchRect = row;
+                touchRect.y = std::max(row.y, rect.y);
+                touchRect.h = std::min(row.bottom(), rect.bottom()) - touchRect.y;
+                tapped = ui.touchable("talk.options." + std::to_string(index), touchRect, &pressed);
+            }
+
+            bool done = gameDialogOptionIsDone(index);
+            int reaction = gameDialogGetOptionReaction(index);
+            MuiColor tint = theme.accent;
+            if (reaction == 0) {
+                tint = kReactionGood;
+            } else if (reaction == 2) {
+                tint = kReactionBad;
+            }
+
+            float radius = ui.dp(6.0f);
+            muiFillRoundRect(row, radius, dimmed(pressed ? theme.buttonPressed : (done ? theme.well : theme.button), mirror));
+            muiStrokeRoundRect(row, radius, ui.dp(done ? 1.5f : 1.0f), dimmed(pressed || done ? theme.accent : theme.buttonBorder, mirror));
+            if (reaction != -1) {
+                muiFillRoundRect({ row.x, row.y + ui.dp(4.0f), ui.dp(4.0f), row.h - ui.dp(8.0f) }, ui.dp(2.0f), dimmed(tint, mirror));
+            }
+
+            MuiRect badgeRect = { row.x + padding, row.centerY() - badge / 2.0f, badge, badge };
+            muiFillRoundRect(badgeRect, ui.dp(5.0f), dimmed(theme.well, mirror));
+            muiStrokeRoundRect(badgeRect, ui.dp(5.0f), ui.dp(1.5f), dimmed(tint, mirror));
+            std::u32string number = muiDecodeUtf8(std::to_string(index + 1).c_str());
+            muiDrawTextAligned(number, badgeRect, muiFitTextSize(number, badge - ui.dp(6.0f), ui.dp(17.0f), ui.dp(10.0f)), dimmed(tint, mirror), MuiAlign::Center, MuiAlign::Center);
+
+            float textX = badgeRect.right() + padding;
+            float textY = row.y + (row.h - texts[index].size() * lineHeight) / 2.0f;
+            MuiColor color = dimmed(done ? theme.accent : theme.text, mirror);
+            for (const std::u32string& line : texts[index]) {
+                muiDrawText(line, textX, textY, size, color);
+                textY += lineHeight;
+            }
+
+            if (tapped && !scrolling && !justShown) {
+                _gsound_red_butt_press(-1, 0);
+                gameDialogChooseOption(index);
+            }
+        }
+        muiPopClip();
+
+        // Scroll thumb.
+        if (!mirror && total > rect.h) {
+            float trackX = rect.right() - ui.dp(4.0f);
+            float thumbHeight = std::max(rect.h * rect.h / total, ui.dp(24.0f));
+            float thumbY = rect.y + (rect.h - thumbHeight) * (offset / (total - rect.h));
+            muiFillRoundRect({ trackX, thumbY, ui.dp(3.0f), thumbHeight }, ui.dp(1.5f), theme.textDim);
+        }
+    }
+
+    // Split layout, bottom screen: name, options (or review / party panel),
+    // Barter and End shortcuts, tabs.
+    void TalkScreen::buildBottom(MuiContext& ui)
+    {
+        const MuiTheme& theme = muiTheme();
+        muiSkinBackdrop(ui, ui.screenRect());
+
+        MuiRect content;
+        MuiRect tabs;
+        muiDialogLayout(ui, &content, &tabs);
+        float gap = ui.dp(8.0f);
+
+        const char* reply = gameDialogGetReplyText();
+        int optionCount = gameDialogGetOptionCount();
+        if (bottomLastReply != reply || bottomLastOptionCount != optionCount) {
+            bottomLastReply = reply;
+            bottomLastOptionCount = optionCount;
+            bottomReplyAt = ui.now;
+            ui.setScroll("talk.options", 0.0f);
+        }
+
+        buildIconButtons(ui, tabs);
+
+        // Header: who speaks.
+        MuiRect header = { content.x, content.y, content.w, ui.dp(36.0f) };
+        if (gGameDialogSpeaker != nullptr) {
+            std::u32string name = muiDecodeGameText(objectGetName(gGameDialogSpeaker));
+            muiDrawTextAligned(name, header, muiFitTextSize(name, header.w, ui.dp(19.0f), ui.dp(12.0f)), theme.accent, MuiAlign::Start, MuiAlign::Center);
+        }
+        MuiRect body = { content.x, header.bottom() + gap, content.w, content.h - header.h - gap };
+
+        PartyControlView partyView;
+        if (partyOpen && gameDialogGetPartyControlView(&partyView)) {
+            buildParty(ui, body, partyView);
+            return;
+        }
+        if (reviewOpen) {
+            buildReview(ui, body);
+            return;
+        }
+
+        // Footer: Barter (traders), End (the game's [Done] option).
+        int doneIndex = -1;
+        for (int index = 0; index < optionCount; index++) {
+            if (gameDialogOptionIsDone(index)) {
+                doneIndex = index;
+            }
+        }
+        bool canBarter = gameDialogSpeakerCanBarter();
+        if (canBarter || doneIndex != -1) {
+            float footerHeight = ui.dp(52.0f);
+            MuiRect footer = { body.x, body.bottom() - footerHeight, body.w, footerHeight };
+            body.h -= footerHeight + gap;
+            float buttonWidth = std::min(ui.dp(200.0f), (footer.w - gap) / 2.0f);
+            if (canBarter) {
+                if (ui.button("talk.barter", { footer.x, footer.y, buttonWidth, footer.h }, muiDecodeGameText(muiText(kTextTalkBarter, "Barter")))) {
+                    reviewOpen = false;
+                    partyOpen = false;
+                    gameDialogRequestBarter();
+                }
+            }
+            if (doneIndex != -1) {
+                if (ui.button("talk.end", { footer.right() - buttonWidth, footer.y, buttonWidth, footer.h }, muiDecodeGameText(muiText(kTextEndConversation, "End conversation")))) {
+                    gameDialogChooseOption(doneIndex);
+                }
+            }
+        }
+
+        buildOptionRows(ui, body, false);
+    }
+
+    class BottomTalkScreen : public MuiScreen {
+    public:
+        BottomTalkScreen() { modal = true; }
+
+        MuiSurface surface() override { return MuiSurface::Bottom; }
+        bool coversScreen() override { return true; }
+        bool isActive() override { return gTalkScreen != nullptr && gTalkScreen->split(); }
+        void back() override
+        {
+            if (gTalkScreen != nullptr) {
+                gTalkScreen->back();
+            }
+        }
+        void build(MuiContext& ui) override
+        {
+            if (gTalkScreen != nullptr) {
+                gTalkScreen->buildBottom(ui);
+            }
+        }
+    };
+
+    BottomTalkScreen* gBottomTalkScreen = nullptr;
 
     void TalkScreen::buildHead(MuiContext& ui, const MuiRect& rect)
     {
@@ -239,12 +527,12 @@ namespace {
         }
     }
 
-    void TalkScreen::buildReply(MuiContext& ui, const MuiRect& rect)
+    void TalkScreen::buildReply(MuiContext& ui, const MuiRect& rect, float textSize)
     {
         const MuiTheme& theme = muiTheme();
         ui.panel(rect);
 
-        float size = ui.dp(17.0f);
+        float size = textSize > 0.0f ? textSize : ui.dp(17.0f);
         MuiRect content = rect.inset(ui.dp(12.0f), ui.dp(10.0f));
 
         // Speaker name as the header.
@@ -906,6 +1194,8 @@ void muiGameDialogInit()
 
     gTalkScreen = new TalkScreen();
     muiPush(gTalkScreen);
+    gBottomTalkScreen = new BottomTalkScreen();
+    muiPush(gBottomTalkScreen);
 }
 
 void muiGameDialogExit()
@@ -914,6 +1204,9 @@ void muiGameDialogExit()
         return;
     }
 
+    muiRemove(gBottomTalkScreen);
+    delete gBottomTalkScreen;
+    gBottomTalkScreen = nullptr;
     muiRemove(gTalkScreen);
     delete gTalkScreen;
     gTalkScreen = nullptr;

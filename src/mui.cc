@@ -1441,17 +1441,32 @@ bool muiForgetMissingFingers(const SDL_FingerID* down, int count)
     return forgotten;
 }
 
-bool muiGetWidgetCenter(const char* id, float* x, float* y)
+bool muiGetWidgetCenter(const char* id, float* x, float* y, bool* onBottom)
 {
-    // Automated tests tap the top screen.
+    if (onBottom != nullptr) {
+        *onBottom = false;
+    }
+
+    // Automated tests tap the top screen first, then the bottom one.
     const Surface& top = surfaceOf(MuiSurface::Top);
     auto it = top.widgets.find(id);
-    if (it == top.widgets.end()) {
+    if (it != top.widgets.end()) {
+        *x = it->second.centerX() / top.outputWidth;
+        *y = it->second.centerY() / top.outputHeight;
+        return true;
+    }
+
+    const Surface& bottom = surfaceOf(MuiSurface::Bottom);
+    it = bottom.widgets.find(id);
+    if (it == bottom.widgets.end() || bottom.outputWidth <= 0) {
         return false;
     }
 
-    *x = it->second.centerX() / top.outputWidth;
-    *y = it->second.centerY() / top.outputHeight;
+    *x = it->second.centerX() / bottom.outputWidth;
+    *y = it->second.centerY() / bottom.outputHeight;
+    if (onBottom != nullptr) {
+        *onBottom = true;
+    }
     return true;
 }
 

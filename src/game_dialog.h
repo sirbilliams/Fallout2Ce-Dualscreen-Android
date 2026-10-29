@@ -122,6 +122,8 @@ const char* gameDialogGetOptionText(int index);
 // Reaction shown with Empathy perk: 0 - good, 1 - neutral, 2 - bad; -1
 // without the perk.
 int gameDialogGetOptionReaction(int index);
+// The option is the game's own "[Done]" one (ends the conversation).
+bool gameDialogOptionIsDone(int index);
 int gameDialogGetReviewCount();
 // [option] is nullptr when the reply had no answer.
 void gameDialogGetReviewEntry(int index, const char** reply, const char** option);
