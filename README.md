@@ -16,9 +16,13 @@ This is an **unofficial, fan-made, modified version** of Fallout 2 CE. It is not
 
 On a two-screen device the world gets the whole top screen and the bottom screen becomes a live console: the HUD, a live map that follows you, and the game's screens (inventory, character, Pip-Boy, map) open there while the world waits on top. Settings → Display has the **bottom screen layout** (Classic, Map first, Two columns) and **screen navigation** (Rail, Slim rail, Top bar).
 
+<p><img src="docs/screenshots/thor-both-screens.jpg" alt="Both screens as on the AYN Thor: the world on top, the console with the live map and attack modes below" width="70%"></p>
+
 <p><img src="docs/screenshots/thor-bottom-dashboard.jpg" alt="Bottom screen: the dashboard with the live map" width="49%"> <img src="docs/screenshots/thor-bottom-combat.jpg" alt="Bottom screen in combat: your turn, AP, end turn" width="49%"></p>
 
 <p><img src="docs/screenshots/thor-bottom-columns.jpg" alt="Bottom screen: the two-columns layout" width="49%"> <img src="docs/screenshots/thor-bottom-character.jpg" alt="Bottom screen: the character screen with the top bar" width="49%"></p>
+
+<p><img src="docs/screenshots/thor-bottom-mapfirst.jpg" alt="Bottom screen: the Map first layout" width="49%"> <img src="docs/screenshots/thor-bottom-slim-inventory.jpg" alt="Bottom screen: inventory with the slim rail" width="49%"></p>
 
 Details: [docs/dualscreen.md](docs/dualscreen.md).
 
