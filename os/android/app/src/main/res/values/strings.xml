@@ -77,10 +77,10 @@
     <string name="guide_next">Next</string>
     <string name="guide_skip">Skip</string>
     <string name="guide_done">Start the game</string>
-    <string name="guide_files_title">The game's files</string>
+    <string name="guide_files_title">The game\'s files</string>
     <string name="guide_files_found">Your copy of Fallout 2 is installed. Nothing more is needed here. You can replace it later in Settings, Game files.</string>
-    <string name="guide_files_missing">The game's files aren't here yet. Fallout 2 CE needs your own copy of Fallout 2 (GOG, Steam or the disc): a folder, or one archive of it, on this device.</string>
-    <string name="guide_files_choose">Find the game's files</string>
+    <string name="guide_files_missing">The game\'s files aren\'t here yet. Fallout 2 CE needs your own copy of Fallout 2 (GOG, Steam or the disc): a folder, or one archive of it, on this device.</string>
+    <string name="guide_files_choose">Find the game\'s files</string>
     <string name="guide_files_change">Choose other files</string>
     <string name="guide_layout_title">Bottom screen layout</string>
     <string name="guide_layout_text">What the bottom screen shows while you explore. Tap one; it can be changed later in Settings.</string>
@@ -88,7 +88,7 @@
     <string name="guide_layout_map">Map first</string>
     <string name="guide_layout_columns">Two columns</string>
     <string name="guide_theme_title">Theme</string>
-    <string name="guide_theme_text">The Fallout theme draws the bottom screen with the game's own interface art and fonts, read from your copy. Classic is plain green.</string>
+    <string name="guide_theme_text">The Fallout theme draws the bottom screen with the game\'s own interface art and fonts, read from your copy. Classic is plain green.</string>
     <string name="guide_theme_fallout">Fallout</string>
     <string name="guide_theme_classic">Classic</string>
     <string name="guide_controls_title">Controls</string>
@@ -97,5 +97,5 @@
     <string name="guide_controls_pad_title">Gamepad</string>
     <string name="guide_controls_pad">B back. Start menu. Y inventory, X skills, L1 character, R1 Pip-Boy, R3 map, L3 sneak. L2 swaps hands, R2 uses the active item. Hold Select to end the turn. Right stick moves the view, D-pad up and down zoom.</string>
     <string name="guide_controls_again_title">Again</string>
-    <string name="guide_controls_again">This guide is shown once. Open it again in the game's Settings, Setup guide.</string>
+    <string name="guide_controls_again">This guide is shown once. Open it again in the game\'s Settings, Setup guide.</string>
 </resources>
