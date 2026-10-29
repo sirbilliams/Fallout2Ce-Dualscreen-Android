@@ -328,6 +328,7 @@ namespace {
         bool scrolling = false;
         if (!mirror) {
             offset = ui.scroll("talk.options", rect, total);
+            ui.padPrefer("talk.options.0");
             scrolling = ui.isScrolling("talk.options");
         }
         // The finger that tapped the last option must not hit the next one.
@@ -645,6 +646,7 @@ namespace {
         }
 
         float offset = ui.scroll("talk.options", rect, total);
+        ui.padPrefer("talk.options.0");
         bool scrolling = ui.isScrolling("talk.options");
 
         muiPushClip(rect);

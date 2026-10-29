@@ -366,6 +366,10 @@ struct TouchSettings {
     bool dialogue_tap_skip = false;
     // Ask before an offer that is clearly lossy.
     bool barter_confirm = false;
+    // Gamepad (QOL stage 3): d-pad / stick focus in screens, the map cursor.
+    bool gamepad_ui = true;
+    // "button=action" pairs over the defaults (docs/gamepad-stage3.md).
+    std::string gamepad_bindings;
     // Bottom-screen look: 0 - Fallout (the game's own art and fonts), 1 - classic (drawn from code).
     int bottom_theme = 0;
 };

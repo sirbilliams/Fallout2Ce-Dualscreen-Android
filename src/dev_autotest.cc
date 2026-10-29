@@ -26,6 +26,7 @@
 #include "game_commands.h"
 #include "game_dialog.h"
 #include "game_mouse.h"
+#include "gamepad.h"
 #include "game_movie.h"
 #include "game_sound.h"
 #include "input.h"
@@ -113,6 +114,10 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_COMMAND,
     // Back (Android's back button).
     DEV_AUTOTEST_ACTION_BACK,
+    // Gamepad button `a` (SDL_GameControllerButton; 100 / 101 triggers),
+    // pressed and released; the stick of the pad: `a`, `b` for `c` frames.
+    DEV_AUTOTEST_ACTION_PAD,
+    DEV_AUTOTEST_ACTION_PAD_STICK,
     // Logs the talk: reply, options, dialog modes, caps and inventory sizes
     // of dude and the speaker, checksums of global, map and the speaker's
     // local variables (one run of the game's logic gives the same lines).
@@ -763,6 +768,77 @@ static const DevAutotestStep kDevAutotestDualTalkProofSteps[] = {
     { DEV_AUTOTEST_ACTION_LOG_DIALOG, 0, 0, 0, 1, "t04_before_choice" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "t05_leave_village", "talk.options.0" },
     { DEV_AUTOTEST_ACTION_LOG_DIALOG, 0, 0, 0, 1, "t06_branch_state" },
+};
+
+static const DevAutotestStep kDevAutotestPadTalkSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 10, "p00_center" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "p01_real_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 30, "p01_real_talk_ready" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 12, "p02_ring_appears_on_first_option" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 12, "p03_focus_second" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 12, "p04_focus_third" },
+    { DEV_AUTOTEST_ACTION_PAD, 11, 0, 0, 12, "p05_focus_back_up" },
+    { DEV_AUTOTEST_ACTION_LOG_DIALOG, 0, 0, 0, 1, "p06_before_choice" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 40, "p07_A_chooses" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 600, 0, 0, 30, "p08_next_reply" },
+    { DEV_AUTOTEST_ACTION_LOG_DIALOG, 0, 0, 0, 1, "p09_branch_state" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 12, "p10_focus_next_reply" },
+    { DEV_AUTOTEST_ACTION_PAD, 10, 0, 0, 12, "p11_RB_no_other_surface" },
+};
+
+static const DevAutotestStep kDevAutotestPadBarterSteps[] = {
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 40, 8, 0, 1, "q00_stimpaks" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 4, 1, 0, 1, "q01_knife" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 41, 150, 0, 1, "q02_caps" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 10, "q03_center" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "q04_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 30, "q04_talk_ready" },
+    { DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM, 40, 6, 0, 1, "q05_trader_stock" },
+    { DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM, 41, 200, 0, 1, "q06_trader_caps" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 60, "q07_barter", "dialog.tab.barter" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 10, "q08_ring_shows" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 10, "q09_down_to_stimpaks" },
+    { DEV_AUTOTEST_ACTION_PAD, 2, 0, 0, 40, "q10_X_long_press_quantity" },
+    { DEV_AUTOTEST_ACTION_PAD, 14, 0, 0, 10, "q11_picker_right" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 10, "q12_picker_down" },
+    { DEV_AUTOTEST_ACTION_PAD, 11, 0, 0, 10, "q13_picker_up" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 10, "q14_A_picker_button" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 10, "q15_A_again" },
+    { DEV_AUTOTEST_ACTION_PAD, 1, 0, 0, 20, "q16_B_picker_cancel" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 30, "q17_A_tap_item_to_offer" },
+    { DEV_AUTOTEST_ACTION_PAD, 14, 0, 0, 10, "q18_right" },
+    { DEV_AUTOTEST_ACTION_PAD, 14, 0, 0, 10, "q19_right_to_offer_list" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 10, "q20_down" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 30, "q21_A_return_item" },
+    { DEV_AUTOTEST_ACTION_PAD, 13, 0, 0, 10, "q22_left" },
+};
+
+static const DevAutotestStep kDevAutotestPadMapSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "m00_map" },
+    { DEV_AUTOTEST_ACTION_PAD_STICK, 0.8f, 0.0f, 40, 40, "m01_cursor_right" },
+    { DEV_AUTOTEST_ACTION_PAD_STICK, 0.0f, 0.8f, 20, 20, "m02_cursor_down" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 120, "m03_A_click_walk" },
+    { DEV_AUTOTEST_ACTION_PAD, 2, 0, 0, 60, "m04_X_context" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 20, "m04b_A_pick" },
+    { DEV_AUTOTEST_ACTION_PAD_STICK, -0.8f, -0.3f, 40, 40, "m05_cursor_back" },
+    { DEV_AUTOTEST_ACTION_PAD, 10, 0, 0, 20, "m06_RB_focus_dashboard" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 10, "m07_dash_down" },
+    { DEV_AUTOTEST_ACTION_PAD, 14, 0, 0, 10, "m08_dash_right" },
+    { DEV_AUTOTEST_ACTION_PAD, 14, 0, 0, 10, "m09_dash_right" },
+    { DEV_AUTOTEST_ACTION_PAD, 1, 0, 0, 15, "m10_B_back_to_map" },
+    { DEV_AUTOTEST_ACTION_PAD, 3, 0, 0, 60, "m11_Y_inventory" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 10, "m12_inv_ring" },
+    { DEV_AUTOTEST_ACTION_PAD, 14, 0, 0, 10, "m13_inv_right" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 10, "m14_inv_down" },
+    { DEV_AUTOTEST_ACTION_PAD, 2, 0, 0, 30, "m15_X_context" },
+    { DEV_AUTOTEST_ACTION_PAD, 1, 0, 0, 15, "m16_B" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 40, 3, 0, 1, "m17b_give_stimpak" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "m17c_wait" },
+    { DEV_AUTOTEST_ACTION_PAD, 13, 0, 0, 90, "m18_left_quick_use" },
+    { DEV_AUTOTEST_ACTION_PAD, 14, 0, 0, 10, "m19_quick_focus" },
+    { DEV_AUTOTEST_ACTION_PAD, 1, 0, 0, 60, "m20_B_close" },
+    { DEV_AUTOTEST_ACTION_PAD, 10, 0, 0, 10, "m21_RB" },
+    { DEV_AUTOTEST_ACTION_PAD, 5, 0, 0, 10, "m21b_unused" },
 };
 
 static const DevAutotestStep kDevAutotestDualMoreProofSteps[] = {
@@ -2538,6 +2614,24 @@ void devAutotestSetScenario(const char* name)
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif
+    } else if (strcmp(name, "padtalk") == 0) {
+        gDevAutotestSteps = kDevAutotestPadTalkSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestPadTalkSteps) / sizeof(kDevAutotestPadTalkSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "padbarter") == 0) {
+        gDevAutotestSteps = kDevAutotestPadBarterSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestPadBarterSteps) / sizeof(kDevAutotestPadBarterSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "padmap") == 0) {
+        gDevAutotestSteps = kDevAutotestPadMapSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestPadMapSteps) / sizeof(kDevAutotestPadMapSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "dualmoreproof") == 0) {
         gDevAutotestSteps = kDevAutotestDualMoreProofSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestDualMoreProofSteps) / sizeof(kDevAutotestDualMoreProofSteps[0]);
@@ -3988,6 +4082,15 @@ void devAutotestTick()
                 devAutotestLog("  tap near item at (%d, %d) + (%.0f, %.0f)\n", x, y, step->a, step->b);
                 devAutotestStartTouch(x + step->a, y + step->b, x + step->a, y + step->b, 1, 0);
             }
+            break;
+        case DEV_AUTOTEST_ACTION_PAD:
+            devAutotestLog("  pad button %d\n", static_cast<int>(step->a));
+            gamepadDevPress(static_cast<int>(step->a), true);
+            gamepadDevPress(static_cast<int>(step->a), false);
+            break;
+        case DEV_AUTOTEST_ACTION_PAD_STICK:
+            devAutotestLog("  pad stick %.2f %.2f for %d frames\n", step->a, step->b, static_cast<int>(step->c));
+            gamepadDevStick(step->a, step->b, static_cast<int>(step->c));
             break;
         case DEV_AUTOTEST_ACTION_MUI_TAP: {
             float x;

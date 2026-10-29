@@ -47,6 +47,9 @@ void touchHudClearMessages();
 // loop, `false` - not one of them.
 bool touchHudHandleEvent(int eventCode);
 
+// `GameCommandType::Hud` event of the gamepad's quick use ring (mui_pad.h).
+constexpr int kHudEventPadQuickUse = 900;
+
 // Indicators (SNEAK, LEVEL, ...) are shown by HUD instead of the bar.
 void touchHudSetIndicators(const InterfaceIndicator* indicators, int count);
 

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "dev_autotest.h"
+#include "mui_pad.h"
 #include "game.h"
 #include "game_charset.h"
 #include "game_dialog.h"
@@ -169,6 +170,26 @@ namespace {
         std::unordered_map<std::string, MuiRect> frameWidgets;
 
         std::unordered_map<std::string, ScrollState> scrolls;
+
+        // Gamepad focus (mui_pad.h): touchable widgets and scroll areas of
+        // the interactive screen, in build order.
+        std::vector<MuiPadWidget> frameFocus;
+        std::vector<MuiPadWidget> focus;
+        std::vector<MuiPadScroll> frameScrollAreas;
+        std::vector<MuiPadScroll> scrollAreas;
+        std::string padFocusId;
+        std::string framePadPrefer;
+        std::string padPrefer;
+        // Slider steps asked by the pad, taken by the focused slider.
+        int padSlide = 0;
+        // Pan / zoom asked by the pad, taken by a pan and zoom view.
+        float padPanX = 0.0f;
+        float padPanY = 0.0f;
+        float padZoom = 1.0f;
+        bool framePanZoom = false;
+        bool hasPanZoom = false;
+        MuiRect panZoomRect;
+        MuiRect framePanZoomRect;
 
         int outputWidth = 1;
         int outputHeight = 1;
@@ -395,6 +416,12 @@ bool MuiContext::touchable(const std::string& id, const MuiRect& rect, bool* pre
     region(rect);
     gSurface->frameWidgets[id] = rect;
 
+    // Tap-anywhere catchers (".skip") are not for the pad.
+    bool skipId = id.size() > 5 && id.compare(id.size() - 5, 5, ".skip") == 0;
+    if (isInteractive && !skipId && rect.w > 1.0f && rect.h > 1.0f && rect.w * rect.h < screen.w * screen.h * 0.6f) {
+        gSurface->frameFocus.push_back({ id, rect });
+    }
+
     if (pressed != nullptr) {
         *pressed = false;
     }
@@ -440,6 +467,13 @@ bool MuiContext::touchable(const std::string& id, const MuiRect& rect, bool* pre
     return gSurface->pointer.released && inside;
 }
 
+void MuiContext::padPrefer(const std::string& id)
+{
+    if (isInteractive && gSurface->framePadPrefer.empty()) {
+        gSurface->framePadPrefer = id;
+    }
+}
+
 void MuiContext::mark(const std::string& id, const MuiRect& rect)
 {
     gSurface->frameWidgets[id] = rect;
@@ -481,6 +515,9 @@ float MuiContext::scrollAlong(const std::string& id, const MuiRect& rect, float 
 {
     region(rect);
     gSurface->frameWidgets[id] = rect;
+    if (isInteractive) {
+        gSurface->frameScrollAreas.push_back({ id, rect, horizontal });
+    }
 
     ScrollState& state = gSurface->scrolls[id];
     float maxOffset = std::max(contentSize - (horizontal ? rect.w : rect.h), 0.0f);
@@ -634,6 +671,19 @@ bool MuiContext::panZoom(const std::string& id, const MuiRect& rect, MuiPanZoom*
         return false;
     }
 
+    gSurface->framePanZoom = true;
+    gSurface->framePanZoomRect = rect;
+    if (gSurface->padPanX != 0.0f || gSurface->padPanY != 0.0f || gSurface->padZoom != 1.0f) {
+        // The pad's stick: the content moves under the view's center.
+        float zoom = std::clamp(view->zoom * gSurface->padZoom, view->minZoom, view->maxZoom);
+        view->zoom = zoom;
+        view->centerX += gSurface->padPanX / zoom;
+        view->centerY += gSurface->padPanY / zoom;
+        gSurface->padPanX = 0.0f;
+        gSurface->padPanY = 0.0f;
+        gSurface->padZoom = 1.0f;
+    }
+
     // Not a touch begun before the screen showed (see `touchable`).
     if (gSurface->pointer.pressed && gSurface->activeId.empty() && rect.contains(gSurface->pointer.startX, gSurface->pointer.startY)
         && !(current != nullptr && static_cast<int>(gSurface->pointer.downTime - current->openTime) < 0)) {
@@ -716,6 +766,14 @@ float MuiContext::slider(const std::string& id, const MuiRect& rect, float value
     MuiRect touchRect = rect.inset(0.0f, -dp(10.0f));
     bool pressed;
     touchable(id, touchRect, &pressed);
+    if (!gSurface->frameFocus.empty() && gSurface->frameFocus.back().id == id) {
+        gSurface->frameFocus.back().slider = true;
+    }
+
+    if (isInteractive && gSurface->padSlide != 0 && gSurface->padFocusId == id && maxValue > minValue) {
+        value = std::clamp(value + gSurface->padSlide * (maxValue - minValue) / 20.0f, minValue, maxValue);
+        gSurface->padSlide = 0;
+    }
 
     bool held = isInteractive && gSurface->activeId == id && gSurface->pointer.down && maxValue > minValue;
     if (held) {
@@ -1138,6 +1196,10 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
 
     gSurface->frameRegions.clear();
     gSurface->frameWidgets.clear();
+    gSurface->frameFocus.clear();
+    gSurface->framePadPrefer.clear();
+    gSurface->frameScrollAreas.clear();
+    gSurface->framePanZoom = false;
 
     MuiContext context;
     context.pixelsPerDp = gSurface->pixelsPerDp;
@@ -1167,6 +1229,16 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
         context.isInteractive = screen == top;
         screen->build(context);
     }
+
+    // Gamepad: focus ring over the screen being built.
+    gSurface->focus = gSurface->frameFocus;
+    gSurface->padPrefer = gSurface->framePadPrefer;
+    gSurface->scrollAreas = gSurface->frameScrollAreas;
+    gSurface->hasPanZoom = gSurface->framePanZoom;
+    gSurface->panZoomRect = gSurface->framePanZoomRect;
+    context.current = nullptr;
+    context.isInteractive = false;
+    muiPadFrame(context, surface, top != nullptr);
 
     // The bottom screen: the companion panel when nothing is on it, a screen
     // coming up fades in, low HP pulses at the edges.
@@ -1229,6 +1301,7 @@ void muiRender(SDL_Renderer* renderer)
         return;
     }
 
+    muiPadTick();
     muiRenderSurface(renderer, MuiSurface::Top, width, height, hudGetScreenDensity());
 }
 
@@ -1500,5 +1573,76 @@ bool muiGetWidgetCenter(const char* id, float* x, float* y, bool* onBottom)
     }
     return true;
 }
+
+
+// Gamepad hooks (mui_pad.h).
+
+const std::vector<MuiPadWidget>& muiPadWidgets(MuiSurface surface)
+{
+    return surfaceOf(surface).focus;
+}
+
+const std::vector<MuiPadScroll>& muiPadScrollAreas(MuiSurface surface)
+{
+    return surfaceOf(surface).scrollAreas;
+}
+
+bool muiPadHasScreen(MuiSurface surface)
+{
+    return topScreen(surface) != nullptr;
+}
+
+const std::string& muiPadPreferredId(MuiSurface surface)
+{
+    return surfaceOf(surface).padPrefer;
+}
+
+std::string& muiPadFocusId(MuiSurface surface)
+{
+    return surfaceOf(surface).padFocusId;
+}
+
+bool muiPadScrollBy(MuiSurface surface, const std::string& id, float delta)
+{
+    Surface& s = surfaceOf(surface);
+    auto it = s.scrolls.find(id);
+    if (it == s.scrolls.end()) {
+        return false;
+    }
+    it->second.offset = std::max(it->second.offset + delta, 0.0f);
+    it->second.velocity = 0.0f;
+    return true;
+}
+
+void muiPadSlide(MuiSurface surface, int direction)
+{
+    surfaceOf(surface).padSlide = direction;
+}
+
+void muiPadPan(MuiSurface surface, float dx, float dy, float zoom)
+{
+    Surface& s = surfaceOf(surface);
+    s.padPanX += dx;
+    s.padPanY += dy;
+    s.padZoom *= zoom;
+}
+
+bool muiPadPanZoomRect(MuiSurface surface, MuiRect* rect)
+{
+    const Surface& s = surfaceOf(surface);
+    if (!s.hasPanZoom) {
+        return false;
+    }
+    *rect = s.panZoomRect;
+    return true;
+}
+
+void muiPadOutputSize(MuiSurface surface, int* width, int* height)
+{
+    const Surface& s = surfaceOf(surface);
+    *width = s.outputWidth;
+    *height = s.outputHeight;
+}
+
 
 } // namespace fallout

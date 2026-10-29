@@ -416,6 +416,8 @@ void initSettingsRegistry(bool isMapper)
     SETTING(dialogue_tap_skip);
     SETTING(barter_confirm);
     SETTING_P(bottom_theme, clamp(0, 1));
+    SETTING(gamepad_ui);
+    SETTING(gamepad_bindings);
 #undef SECT
 
 #define SECT world_view
