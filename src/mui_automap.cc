@@ -8,10 +8,12 @@
 #include <string>
 #include <vector>
 
+#include "animation.h"
 #include "automap.h"
 #include "dev_autotest.h"
 #include "fps_limiter.h"
 #include "game.h"
+#include "game_commands.h"
 #include "game_sound.h"
 #include "input.h"
 #include "kb.h"
@@ -59,6 +61,7 @@ namespace {
 
         bool coversScreen() override { return true; }
 
+        bool tileCenter(int tile, float* x, float* y) const { return mapView.tileToScreen(HEX_GRID_WIDTH - 1 - tile % HEX_GRID_WIDTH, tile / HEX_GRID_WIDTH, x, y); }
         void reset();
         void build(MuiContext& ui) override;
         void back() override { finished = true; }
@@ -201,6 +204,10 @@ namespace {
 
         MuiRect mapRect = body.inset(ui.dp(4.0f));
         mapView.build(ui, "automap.map", mapRect, markers, &labels);
+        if (mapView.tappedTile >= 0 && gDude != nullptr && _make_path(gDude, gDude->tile, mapView.tappedTile, nullptr, 1) > 0) {
+            gameCommandPost(GameCommandType::Hud, 10000 + mapView.tappedTile);
+            finished = true;
+        }
         muiAutomapLegend(ui, mapRect);
     }
 
@@ -286,6 +293,11 @@ void muiAutomapLegend(MuiContext& ui, const MuiRect& area)
         muiDrawTextAligned(name, label, size, muiTheme().text, MuiAlign::Start, MuiAlign::Center);
         x += width + gap;
     }
+}
+
+bool muiAutomapTileCenter(int tile, float* x, float* y)
+{
+    return gAutomapScreen.tileCenter(tile, x, y);
 }
 
 void muiAutomapScreenRun()

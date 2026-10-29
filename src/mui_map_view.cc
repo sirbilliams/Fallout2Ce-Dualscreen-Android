@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <cmath>
 
+#include "map_hints.h"
+#include "object.h"
+#include "settings.h"
+
 namespace fallout {
 
 namespace {
@@ -292,6 +296,7 @@ void MuiMapView::render(MuiContext& ui, float scale)
 
 void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers, const std::vector<MuiMapLabel>* labels)
 {
+    tappedTile = -1;
     if (isEmpty()) {
         return;
     }
@@ -327,7 +332,14 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
         view.centerY = followY;
     }
 
-    bool touched = ui.panZoom(id, rect, &view);
+    bool tapped = false;
+    bool touched = ui.panZoom(id, rect, &view, &tapped);
+    if (tapped && settings.touch.map_tap_move && (id == "hud.livemap" || id == "automap.map")) {
+        int x = static_cast<int>(std::floor(view.centerX + (ui.pointerX() - rect.centerX()) / view.zoom));
+        int y = static_cast<int>(std::floor(view.centerY + (ui.pointerY() - rect.centerY()) / view.zoom));
+        if (x >= 0 && y >= 0 && x < width && y < height && tileAt(x, y) != MUI_MAP_TILE_WALL)
+            tappedTile = y * width + (width - 1 - x);
+    }
     if (touched) {
         lastTouch = ui.now != 0 ? ui.now : 1;
     }
@@ -363,7 +375,11 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
         muiDrawTexture(texture, dest);
     }
 
-    for (const MuiMapMarker& marker : markers) {
+    auto allMarkers = markers;
+    int destination = mapHintsGetDestination();
+    if (destination >= 0 && gDude != nullptr && (id == "hud.livemap" || id == "automap.map"))
+        allMarkers.push_back({ static_cast<float>(width - 1 - destination % width), static_cast<float>(destination / width), muiRgb(0xFFD060), 6.0f, MuiMapMarkerShape::Ring });
+    for (const MuiMapMarker& marker : allMarkers) {
         float x = rect.centerX() + (marker.x + 0.5f - view.centerX) * view.zoom;
         float y = rect.centerY() + (marker.y + 0.5f - view.centerY) * view.zoom;
         float radius = ui.dp(marker.radius);

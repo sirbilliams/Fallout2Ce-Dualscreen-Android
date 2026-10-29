@@ -408,6 +408,7 @@ void initSettingsRegistry(bool isMapper)
     SETTING_P(hud_density, clamp(0.0, 8.0));
     SETTING(tactical_view);
     SETTING(dual_screen);
+    SETTING(map_tap_move);
     SETTING_P(dashboard_layout, clamp(0, 2));
     SETTING_P(screen_nav, clamp(0, 2));
     SETTING_P(dialogue_layout, clamp(0, 2));

@@ -211,6 +211,7 @@ namespace {
         bool allAnimations;
         bool mainMenuContinue;
         bool worldmapFollow;
+        bool mapTapMove;
         bool tacticalView;
         bool dualScreen;
         int dashboardLayout;
@@ -243,6 +244,7 @@ namespace {
         values.allAnimations = settings.enhancements.combat_speed_all_animations;
         values.mainMenuContinue = settings.enhancements.main_menu_continue;
         values.worldmapFollow = settings.enhancements.worldmap_follow_party;
+        values.mapTapMove = settings.touch.map_tap_move;
         values.tacticalView = settings.enhancements.tactical_view;
         values.dualScreen = settings.touch.dual_screen;
         values.dashboardLayout = settings.touch.dashboard_layout;
@@ -276,6 +278,7 @@ namespace {
         values.allAnimations = EnhancementSettings().combat_speed_all_animations;
         values.mainMenuContinue = EnhancementSettings().main_menu_continue;
         values.worldmapFollow = EnhancementSettings().worldmap_follow_party;
+        values.mapTapMove = TouchSettings().map_tap_move;
         values.tacticalView = EnhancementSettings().tactical_view;
         values.dualScreen = TouchSettings().dual_screen;
         values.dashboardLayout = TouchSettings().dashboard_layout;
@@ -359,6 +362,7 @@ namespace {
         settings.enhancements.combat_speed_all_animations = values.allAnimations;
         settings.enhancements.main_menu_continue = values.mainMenuContinue;
         settings.enhancements.worldmap_follow_party = values.worldmapFollow;
+        settings.touch.map_tap_move = values.mapTapMove;
         settings.enhancements.tactical_view = values.tacticalView;
         settings.touch.dual_screen = values.dualScreen;
         settings.touch.dashboard_layout = values.dashboardLayout;
@@ -756,6 +760,12 @@ namespace {
             row.optionsFromCe = true;
             row.get = [](const Values& values) { return static_cast<float>(values.bottomTheme); };
             row.set = [](Values& values, float value) { values.bottomTheme = static_cast<int>(value); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Display, RowKind::Toggle, 1040, "Tap maps to walk or travel", Origin::Port };
+            row.get = [](const Values& values) { return values.mapTapMove ? 1.0f : 0.0f; };
+            row.set = [](Values& values, float value) { values.mapTapMove = value != 0.0f; };
             rows.push_back(row);
         }
         {

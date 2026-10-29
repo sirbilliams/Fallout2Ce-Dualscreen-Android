@@ -68,6 +68,8 @@ namespace {
     // areas. Party members also get the party member control panel (the
     // game's combat control and customization panels in one): their stats
     // under the head instead of the reply.
+    bool consumePartyRequest();
+
     class TalkScreen : public MuiScreen {
     public:
         bool reviewOpen = false;
@@ -115,6 +117,7 @@ namespace {
         bool isActive() override
         {
             bool talking = gameDialogIsTalking();
+            if (talking && consumePartyRequest()) partyPending = true;
             modal = talking;
             if (!talking) {
                 reviewOpen = false;
@@ -165,6 +168,21 @@ namespace {
     };
 
     TalkScreen* gTalkScreen = nullptr;
+    Object* gRequestedPartySpeaker = nullptr;
+    Uint32 gPartyRequestTime = 0;
+
+    bool consumePartyRequest()
+    {
+        if (gRequestedPartySpeaker == nullptr) return false;
+        if (SDL_GetTicks() - gPartyRequestTime >= 30000) {
+            gRequestedPartySpeaker = nullptr;
+            return false;
+        }
+        if (gRequestedPartySpeaker != gGameDialogSpeaker || !gameDialogSpeakerIsPartyMember()) return false;
+        gRequestedPartySpeaker = nullptr;
+        return true;
+    }
+
 
     void TalkScreen::build(MuiContext& ui)
     {
@@ -1242,6 +1260,12 @@ void muiGameDialogOpenReview()
     if (gTalkScreen != nullptr) {
         gTalkScreen->reviewPending = true;
     }
+}
+
+void muiGameDialogRequestParty(Object* companion)
+{
+    gRequestedPartySpeaker = companion;
+    gPartyRequestTime = SDL_GetTicks();
 }
 
 void muiGameDialogOpenParty()

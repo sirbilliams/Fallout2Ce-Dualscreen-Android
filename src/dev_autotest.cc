@@ -43,6 +43,7 @@
 #include "mui_notify.h"
 #include "object.h"
 #include "party_member.h"
+#include "mui_map_view.h"
 #include "perf_monitor.h"
 #include "perk.h"
 #include "platform_compat.h"
@@ -92,6 +93,7 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_TOUCH_DRAG,
     // tap on the tile `a` hexes away from dude in direction `b`;
     DEV_AUTOTEST_ACTION_TOUCH_TAP_TILE,
+    DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP,
     // long press on the nearest critter;
     DEV_AUTOTEST_ACTION_TOUCH_LONG_PRESS_CRITTER,
     // tap on radial menu button of action menu item `a`;
@@ -443,9 +445,8 @@ static const DevAutotestStep kDevAutotestWorldmapSteps[] = {
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 0, 0, 0, 1, "w10c_menu_no_save", "menu.save" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "w11_menu_closed", "menu.continue" },
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 0, 0, 0, 1, "w11b_menu_gone", "menu.continue" },
-    { DEV_AUTOTEST_ACTION_FINGER, 0, 0.75f, 0.7f, 2, "w12_tap_down" },
-    { DEV_AUTOTEST_ACTION_FINGER, 1, 0.75f, 0.7f, 150, "w13_travelling" },
-    { DEV_AUTOTEST_ACTION_LOG_WORLDMAP, 0, 0, 0, 1, "w14_state" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0.25f, 0.2f, 150, "w13_travelling", "worldmap.map" },
+    { DEV_AUTOTEST_ACTION_LOG_WORLDMAP, 1, 0, 0, 1, "w14_state" },
 };
 
 #define HUD_ELEMENT(name) static_cast<float>(static_cast<int>(HudElementId::name))
@@ -1756,6 +1757,28 @@ static const DevAutotestStep kDevAutotestPipboySteps[] = {
 // Dual-screen bottom screen (a test 1240 x 1080 screen, the AYN Thor's): the
 // dashboard while exploring, the game screens it shows, combat. Each capture
 // also saves the bottom screen as <name>_bottom.png.
+static const DevAutotestStep kDevAutotestMapPartySteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 90, "mp00_map" },
+    { DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP, 3, 0, 0, 8, "mp01_target" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 120, "mp02_walked" },
+    { DEV_AUTOTEST_ACTION_CHECK_TOUCH_MOVED, 0, 0, 0, 1, "mp03_movement_proof" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Automap), 0, 0, 30, "mp03b_full_map" },
+    { DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP, 2, 0, 1, 100, "mp03c_full_map_walk" },
+    { DEV_AUTOTEST_ACTION_CHECK_TOUCH_MOVED, 0, 0, 0, 1, "mp03d_full_map_proof" },
+    { DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP, 0, 1, 0, 60, "mp04_wall_ignored" },
+    { DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP, 0, 2, 0, 1, "mp05_wall_proof" },
+    { DEV_AUTOTEST_ACTION_ADD_PARTY_MEMBER, 62, 2, ROTATION_SE, 30, "mp06_vic", "DCVic.int" },
+    { DEV_AUTOTEST_ACTION_GIVE_PARTY_ITEM, 8, 1, 0, 1, "mp07_weapon" },
+    { DEV_AUTOTEST_ACTION_WIELD_PARTY_ITEM, 8, 0, 0, 30, "mp08_equipped" },
+    { DEV_AUTOTEST_ACTION_GIVE_PARTY_ITEM, 74, 1, 0, 1, "mp08b_armor" },
+    { DEV_AUTOTEST_ACTION_WIELD_PARTY_ITEM, 74, 0, 0, 30, "mp08c_armored" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "mp09_party", "hud.nav.party" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "mp10_member_proof", "hud.party.member.1" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 120, "mp11_companion_talk", "hud.party.member.1" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "mp12_controls", "talk.party.weapon" },
+    { DEV_AUTOTEST_ACTION_LOG_PARTY_CONTROL, 8, 74, 12, 1, "mp13_control_proof" },
+};
+
 static const DevAutotestStep kDevAutotestDualScreenSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "d00_start" },
     { DEV_AUTOTEST_ACTION_LOAD_GAME, 0, 0, 0, 120, "d01_dashboard" },
@@ -2590,6 +2613,25 @@ void devAutotestSetScenario(const char* name)
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif
+    } else if (strcmp(name, "mappartyproof") == 0) {
+        gDevAutotestSteps = kDevAutotestMapPartySteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestMapPartySteps) / sizeof(kDevAutotestMapPartySteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "dualpartyproof") == 0) {
+        // The equipment, panel and control portion, also useful with bottom_theme=1.
+        gDevAutotestSteps = kDevAutotestMapPartySteps + 9;
+        gDevAutotestStepCount = sizeof(kDevAutotestMapPartySteps) / sizeof(kDevAutotestMapPartySteps[0]) - 9;
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "dualworldmapproof") == 0) {
+        gDevAutotestSteps = kDevAutotestWorldmapSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestWorldmapSteps) / sizeof(kDevAutotestWorldmapSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "dualendproof") == 0) {
         gDevAutotestSteps = kDevAutotestDualEndProofSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestDualEndProofSteps) / sizeof(kDevAutotestDualEndProofSteps[0]);
@@ -3095,6 +3137,12 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_LOG_PARTY_CONTROL: {
             PartyControlView view;
             if (gameDialogGetPartyControlView(&view)) {
+                if (step->a > 0 && (view.weapon == nullptr || view.weapon->pid != static_cast<int>(step->a)
+                    || view.armor == nullptr || view.armor->pid != static_cast<int>(step->b)
+                    || ammoGetQuantity(view.weapon) != static_cast<int>(step->c))) {
+                    devAutotestLog("autotest failed: companion equipment/ammo mismatch\n");
+                    exit(EXIT_FAILURE);
+                }
                 devAutotestLog("  party control: weapon pid %d, armor pid %d, hp %d/%d, disposition %d, settings %d %d %d %d %d %d\n",
                     view.weapon != nullptr ? view.weapon->pid : -1,
                     view.armor != nullptr ? view.armor->pid : -1,
@@ -3102,6 +3150,7 @@ void devAutotestTick()
                     view.settings[0], view.settings[1], view.settings[2], view.settings[3], view.settings[4], view.settings[5]);
             } else {
                 devAutotestLog("  party control: none\n");
+                if (step->a > 0) exit(EXIT_FAILURE);
             }
             break;
         }
@@ -3626,6 +3675,36 @@ void devAutotestTick()
             devAutotestStartTouch(x, y, x + step->a, y + step->b, 0, 15);
             break;
         }
+        case DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP: {
+            if (step->b == 2) {
+                if (gDude->tile != gDevAutotestTouchStartTile) { devAutotestLog("autotest failed: wall tap moved dude\n"); exit(EXIT_FAILURE); }
+                devAutotestLog("  wall tap ignored: ok\n");
+                break;
+            }
+            gDevAutotestTouchStartTile = gDude->tile;
+            int target = -1;
+            if (step->b == 1) {
+                for (Object* obj = objectFindFirstAtElevation(gElevation); obj; obj = objectFindNextAtElevation()) {
+                    float wallX, wallY;
+                    if (FrmId(obj).objectType() == OBJ_TYPE_WALL && tileDistanceBetween(gDude->tile, obj->tile) < 12
+                        && touchHudGetMapTileCenter(obj->tile, &wallX, &wallY)) { target = obj->tile; break; }
+                }
+            } else {
+                for (int direction = 0; direction < 6; ++direction) {
+                    int tile = tileGetTileInDirection(gDude->tile, static_cast<Rotation>(direction), static_cast<int>(step->a));
+                    if (_make_path(gDude, gDude->tile, tile, nullptr, 1) > 0) { target = tile; break; }
+                }
+            }
+            float x, y;
+            if (target < 0 || !(step->c == 1 ? muiAutomapTileCenter(target, &x, &y) : touchHudGetMapTileCenter(target, &x, &y))) { devAutotestLog("autotest failed: map target unavailable\n"); exit(EXIT_FAILURE); }
+            int width, height;
+            bottomScreenGetSize(&width, &height);
+            x = x / width * screenGetWidth(); y = y / height * screenGetHeight();
+            gDevAutotestBottomTouch = true;
+            devAutotestLog("  bottom map tap tile %d from %d\n", target, gDude->tile);
+            devAutotestStartTouch(x, y, x, y, 1, 0);
+            break;
+        }
         case DEV_AUTOTEST_ACTION_TOUCH_TAP_TILE:
             if (gDude != nullptr) {
                 gDevAutotestTouchStartTile = gDude->tile;
@@ -3984,6 +4063,7 @@ void devAutotestTick()
             bool isWalking;
             Rect viewRect;
             wmGetInterfaceState(&offsetX, &offsetY, &partyX, &partyY, &isWalking, &viewRect);
+            if (step->a == 1 && !isWalking) { devAutotestLog("autotest failed: world map tap did not start travel\n"); exit(EXIT_FAILURE); }
             devAutotestLog("  world map offset (%d, %d), party (%d, %d), walking %d\n", offsetX, offsetY, partyX, partyY, isWalking ? 1 : 0);
             break;
         }
@@ -4098,6 +4178,8 @@ void devAutotestTick()
             if (step->widget != nullptr && muiGetWidgetCenter(step->widget, &x, &y, &gDevAutotestBottomTouch)) {
                 x *= screenGetWidth();
                 y *= screenGetHeight();
+                x += step->b * screenGetWidth();
+                y += step->c * screenGetHeight();
                 devAutotestLog("  mui %s at (%.0f, %.0f)%s\n", step->widget, x, y, gDevAutotestBottomTouch ? " (bottom)" : "");
                 devAutotestStartTouch(x, y, x, y, step->a == 1 ? -1 : 1, 0);
             } else {

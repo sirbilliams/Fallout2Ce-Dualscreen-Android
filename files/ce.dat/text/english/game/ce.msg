@@ -352,3 +352,13 @@
 {1100}{}{Setup guide}
 {1101}{}{Game files, layout, theme and controls, step by step}
 {1102}{}{Open}
+
+# Map and party dashboard
+{1040}{}{Tap maps to walk or travel}
+{1041}{}{PARTY}
+{1042}{}{No companions in your party}
+{1043}{}{Weapon}
+{1044}{}{Armor}
+{1045}{}{Ammo}
+{1046}{}{Unarmed}
+{1047}{}{None}

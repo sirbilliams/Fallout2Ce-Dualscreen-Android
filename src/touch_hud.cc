@@ -15,6 +15,11 @@
 #include "art.h"
 #include "automap.h"
 #include "combat.h"
+#include "combat_ai.h"
+#include "game_dialog.h"
+#include "player_commands.h"
+#include "map_hints.h"
+#include "mui_gameskin.h"
 #include "critter.h"
 #include "dbox.h"
 #include "display_monitor.h"
@@ -385,13 +390,87 @@ namespace {
         muiStrokeCircle(x, y, ui.dp(4.0f), ui.dp(1.5f), kLiveMapDude);
     }
 
-    void buildLiveMap(MuiContext& ui, const MuiRect& rect)
+    bool gPartyPanel = false;
+    void buildPartyPanel(MuiContext& ui, const MuiRect& rect)
     {
+        themedWell(ui, rect);
+        auto members = get_all_party_members_objects(false);
+        float offset = ui.scroll("hud.party", rect, std::max(0, static_cast<int>(members.size()) - 1) * ui.dp(178) + ui.dp(12));
+        muiPushClip(rect);
+        float y = rect.y + ui.dp(6) - offset;
+        int count = 0;
+        for (size_t index = 0; index < members.size(); ++index) {
+            Object* member = members[index];
+            if (member == gDude) continue;
+            ++count;
+            MuiRect row { rect.x + ui.dp(5), y, rect.w - ui.dp(10), ui.dp(172) };
+            if (row.bottom() < rect.y || row.y > rect.bottom()) { y = row.bottom() + ui.dp(6); continue; }
+            themedPanel(ui, row);
+            bool pressed;
+            if (ui.touchable("hud.party.member." + std::to_string(index), row, &pressed))
+                gameCommandPost(GameCommandType::Hud, 500 + index);
+            int w, h;
+            SDL_Texture* portrait = muiArtTexture(FrmId(member, ANIM_STAND, ROTATION_SE), 0, &w, &h, ROTATION_SE);
+            if (portrait && w > 0 && h > 0) {
+                float scale = std::min(ui.dp(52) / w, ui.dp(70) / h);
+                muiDrawTexture(portrait, { row.x + ui.dp(4), row.y + ui.dp(8), w * scale, h * scale });
+            }
+            float x = row.x + ui.dp(60);
+            auto line = [&](const std::string& value, float dy) {
+                themedText(muiDecodeGameText(value.c_str()), x, row.y + ui.dp(dy), ui.dp(12), muiTheme().text);
+            };
+            line(objectGetName(member), 5);
+            int hp = critterGetHitPoints(member), maximum = critterGetStat(member, STAT_MAXIMUM_HIT_POINTS);
+            const char* dispositions[] = { "Custom", "Coward", "Defensive", "Aggressive", "Berserk" };
+            int disposition = aiGetDisposition(member);
+            if (disposition >= 0 && disposition < 5)
+                themedText(muiDecodeGameText(muiText(185 + disposition, dispositions[disposition])), row.right() - ui.dp(90), row.y + ui.dp(5), ui.dp(12), muiTheme().accent);
+            line("HP " + std::to_string(hp) + "/" + std::to_string(maximum), 23);
+            MuiRect bar { x, row.y + ui.dp(42), row.right() - x - ui.dp(8), ui.dp(5) };
+            muiFillRect(bar, muiTheme().panelBorder);
+            bar.w *= std::clamp(static_cast<float>(hp) / std::max(maximum, 1), 0.0f, 1.0f);
+            muiFillRect(bar, muiTheme().text);
+            Object* weapon = critterGetItem2(member);
+            Object* armor = critterGetArmor(member);
+            line(std::string(muiText(1043, "Weapon")) + ": " + (weapon ? objectGetName(weapon) : muiText(1046, "Unarmed")), 51);
+            line(std::string(muiText(1044, "Armor")) + ": " + (armor ? objectGetName(armor) : muiText(1047, "None")), 68);
+            line(std::string(muiText(1045, "Ammo")) + ": " + (weapon ? std::to_string(ammoGetQuantity(weapon)) + "/" + std::to_string(ammoGetCapacity(weapon)) : "--"), 85);
+            int values[] = { aiGetAreaAttackMode(member), aiGetRunAwayMode(member), aiGetBestWeapon(member), aiGetDistance(member), aiGetAttackWho(member), aiGetChemUse(member) };
+            for (int setting = 0; setting < 6; ++setting) {
+                std::string label = std::string(gameDialogPartyControlSettingName(setting)) + ": " + (values[setting] >= 0 && values[setting] < gameDialogPartyControlValueCount(setting) ? gameDialogPartyControlValueName(setting, values[setting]) : gameDialogPartyControlNotApplicable());
+                float tx = setting % 2 ? row.centerX() : row.x + ui.dp(8);
+                themedText(muiDecodeGameText(label.c_str()), tx, row.y + ui.dp(106 + setting / 2 * 19), ui.dp(10), muiTheme().textDim);
+            }
+            y = row.bottom() + ui.dp(6);
+        }
+        if (!count) themedText(muiDecodeGameText(muiText(1042, "No companions in your party")), rect.x + ui.dp(12), y, ui.dp(14), muiTheme().text);
+        muiPopClip();
+    }
+
+    void buildLiveMap(MuiContext& ui, const MuiRect& area)
+    {
+        MuiRect rect = area;
         const MuiTheme& theme = muiTheme();
         if (rect.w < ui.dp(120.0f) || rect.h < ui.dp(80.0f)) {
             return;
         }
 
+        MuiRect nav { rect.x, rect.y, rect.w, ui.dp(30) };
+        bool pressed;
+        MuiRect mapTab { nav.x, nav.y, nav.w / 2, nav.h };
+        MuiRect partyTab { nav.centerX(), nav.y, nav.w / 2, nav.h };
+        if (ui.touchable("hud.nav.map", mapTab, &pressed)) gPartyPanel = false;
+        themedButton(ui, mapTab, !gPartyPanel);
+        muiDrawTextAligned(U"MAP", mapTab, ui.dp(13), theme.text, MuiAlign::Center, MuiAlign::Center);
+        if (ui.touchable("hud.nav.party", partyTab, &pressed)) gPartyPanel = true;
+        themedButton(ui, partyTab, gPartyPanel);
+        muiDrawTextAligned(muiDecodeGameText(muiText(1041, "PARTY")), partyTab, ui.dp(13), theme.text, MuiAlign::Center, MuiAlign::Center);
+        if (gPartyPanel) {
+            buildPartyPanel(ui, { rect.x, nav.bottom() + ui.dp(3), rect.w, rect.bottom() - nav.bottom() - ui.dp(3) });
+            return;
+        }
+        rect.y = nav.bottom() + ui.dp(3);
+        rect.h = area.bottom() - rect.y;
         Map map = mapGetCurrentMap();
         if (!mapIsValid(map)) {
             return;
@@ -492,6 +571,7 @@ namespace {
 
         muiPushClip(inner);
         gLiveMap.build(ui, "hud.livemap", inner, markers, &labels);
+        if (gLiveMap.tappedTile >= 0) gameCommandPost(GameCommandType::Hud, 10000 + gLiveMap.tappedTile);
         float dudeX;
         float dudeY;
         if (dudeShown && gLiveMap.tileToScreen(static_cast<float>(gLiveMapView.dudeX), static_cast<float>(gLiveMapView.dudeY), &dudeX, &dudeY)) {
@@ -519,7 +599,7 @@ namespace {
         // The full map screen (the game's automap, its details and motion
         // sensor), top right.
         MuiRect open = { inner.right() - buttonSize - ui.dp(4.0f), inner.y + ui.dp(4.0f), buttonSize, buttonSize };
-        bool pressed = false;
+        pressed = false;
         if (ui.touchable("hud.livemap.open", open, &pressed)) {
             sendCommand({ GameCommandType::Automap });
         }
@@ -1616,6 +1696,8 @@ namespace {
                 continue;
             }
 
+            if (ui.surface == MuiSurface::Bottom && gPartyPanel && group.id != HudGroupId::Screens && group.id != HudGroupId::System) continue;
+
             // A metal plate under the group, as the game's interface bar.
             if (group.framed) {
                 muiSkinPlate(ui, groupRect, false);
@@ -1677,7 +1759,9 @@ namespace {
             default:
                 break;
             }
+            if (gPartyPanel) { mapLeft = safe.x; mapRight = safe.right(); mapBottom = safe.bottom(); }
             buildLiveMap(ui, { mapLeft, mapTop, mapRight - mapLeft, mapBottom - mapTop });
+            if (gPartyPanel) { muiNotifyHudArea({}, true); return; }
         }
 
         // Notifications of the log (mui_notify.h) and the log go right of the
@@ -1833,12 +1917,33 @@ void touchHudClearMessages()
     gMessages.clear();
 }
 
+bool touchHudGetMapTileCenter(int tile, float* x, float* y)
+{
+    return gLiveMap.tileToScreen(HEX_GRID_WIDTH - 1 - tile % HEX_GRID_WIDTH, tile / HEX_GRID_WIDTH, x, y);
+}
+
 bool touchHudHandleEvent(int eventCode)
 {
     if (!gInitialized) {
         return false;
     }
 
+    if (eventCode >= 10000 && eventCode < 50000) {
+        int tile = eventCode - 10000;
+        if (interfaceBarEnabled() && (!isInCombat() || _combat_whose_turn() == gDude) && gDude != nullptr && tile != gDude->tile && _make_path(gDude, gDude->tile, tile, nullptr, 1) > 0) {
+            if (playerMoveTo(tile, false) == 0) mapHintsSetDestination(tile);
+        }
+        return true;
+    }
+    if (eventCode >= 500 && eventCode < 600) {
+        auto members = get_all_party_members_objects(false);
+        int index = eventCode - 500;
+        if (index < static_cast<int>(members.size())) {
+            if (!isInCombat()) muiGameDialogRequestParty(members[index]);
+            playerPrimaryAction(members[index]);
+        }
+        return true;
+    }
     switch (eventCode) {
     case kEventQuickLoad:
         // Game's quick load (F7), a tap is easier to hit by mistake than a

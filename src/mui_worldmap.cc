@@ -60,6 +60,7 @@ namespace {
     public:
         WorldmapScreen() { modal = true; }
 
+        MuiSurface surface() override { return muiGameScreenSurface(); }
         bool coversScreen() override { return true; }
         bool hidesHud() override { return true; }
         void build(MuiContext& ui) override;
@@ -333,6 +334,8 @@ namespace {
             ask(MuiWorldmapActionType::Enter);
             return;
         }
+
+        if (!settings.touch.map_tap_move) return;
 
         // A town: go to its center.
         for (const WorldmapMobileCity& city : state.cities) {
@@ -636,6 +639,7 @@ namespace {
             modal = true;
         }
 
+        MuiSurface surface() override { return muiGameScreenSurface(); }
         bool coversScreen() override { return true; }
         bool hidesHud() override { return true; }
         void build(MuiContext& ui) override;
