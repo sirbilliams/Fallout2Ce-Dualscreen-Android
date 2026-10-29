@@ -10,6 +10,7 @@
 
 #include "dev_autotest.h"
 #include "game.h"
+#include "game_dialog.h"
 #include "game_charset.h"
 #include "hud_layout.h"
 #include "input.h"
@@ -1152,7 +1153,10 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
     }
 
     // Over every screen, not touchable: with the HUD's log.
-    if (surface == muiHudSurface()) {
+    bool dialogNoticesOnTop = muiBottomActive()
+        && ((gameDialogIsTalking() && settings.touch.dialogue_layout != 0)
+            || (gameDialogIsInBarter() && settings.touch.barter_layout != 0));
+    if (surface == (dialogNoticesOnTop ? MuiSurface::Top : muiHudSurface())) {
         context.current = nullptr;
         context.isInteractive = false;
         muiNotifyRender(context);

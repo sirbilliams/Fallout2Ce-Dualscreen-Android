@@ -6695,7 +6695,7 @@ static void barterPerformQueuedActions(Object* barterer, Object* playerTable, Ob
                 break;
             }
 
-            int quantityToMove = barterGetMovedQuantity(action.item, quantity, action.playerSide, toTable, false);
+            int quantityToMove = barterGetMovedQuantity(action.item, quantity, action.playerSide, toTable, !action.chooseQuantity);
             if (quantityToMove == -1) {
                 break;
             }
@@ -6847,6 +6847,22 @@ static int barterGetMovedQuantity(Object* item, int maxQuantity, bool fromPlayer
         return maxQuantity;
     }
 
+    if (muiIsEnabled()) {
+        double factor = 1.0;
+        if (!fromPlayer && !gGameDialogSpeakerIsPartyMember) {
+            double modifier, ratio;
+            barterGetPriceFactors(gDude, _target_stack[0], &modifier, &ratio);
+            factor = modifier * ratio * 2.0;
+        }
+        int unit = gGameDialogSpeakerIsPartyMember ? itemGetWeight(item) : itemGetCost(item);
+        if (!gGameDialogSpeakerIsPartyMember && ProtoId(item) == ItemProtoTypeId::Money) {
+            unit = 1;
+            factor = 1.0;
+        }
+        return muiQuantitySelect(item, 1, maxQuantity, 1, suggestedValue, false,
+            [unit, factor](int count) { return static_cast<int>(unit * factor * count); },
+            gGameDialogSpeakerIsPartyMember);
+    }
     return inventoryQuantitySelect(INVENTORY_WINDOW_TYPE_MOVE_ITEMS, item, maxQuantity, suggestedValue);
 }
 

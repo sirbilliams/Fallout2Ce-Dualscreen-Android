@@ -124,8 +124,7 @@ namespace {
         void requestOffer(MuiContext& ui);
         void buildConfirm(MuiContext& ui);
         void buildPartyTabs(MuiContext& ui, const BarterView& view, const MuiRect& rect);
-        void handleTap(int list, Object* item);
-        void openActionMenu(MuiContext& ui, int list, Object* item);
+        void handleTap(int list, Object* item, bool chooseQuantity = false);
         void handleDrop(MuiContext& ui, const BarterView& view);
         void drawDragged(MuiContext& ui, const BarterView& view);
     };
@@ -168,6 +167,10 @@ namespace {
         if (!barterGetView(&view)) {
             return;
         }
+
+        // The confirmation card owns input until it is dismissed.
+        bool interactive = ui.isInteractive;
+        if (confirmOpen) ui.isInteractive = false;
 
         // Opaque over the map.
         muiSkinBackdrop(ui, ui.screenRect());
@@ -291,6 +294,7 @@ namespace {
 
         handleDrop(ui, view);
         drawDragged(ui, view);
+        ui.isInteractive = interactive;
         if (confirmOpen) {
             buildConfirm(ui);
         }
@@ -467,7 +471,7 @@ namespace {
             bool longPressed;
             bool tapped = ui.touchable(cellId, touchRect, &pressed, &longPressed);
             if (longPressed && !scrolling) {
-                openActionMenu(ui, list, items[index].item);
+                handleTap(list, items[index].item, true);
             }
             bool dragged = ui.dragSource(cellId, list * kPayloadListStride + index, !scrollable);
 
@@ -486,33 +490,20 @@ namespace {
         muiPopClip();
     }
 
-    // Long press: the game's action menu (look, use, unload) around the
-    // finger, like on the map.
-    void BarterScreen::openActionMenu(MuiContext& ui, int list, Object* item)
-    {
-        BarterAction action;
-        action.type = BarterActionType::OpenActionMenu;
-        action.playerSide = list == LIST_PLAYER || list == LIST_PLAYER_TABLE;
-        action.item = item;
-        action.onTable = list == LIST_PLAYER_TABLE || list == LIST_BARTERER_TABLE;
-        muiToScreen(ui.pointerX(), ui.pointerY(), &(action.x), &(action.y));
-        barterQueueAction(action);
-    }
-
-    void BarterScreen::handleTap(int list, Object* item)
+    void BarterScreen::handleTap(int list, Object* item, bool chooseQuantity)
     {
         switch (list) {
         case LIST_PLAYER:
-            queue(BarterActionType::MoveToTable, true, item);
+            barterQueueAction({ BarterActionType::MoveToTable, true, item, -1, false, chooseQuantity });
             break;
         case LIST_PLAYER_TABLE:
-            queue(BarterActionType::MoveFromTable, true, item);
+            barterQueueAction({ BarterActionType::MoveFromTable, true, item, -1, false, chooseQuantity });
             break;
         case LIST_BARTERER_TABLE:
-            queue(BarterActionType::MoveFromTable, false, item);
+            barterQueueAction({ BarterActionType::MoveFromTable, false, item, -1, false, chooseQuantity });
             break;
         case LIST_BARTERER:
-            queue(BarterActionType::MoveToTable, false, item);
+            barterQueueAction({ BarterActionType::MoveToTable, false, item, -1, false, chooseQuantity });
             break;
         }
     }
@@ -562,7 +553,7 @@ namespace {
         }
 
         if (target != -1 && ui.dropped(listRects[target], nullptr)) {
-            handleTap(list, item);
+            handleTap(list, item, true);
         }
     }
 

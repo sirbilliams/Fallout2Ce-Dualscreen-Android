@@ -1083,6 +1083,11 @@ void gameDialogEndLips()
     }
 }
 
+bool gameDialogIsSpeechPlaying()
+{
+    return gameDialogLipSyncStarted && soundIsPlaying(gLipsData.sound);
+}
+
 void gameDialogSkipSpeech()
 {
     gameDialogEndLips();
@@ -5352,7 +5357,13 @@ const char* gameDialogGetOptionText(int index)
 
 bool gameDialogOptionIsDone(int index)
 {
-    return index >= 0 && index < gameDialogOptionEntriesLength && dialogOptionEntries[index].messageListId == -2;
+    if (index < 0 || index >= gameDialogOptionEntriesLength) {
+        return false;
+    }
+    const auto& option = dialogOptionEntries[index];
+    return option.messageListId == -2
+        || (index == gameDialogOptionEntriesLength - 1
+            && option.messageId == 650 && option.reaction == GAME_DIALOG_REACTION_NEUTRAL);
 }
 
 int gameDialogGetOptionReaction(int index)

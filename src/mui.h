@@ -356,7 +356,7 @@ void muiInventoryInit();
 
 // Quantity picker (inventory.cc `inventoryQuantitySelect`): returns chosen
 // value or -1. [timer] shows seconds (explosives).
-int muiQuantitySelect(Object* item, int minValue, int maxValue, int step, int defaultValue, bool timer);
+int muiQuantitySelect(Object* item, int minValue, int maxValue, int step, int defaultValue, bool timer, std::function<int(int)> total = {}, bool weight = false);
 
 // Character screen (mui_character.cc) over the character editor's state
 // (character_editor.h): level ups in game, or creating the character.

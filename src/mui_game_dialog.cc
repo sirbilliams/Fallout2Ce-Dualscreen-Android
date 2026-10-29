@@ -100,6 +100,7 @@ namespace {
             return muiBottomActive() && settings.touch.dialogue_layout != 0 && gameDialogIsTalking() && gameDialogGetOptionCount() > 0;
         }
 
+        int moreOption = -1;
         void buildBottom(MuiContext& ui);
 
         // Closes the review or party panel (the game's talk has no back:
@@ -108,6 +109,7 @@ namespace {
         {
             reviewOpen = false;
             partyOpen = false;
+            moreOption = -1;
         }
 
         bool isActive() override
@@ -314,6 +316,10 @@ namespace {
         float total = 0.0f;
         for (int index = 0; index < count; index++) {
             texts.push_back(muiWrapText(optionDisplayText(index), textWidth, size));
+            if (optionDisplayText(index).size() > 600 && texts.back().size() > 6) {
+                texts.back().resize(6);
+                texts.back().back() = U"… More";
+            }
             heights.push_back(std::max(texts.back().size() * lineHeight + padding * 1.4f, minHeight));
             total += heights.back() + (index > 0 ? gap : 0.0f);
         }
@@ -377,7 +383,12 @@ namespace {
 
             if (tapped && !scrolling && !justShown) {
                 _gsound_red_butt_press(-1, 0);
-                gameDialogChooseOption(index);
+                if (optionDisplayText(index).size() > 600) {
+                    moreOption = index;
+                    ui.setScroll("talk.more", 0.0f);
+                } else {
+                    gameDialogChooseOption(index);
+                }
             }
         }
         muiPopClip();
@@ -409,9 +420,41 @@ namespace {
             bottomLastReply = reply;
             bottomLastOptionCount = optionCount;
             bottomReplyAt = ui.now;
+            moreOption = -1;
             ui.setScroll("talk.options", 0.0f);
         }
 
+        if (moreOption >= 0 && moreOption < optionCount) {
+            MuiRect card = content;
+            ui.panel(card);
+            MuiRect inner = card.inset(ui.dp(12.0f));
+            MuiRect buttons = { inner.x, inner.bottom() - ui.dp(46.0f), inner.w, ui.dp(46.0f) };
+            inner.h -= ui.dp(58.0f);
+            auto lines = muiWrapText(optionDisplayText(moreOption), inner.w - ui.dp(6.0f), ui.dp(16.0f));
+            float lineHeight = muiLineHeight(ui.dp(16.0f));
+            float offset = ui.scroll("talk.more", inner, lines.size() * lineHeight);
+            muiPushClip(inner);
+            float y = inner.y - offset;
+            for (const auto& line : lines) {
+                muiDrawText(line, inner.x, y, ui.dp(16.0f), theme.text);
+                y += lineHeight;
+            }
+            muiPopClip();
+            float height = lines.size() * lineHeight;
+            if (height > inner.h) {
+                float thumbHeight = std::max(inner.h * inner.h / height, ui.dp(24.0f));
+                float thumbY = inner.y + (inner.h - thumbHeight) * offset / (height - inner.h);
+                muiFillRoundRect({ inner.right() - ui.dp(3.0f), thumbY, ui.dp(3.0f), thumbHeight }, ui.dp(1.5f), theme.accent);
+            }
+            if (ui.button("talk.more.back", { buttons.x, buttons.y, buttons.w * 0.48f, buttons.h }, U"Back")) {
+                moreOption = -1;
+            }
+            if (ui.button("talk.more.choose", { buttons.centerX(), buttons.y, buttons.w * 0.48f, buttons.h }, U"Choose")) {
+                gameDialogChooseOption(moreOption);
+                moreOption = -1;
+            }
+            return;
+        }
         buildIconButtons(ui, tabs);
 
         // Header: who speaks.

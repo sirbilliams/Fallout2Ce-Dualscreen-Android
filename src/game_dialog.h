@@ -122,7 +122,7 @@ const char* gameDialogGetOptionText(int index);
 // Reaction shown with Empathy perk: 0 - good, 1 - neutral, 2 - bad; -1
 // without the perk.
 int gameDialogGetOptionReaction(int index);
-// The option is the game's own "[Done]" one (ends the conversation).
+// The game's [Done] option, or final neutral message 650.
 bool gameDialogOptionIsDone(int index);
 int gameDialogGetReviewCount();
 // [option] is nullptr when the reply had no answer.
@@ -132,6 +132,7 @@ bool gameDialogGetHeadImage(const unsigned char** data, int* width, int* height,
 bool gameDialogSpeakerCanBarter();
 // Cuts the speaker's voice / lip-sync short (the reply stays shown).
 void gameDialogSkipSpeech();
+bool gameDialogIsSpeechPlaying();
 
 } // namespace fallout
 

@@ -39,6 +39,7 @@
 #include "mouse.h"
 #include "movie.h"
 #include "mui.h"
+#include "mui_notify.h"
 #include "object.h"
 #include "party_member.h"
 #include "perf_monitor.h"
@@ -121,7 +122,8 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_LOG_NEW_WINDOWS,
     // Logs the critters at dude's elevation (pid, name, tile, distance).
     DEV_AUTOTEST_ACTION_LOG_CRITTERS,
-    // Talks to the critter with pid `0x01000000 + a` (walks there first).
+    // Talks to the critter with pid `0x01000000 + a` (0: nearest),
+    // placing the player beside it for a deterministic start.
     DEV_AUTOTEST_ACTION_TALK_TO_PID,
     // Chooses talk option `a`: the mobile UI screen's way, or the digit key
     // with the game's windows.
@@ -333,6 +335,10 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_LOG_PREFERENCES,
     // Logs the saves (count, quick ones); FAIL when there aren't [a] of them.
     DEV_AUTOTEST_ACTION_LOG_SAVES,
+    DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM,
+    DEV_AUTOTEST_ACTION_DIALOG_LONG_FIXTURE,
+    DEV_AUTOTEST_ACTION_DIALOG_NOTICE,
+    DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT,
 };
 
 struct DevAutotestStep {
@@ -697,10 +703,94 @@ static const DevAutotestStep kDevAutotestDualBarterSteps[] = {
     { DEV_AUTOTEST_ACTION_TOUCH_TAP_CRITTER, 0, 0, 0, 300, "b04_talk" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "b05_barter", "dialog.tab.barter" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b06_tap_item", "barter.player.pid.4" },
-    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b07_request", "barter.barterer.0" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 40, "b07_request", "barter.barterer.0" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b08_quantity_done", "quantity.done" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b09_offer", "barter.offer.button" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "b10_talk", "barter.talk.button" },
+};
+
+// New game in the temple: real Klint conversation, inventory seeded only in memory.
+static const DevAutotestStep kDevAutotestDualBarterProofSteps[] = {
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 40, 8, 0, 1, "b00_stimpaks" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 4, 1, 0, 1, "b01_knife" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 41, 150, 0, 1, "b02_caps" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 10, "b03_center" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "b04_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 30, "b04_talk_ready" },
+    { DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM, 40, 6, 0, 1, "b05_trader_stock" },
+    { DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM, 41, 200, 0, 1, "b06_trader_caps" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 60, "b07_barter", "dialog.tab.barter" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 10, "b08_longpress_quantity_1", "barter.player.pid.40" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "b09_plus_2", "quantity.plus" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "b10_plus_3", "quantity.plus" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "b11_plus_4", "quantity.plus" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "b12_plus_5", "quantity.plus" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "b13_minus_4", "quantity.minus" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "b14_quantity_5", "quantity.plus" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "b15_move_5", "quantity.done" },
+    { DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT, 1, 40, 5, 1, "b16_check_5" },
+    { DEV_AUTOTEST_ACTION_MUI_DRAG, 0, 0, 0, 10, "b17_drag_quantity", "barter.player.pid.40", "barter.offer" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "b18_all_3", "quantity.all" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "b19_move_all", "quantity.done" },
+    { DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT, 1, 40, 8, 1, "b20_check_8" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 20, "b21_single_skips_picker", "barter.player.pid.4" },
+    { DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT, 1, 4, 1, 1, "b22_check_single" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 10, "b23_caps_quantity", "barter.player.pid.41" },
+    { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, 0.1f, 0, 0, 5, "b24_caps_slider", "quantity.slider" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "b25_caps_all", "quantity.all" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "b26_caps_moved", "quantity.done" },
+    { DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT, 1, 41, 150, 1, "b27_check_caps" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 10, "b28_return_caps", "barter.offer.pid.41" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 10, "b29_return_stimpaks", "barter.offer.pid.40" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 10, "b30_return_knife", "barter.offer.pid.4" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 10, "b31_trader_price", "barter.barterer.pid.40" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "b32_request_one_red", "quantity.done" },
+    { DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT, 2, 40, 1, 1, "b33_check_request" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 15, "b34_confirm_card", "barter.offer.button" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 10, "b34b_background_talk_blocked", "barter.talk.button" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 10, "b35_cancel_confirm", "barter.confirm.cancel" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 10, "b36_confirm_again", "barter.offer.button" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 10, "b37_rejected_notice_top", "barter.confirm.offer" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "b38_talk", "barter.talk.button" },
+};
+
+static const DevAutotestStep kDevAutotestDualTalkProofSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 10, "t00_center" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "t01_real_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 30, "t01_real_talk_ready" },
+    { DEV_AUTOTEST_ACTION_DIALOG_NOTICE, 0, 0, 0, 5, "t02_notice_top_options_clear" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "t03_header_skip", "talk.header.skip" },
+    { DEV_AUTOTEST_ACTION_LOG_DIALOG, 0, 0, 0, 1, "t04_before_choice" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "t05_leave_village", "talk.options.0" },
+    { DEV_AUTOTEST_ACTION_LOG_DIALOG, 0, 0, 0, 1, "t06_branch_state" },
+};
+
+static const DevAutotestStep kDevAutotestDualMoreProofSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 10, "m00_center" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "m01_real_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 30, "m01_real_talk_ready" },
+    { DEV_AUTOTEST_ACTION_DIALOG_LONG_FIXTURE, 0, 0, 0, 15, "m02_long_option_fixture" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 15, "m03_more_sheet", "talk.options.0" },
+    { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, 0, -0.4f, 0, 15, "m03b_sheet_scrolled", "talk.more" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 15, "m04_back_no_choice", "talk.more.back" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 15, "m05_reopen", "talk.options.0" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "m06_second_tap_choose", "talk.more.choose" },
+};
+
+// Arroyo Elder: a voiced reply followed by her actual scripted goodbye.
+static const DevAutotestStep kDevAutotestDualEndProofSteps[] = {
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 13, 0, 0, 1, "e00_start" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 1, "e01_mid_speech_full_reply" },
+    { DEV_AUTOTEST_ACTION_LOG_DIALOG, 0, 0, 0, 1, "e02_speech_before_skip" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 5, "e03_header_skip", "talk.header.skip" },
+    { DEV_AUTOTEST_ACTION_LOG_DIALOG, 0, 0, 0, 15, "e04_speech_after_skip" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "e05_option_0", "talk.options.0" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 600, 0, 0, 30, "e06_wait" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "e07_option_1", "talk.options.1" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 600, 0, 0, 30, "e08_wait" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "e09_goodbye", "talk.options.1" },
+    { DEV_AUTOTEST_ACTION_LOG_DIALOG, 0, 0, 0, 15, "e10_real_done" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "e11_end_selected", "talk.end" },
 };
 
 static const DevAutotestStep kDevAutotestBarterSteps[] = {
@@ -712,14 +802,13 @@ static const DevAutotestStep kDevAutotestBarterSteps[] = {
     { DEV_AUTOTEST_ACTION_CENTER_CRITTER, 0, 0, 0, 10, "b05_center_critter" },
     { DEV_AUTOTEST_ACTION_TOUCH_TAP_CRITTER, 0, 0, 0, 300, "b06_talk" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "b07_barter", "dialog.tab.barter" },
-    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b08_tap_item", "barter.player.pid.40" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 40, "b08_quantity_item", "barter.player.pid.40" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b09_quantity_done", "quantity.done" },
     { DEV_AUTOTEST_ACTION_MUI_DRAG, 0, 0, 0, 40, "b10_drag_item", "barter.player.pid.40", "barter.offer" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "b10b_quantity_plus", "quantity.plus" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b10c_quantity_done", "quantity.done" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b11_filter_weapons", "barter.filter.player.1" },
-    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 20, "b11b_item_menu", "barter.player.0" },
-    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "b11c_look", "radial.3" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 20, "b11b_single_skips_picker", "barter.player.0" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b12_offer", "barter.offer.button" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "b13_back_to_talk", "dialog.tab.talk" },
 };
@@ -2369,6 +2458,30 @@ void devAutotestSetScenario(const char* name)
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif
+    } else if (strcmp(name, "dualendproof") == 0) {
+        gDevAutotestSteps = kDevAutotestDualEndProofSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDualEndProofSteps) / sizeof(kDevAutotestDualEndProofSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "dualbarterproof") == 0) {
+        gDevAutotestSteps = kDevAutotestDualBarterProofSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDualBarterProofSteps) / sizeof(kDevAutotestDualBarterProofSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "dualtalkproof") == 0) {
+        gDevAutotestSteps = kDevAutotestDualTalkProofSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDualTalkProofSteps) / sizeof(kDevAutotestDualTalkProofSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "dualmoreproof") == 0) {
+        gDevAutotestSteps = kDevAutotestDualMoreProofSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDualMoreProofSteps) / sizeof(kDevAutotestDualMoreProofSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "dualbarter") == 0) {
         gDevAutotestSteps = kDevAutotestDualBarterSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestDualBarterSteps) / sizeof(kDevAutotestDualBarterSteps[0]);
@@ -2444,9 +2557,11 @@ static void devAutotestLogDialog()
 
     if (inDialog) {
         devAutotestLog("  reply: %s\n", gameDialogGetReplyText());
+        devAutotestLog("  speech playing: %d\n", gameDialogIsSpeechPlaying() ? 1 : 0);
         int optionCount = gameDialogGetOptionCount();
         for (int index = 0; index < optionCount; index++) {
             devAutotestLog("  option %d: %s (reaction %d)\n", index, gameDialogGetOptionText(index), gameDialogGetOptionReaction(index));
+            devAutotestLog("    ends conversation: %d\n", gameDialogOptionIsDone(index) ? 1 : 0);
         }
     }
 
@@ -2767,7 +2882,7 @@ void devAutotestTick()
             break;
         case DEV_AUTOTEST_ACTION_TALK_TO_PID: {
             int pid = 0x01000000 | static_cast<int>(step->a);
-            Object* critter = nullptr;
+            Object* critter = step->a == 0 ? devAutotestFindNearestCritter() : nullptr;
             // The dude's elevation first, then the others.
             for (int pass = 0; pass <= ELEVATION_COUNT && critter == nullptr; pass++) {
                 int elevation = pass == 0 ? gDude->elevation : pass - 1;
@@ -2783,7 +2898,7 @@ void devAutotestTick()
                 int tile = tileGetTileInDirection(critter->tile, ROTATION_SW, 1);
                 Rect rect;
                 objectSetLocation(gDude, tile, critter->elevation, &rect);
-                devAutotestLog("  talk to pid %d at tile %d from tile %d\n", pid, critter->tile, tile);
+                devAutotestLog("  talk to pid %d at tile %d from tile %d\n", critter->pid, critter->tile, tile);
                 gDevAutotestPendingCapture = step->name;
                 gDevAutotestStep++;
                 gDevAutotestStepStarted = false;
@@ -2851,6 +2966,31 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_BACK:
             muiRequestBack();
             break;
+        case DEV_AUTOTEST_ACTION_DIALOG_LONG_FIXTURE: {
+            // Explicit synthetic text fixture, through the engine model; no game files.
+            std::string option = "[Developer long-option fixture] ";
+            while (option.size() < 850) option += "A long option must stay readable, scroll in its sheet, and require a second tap to choose. ";
+            gameDialogSetTextReply(nullptr, -4, "Developer fixture: long-option sheet. No script choice has been made.");
+            gameDialogAddTextOptionWithProc(-4, option.c_str(), 0, 50);
+            devAutotestLog("  synthetic long option: %zu characters\n", strlen(gameDialogGetOptionText(0)));
+            break;
+        }
+        case DEV_AUTOTEST_ACTION_DIALOG_NOTICE:
+            muiNotify("Developer notice routing check", MuiNoticeKind::Log);
+            break;
+        case DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT: {
+            BarterView view;
+            int count = 0;
+            if (barterGetView(&view)) {
+                Object* owner = step->a == 1 ? view.playerTable : view.bartererTable;
+                for (int i = 0; i < owner->data.inventory.length; i++) {
+                    const auto& entry = owner->data.inventory.items[i];
+                    if (entry.item->pid == static_cast<int>(step->b)) count += entry.quantity;
+                }
+            }
+            devAutotestLog("  %s: table %d pid %d count %d expected %d\n", count == static_cast<int>(step->c) ? "PASS" : "FAIL", static_cast<int>(step->a), static_cast<int>(step->b), count, static_cast<int>(step->c));
+            break;
+        }
         case DEV_AUTOTEST_ACTION_LOG_DIALOG:
             devAutotestLogDialog();
             break;
@@ -3055,7 +3195,7 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_MUI_DRAG_BY: {
             float x;
             float y;
-            if (step->widget != nullptr && muiGetWidgetCenter(step->widget, &x, &y)) {
+            if (step->widget != nullptr && muiGetWidgetCenter(step->widget, &x, &y, &gDevAutotestBottomTouch)) {
                 float width = static_cast<float>(screenGetWidth());
                 float height = static_cast<float>(screenGetHeight());
                 devAutotestLog("  mui drag %s by (%.2f, %.2f)\n", step->widget, step->a, step->b);
@@ -3366,14 +3506,16 @@ void devAutotestTick()
             }
             break;
         }
-        case DEV_AUTOTEST_ACTION_GIVE_ITEM: {
+        case DEV_AUTOTEST_ACTION_GIVE_ITEM:
+        case DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM: {
             // `b` - quantity.
             Object* item;
             if (objectCreateWithProtoId(&item, ProtoId(static_cast<int>(step->a))) == 0) {
                 int quantity = step->b > 0 ? static_cast<int>(step->b) : 1;
                 // As `add_obj_to_inven`: off the map once carried (or it is
                 // freed with the map and the inventory both).
-                if (itemAdd(gDude, item, quantity) == 0) {
+                Object* owner = step->action == DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM ? gGameDialogSpeaker : gDude;
+                if (owner != nullptr && itemAdd(owner, item, quantity) == 0) {
                     _obj_disconnect(item, nullptr);
                 }
                 devAutotestLog("  gave item pid %d x%d\n", static_cast<int>(step->a), quantity);

@@ -143,6 +143,7 @@ struct BarterAction {
     Object* item;
     int partyIndex = -1;
     bool onTable = false;
+    bool chooseQuantity = true;
     int x = 0;
     int y = 0;
 };

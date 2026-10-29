@@ -33,6 +33,8 @@ namespace {
         int step = 1;
         int value = 1;
         bool timer = false;
+        std::function<int(int)> total;
+        bool weight = false;
         int result = -1;
 
         MessageList messageList;
@@ -97,6 +99,8 @@ namespace {
         float valueSize = ui.dp(28.0f);
         float height = padding * 2.0f + cellSize + ui.dp(8.0f) + muiLineHeight(valueSize) + ui.dp(8.0f) + buttonHeight + ui.dp(12.0f) + buttonHeight;
 
+        if (total) height += ui.dp(28.0f);
+
         MuiRect card = { safe.x + (safe.w - width) / 2.0f, safe.y + (safe.h - height) / 2.0f + (1.0f - ui.appear()) * ui.dp(12.0f), width, height };
         ui.panel(card);
 
@@ -134,6 +138,13 @@ namespace {
         value = std::clamp(snapped, minValue, maxValue);
         y += buttonHeight + ui.dp(12.0f);
 
+        if (total) {
+            auto label = muiDecodeGameText(text(weight ? 120 : 958, weight ? "Weight" : "Total"))
+                + (weight ? U": " : U": $") + muiDecodeUtf8(std::to_string(total(value)).c_str());
+            muiDrawTextAligned(label, { content.x, y, content.w, ui.dp(24.0f) }, ui.dp(16.0f), theme.text, MuiAlign::Center, MuiAlign::Center);
+            y += ui.dp(28.0f);
+        }
+
         // All (not for the timer), cancel, done.
         float gap = ui.dp(8.0f);
         int count = timer ? 2 : 3;
@@ -159,7 +170,7 @@ namespace {
 
 } // namespace
 
-int muiQuantitySelect(Object* item, int minValue, int maxValue, int step, int defaultValue, bool timer)
+int muiQuantitySelect(Object* item, int minValue, int maxValue, int step, int defaultValue, bool timer, std::function<int(int)> total, bool weight)
 {
     if (maxValue < minValue) {
         return -1;
@@ -172,6 +183,8 @@ int muiQuantitySelect(Object* item, int minValue, int maxValue, int step, int de
     screen.step = std::max(step, 1);
     screen.value = std::clamp(defaultValue, minValue, maxValue);
     screen.timer = timer;
+    screen.total = total;
+    screen.weight = weight;
     screen.openedOn = muiBottomHoldsGame() ? MuiSurface::Bottom : MuiSurface::Top;
 
     if (messageListInit(&(screen.messageList))) {
