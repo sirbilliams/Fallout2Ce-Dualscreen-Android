@@ -17,12 +17,12 @@
 #include "loadsave.h"
 #include "map.h"
 #include "message.h"
+#include "mui_combat_panel.h"
 #include "options.h"
 #include "pipboy.h"
 #include "skill.h"
 #include "skilldex.h"
 #include "touch_hud.h"
-#include "mui_combat_panel.h"
 
 namespace fallout {
 
