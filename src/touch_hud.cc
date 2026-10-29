@@ -16,16 +16,13 @@
 #include "automap.h"
 #include "combat.h"
 #include "combat_ai.h"
-#include "game_dialog.h"
-#include "player_commands.h"
-#include "map_hints.h"
-#include "mui_gameskin.h"
 #include "critter.h"
 #include "dbox.h"
 #include "display_monitor.h"
 #include "game.h"
 #include "game_charset.h"
 #include "game_commands.h"
+#include "game_dialog.h"
 #include "game_mouse.h"
 #include "game_sound.h"
 #include "input.h"
@@ -35,9 +32,11 @@
 #include "kb.h"
 #include "map.h"
 #include "map_defs.h"
+#include "map_hints.h"
 #include "message.h"
 #include "mui.h"
 #include "mui_dual.h"
+#include "mui_gameskin.h"
 #include "mui_icons.h"
 #include "mui_map_view.h"
 #include "mui_notify.h"
@@ -46,6 +45,7 @@
 #include "object.h"
 #include "party_member.h"
 #include "pipboy.h"
+#include "player_commands.h"
 #include "proto_types.h"
 #include "scripts.h"
 #include "settings.h"
@@ -404,7 +404,10 @@ namespace {
             if (member == gDude) continue;
             ++count;
             MuiRect row { rect.x + ui.dp(5), y, rect.w - ui.dp(10), ui.dp(172) };
-            if (row.bottom() < rect.y || row.y > rect.bottom()) { y = row.bottom() + ui.dp(6); continue; }
+            if (row.bottom() < rect.y || row.y > rect.bottom()) {
+                y = row.bottom() + ui.dp(6);
+                continue;
+            }
             themedPanel(ui, row);
             bool pressed;
             if (ui.touchable("hud.party.member." + std::to_string(index), row, &pressed))
@@ -1759,9 +1762,16 @@ namespace {
             default:
                 break;
             }
-            if (gPartyPanel) { mapLeft = safe.x; mapRight = safe.right(); mapBottom = safe.bottom(); }
+            if (gPartyPanel) {
+                mapLeft = safe.x;
+                mapRight = safe.right();
+                mapBottom = safe.bottom();
+            }
             buildLiveMap(ui, { mapLeft, mapTop, mapRight - mapLeft, mapBottom - mapTop });
-            if (gPartyPanel) { muiNotifyHudArea({}, true); return; }
+            if (gPartyPanel) {
+                muiNotifyHudArea({}, true);
+                return;
+            }
         }
 
         // Notifications of the log (mui_notify.h) and the log go right of the

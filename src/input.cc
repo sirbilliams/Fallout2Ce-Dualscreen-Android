@@ -1,6 +1,6 @@
 #include "input.h"
-#include "mui_display_settings.h"
 #include "dev_autotest.h"
+#include "mui_display_settings.h"
 
 #include <string.h>
 

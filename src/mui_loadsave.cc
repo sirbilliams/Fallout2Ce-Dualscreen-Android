@@ -1,7 +1,7 @@
 #include "mui.h"
+#include "mui_gameskin.h"
 #include "mui_screens.h"
 #include "mui_skin.h"
-#include "mui_gameskin.h"
 #include <SDL.h>
 #ifdef __ANDROID__
 #include <jni.h>
@@ -420,13 +420,13 @@ namespace {
         }
 
         float quickHeight = fromMainMenu ? ui.dp(40.0f) : ui.dp(88.0f);
-        MuiRect quick = {list.x, list.y, list.w, ui.dp(40.0f)};
+        MuiRect quick = { list.x, list.y, list.w, ui.dp(40.0f) };
         if (!fromMainMenu) {
             quick.w = (list.w - gap) / 2;
             if (ui.button("loadsave.quicksave", quick, text(1061, "Quicksave"), MuiButtonStyle::Primary)) pendingQuick = 1;
             quick.x += quick.w + gap;
             if (ui.button("loadsave.quickload", quick, text(1062, "Quickload"))) pendingQuick = 2;
-            quick = {list.x, list.y + ui.dp(44.0f), list.w, ui.dp(36.0f)};
+            quick = { list.x, list.y + ui.dp(44.0f), list.w, ui.dp(36.0f) };
         }
         if (ui.button("loadsave.import", quick, text(1063, "Import Steam / sfall saves"))) pendingQuick = 3;
         list.y += quickHeight + gap;
@@ -537,7 +537,7 @@ namespace {
             const MobileSaveSlotInfo& info = row.info;
             if (!rows[rowIndex].thumbnail.empty()) {
                 SDL_Texture* thumb = muiRgbaTexture("loadsave.thumb." + std::to_string(slot), rows[rowIndex].thumbnail.data(), kMobileSavePreviewWidth, kMobileSavePreviewHeight, pictureVersion);
-                if (thumb) muiDrawTextureCover(thumb, {rect.x + ui.dp(3.0f), rect.y + ui.dp(3.0f), ui.dp(86.0f), ui.dp(51.0f)});
+                if (thumb) muiDrawTextureCover(thumb, { rect.x + ui.dp(3.0f), rect.y + ui.dp(3.0f), ui.dp(86.0f), ui.dp(51.0f) });
             }
 
             // Position in the list, newest first.
@@ -548,7 +548,6 @@ namespace {
 
             float rowTextWidth = textWidth;
             float badgeRight = rect.right() - ui.dp(2.0f);
-
 
             // Made with other game files: likely works (?) or not (x).
             SaveCompatibility compatibility = rows[rowIndex].compatibility;
@@ -574,7 +573,7 @@ namespace {
                     ? placeOf(info)
                     : text(1064, "Level") + U" " + (info.level > 0 ? muiDecodeUtf8(std::to_string(info.level).c_str()) : U"?");
                 std::u32string stamp = gameDateText(info.gameDay, info.gameMonth, info.gameYear, info.gameTime);
-                muiDrawTextAligned(stamp, {textX, rect.y + ui.dp(47.0f), rowTextWidth, ui.dp(18.0f)}, muiFitTextSize(stamp, rowTextWidth, ui.dp(10.0f), ui.dp(7.0f)), theme.textDim, MuiAlign::Start, MuiAlign::Center);
+                muiDrawTextAligned(stamp, { textX, rect.y + ui.dp(47.0f), rowTextWidth, ui.dp(18.0f) }, muiFitTextSize(stamp, rowTextWidth, ui.dp(10.0f), ui.dp(7.0f)), theme.textDim, MuiAlign::Start, MuiAlign::Center);
                 muiDrawTextAligned(subtitle, { textX, rect.y + ui.dp(25.0f), rowTextWidth, ui.dp(19.0f) }, muiFitTextSize(subtitle, rowTextWidth, ui.dp(12.0f), ui.dp(8.0f)), theme.textDim, MuiAlign::Start, MuiAlign::Center);
             }
 
@@ -809,14 +808,14 @@ namespace {
                 env->DeleteLocalRef(activity);
             }
 #else
-            const char* body[] = {"Choose Import saves in the Android file picker.", "Select a SAVEGAME folder or zip; replacement asks first."};
+            const char* body[] = { "Choose Import saves in the Android file picker.", "Select a SAVEGAME folder or zip; replacement asks first." };
             showDialogBox("Import Steam / sfall saves", body, 2, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, 0);
 #endif
             refresh();
             return;
         }
         if (quick == 1) {
-            const char* body[] = {muiText(1065, "Write a quicksave of the current game?")};
+            const char* body[] = { muiText(1065, "Write a quicksave of the current game?") };
             if (showDialogBox(muiText(1061, "Quicksave"), body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) != 0) {
                 // A free manual slot also works when rotating quicksaves are off.
                 if (lsgQuickSaveCount() > 0) {
@@ -862,7 +861,7 @@ namespace {
 
     void LoadSaveScreen::saveGame(int slot)
     {
-        const char* body[] = {muiText(1066, "Save the current game to this slot?")};
+        const char* body[] = { muiText(1066, "Save the current game to this slot?") };
         if (showDialogBox(muiText(kTextSaveGame, "Save game"), body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) == 0) return;
         std::string encoded = muiEncodeGameText(description);
         encoded.resize(std::min(encoded.size(), kDescriptionLength));
@@ -883,7 +882,7 @@ namespace {
             return;
         }
 
-        const char* confirm[] = {muiText(1067, "Load this save and leave the current game?")};
+        const char* confirm[] = { muiText(1067, "Load this save and leave the current game?") };
         if (showDialogBox(muiText(kTextLoadGame, "Load game"), confirm, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) == 0) return;
 
         // Likely not to load right: asked first.

@@ -704,8 +704,10 @@ namespace {
         toggle(Section::Display, 1084, "Top screen CRT scanlines", Origin::Port, &Values::topScanlines);
         {
             Row row { Section::Display, RowKind::Choice, 1080, "Performance mode", Origin::Port };
-            row.options = {1085, 1086}; row.optionsFromCe = true;
-            row.minValue = 0; row.maxValue = 1;
+            row.options = { 1085, 1086 };
+            row.optionsFromCe = true;
+            row.minValue = 0;
+            row.maxValue = 1;
             row.get = [](const Values& v) { return float(v.perfMode); };
             row.set = [](Values& v, float n) { v.perfMode = int(std::lround(n)); };
             row.format = [](float n) { return std::to_string(int(std::lround(n))); };
@@ -713,7 +715,8 @@ namespace {
         }
         {
             Row row { Section::Display, RowKind::Slider, 1081, "Dim bottom after seconds (0: never)", Origin::Port };
-            row.minValue = 0; row.maxValue = 600;
+            row.minValue = 0;
+            row.maxValue = 600;
             row.get = [](const Values& v) { return float(v.bottomDimSeconds); };
             row.set = [](Values& v, float n) { v.bottomDimSeconds = int(std::lround(n)); };
             row.format = [](float n) { return std::to_string(int(std::lround(n))); };
@@ -721,7 +724,8 @@ namespace {
         }
         {
             Row row { Section::Display, RowKind::Slider, 1082, "Bottom text size (%)", Origin::Port };
-            row.minValue = 100; row.maxValue = 130;
+            row.minValue = 100;
+            row.maxValue = 130;
             row.get = [](const Values& v) { return float(v.bottomTextSize); };
             row.set = [](Values& v, float n) { v.bottomTextSize = int(std::lround(n)); };
             row.format = [](float n) { return std::to_string(int(std::lround(n))); };
@@ -940,14 +944,14 @@ namespace {
             static const char* const kSizeFallbacks[] = { "Normal", "Large" };
             static const char* const kBarterFallbacks[] = { "Top", "Bottom" };
             static const char* const kThemeFallbacks[] = { "Fallout", "Classic" };
-            const char* fallback = row.textId == 1080 ? (index == 0 ? "Balanced (60)" : "Saver (30)")
-                : row.textId == kTextDashboardLayout ? kDashboardFallbacks[index]
-                : row.textId == kTextScreenNav                        ? kNavFallbacks[index]
-                : row.textId == kTextDialogueLayout                   ? kDialogueFallbacks[index]
-                : row.textId == kTextDialogueOptionSize               ? kSizeFallbacks[index]
-                : row.textId == kTextBarterLayout                     ? kBarterFallbacks[index]
-                : row.textId == kTextBottomTheme                      ? kThemeFallbacks[index]
-                                                                      : kFallbacks[std::min(index, 2)];
+            const char* fallback = row.textId == 1080   ? (index == 0 ? "Balanced (60)" : "Saver (30)")
+                : row.textId == kTextDashboardLayout    ? kDashboardFallbacks[index]
+                : row.textId == kTextScreenNav          ? kNavFallbacks[index]
+                : row.textId == kTextDialogueLayout     ? kDialogueFallbacks[index]
+                : row.textId == kTextDialogueOptionSize ? kSizeFallbacks[index]
+                : row.textId == kTextBarterLayout       ? kBarterFallbacks[index]
+                : row.textId == kTextBottomTheme        ? kThemeFallbacks[index]
+                                                        : kFallbacks[std::min(index, 2)];
             return muiDecodeGameText(muiText(id, fallback));
         }
 
@@ -1371,27 +1375,31 @@ namespace {
             MuiRect thumb = frame.inset(ui.dp(6));
             float nav = ui.dp(edited.screenNav == 1 ? 8 : 16);
             if (edited.screenNav == 2) {
-                muiFillRect({thumb.x, thumb.y, thumb.w, nav}, theme.panelBorder);
-                thumb.y += nav + ui.dp(3); thumb.h -= nav + ui.dp(3);
+                muiFillRect({ thumb.x, thumb.y, thumb.w, nav }, theme.panelBorder);
+                thumb.y += nav + ui.dp(3);
+                thumb.h -= nav + ui.dp(3);
             } else {
-                muiFillRect({thumb.right() - nav, thumb.y, nav, thumb.h}, theme.panelBorder);
+                muiFillRect({ thumb.right() - nav, thumb.y, nav, thumb.h }, theme.panelBorder);
                 thumb.w -= nav + ui.dp(3);
             }
-            float mapPart = edited.dashboardLayout == 1 ? 0.72f : edited.dashboardLayout == 2 ? 0.5f : 0.38f;
+            float mapPart = edited.dashboardLayout == 1 ? 0.72f : edited.dashboardLayout == 2 ? 0.5f
+                                                                                              : 0.38f;
             MuiRect map = { thumb.x, thumb.y, thumb.w * mapPart, thumb.h };
             if (texture != nullptr && previewValid)
                 muiDrawTexture(texture, muiFitRect(map, float(previewWidth), float(previewHeight)));
             muiStrokeRoundRect(map, 0, ui.dp(1), theme.accent);
-            MuiRect info = {map.right() + ui.dp(4), thumb.y, thumb.right() - map.right() - ui.dp(4), thumb.h};
-            std::u32string label = edited.dashboardLayout == 1 ? U"MAP FIRST" : edited.dashboardLayout == 2 ? U"TWO COLUMNS" : U"CLASSIC";
+            MuiRect info = { map.right() + ui.dp(4), thumb.y, thumb.right() - map.right() - ui.dp(4), thumb.h };
+            std::u32string label = edited.dashboardLayout == 1 ? U"MAP FIRST" : edited.dashboardLayout == 2 ? U"TWO COLUMNS"
+                                                                                                            : U"CLASSIC";
             muiDrawText(label, info.x, info.y, ui.dp(10), theme.accent);
             muiDrawText(U"HP 42/60", info.x, info.y + ui.dp(18), ui.dp(10), theme.text);
-            std::u32string talk = edited.dialogueLayout == 0 ? U"DIALOGUE: TOP" : edited.dialogueLayout == 1 ? U"DIALOGUE: SPLIT" : U"DIALOGUE: MIRROR";
+            std::u32string talk = edited.dialogueLayout == 0 ? U"DIALOGUE: TOP" : edited.dialogueLayout == 1 ? U"DIALOGUE: SPLIT"
+                                                                                                             : U"DIALOGUE: MIRROR";
             muiDrawText(talk, info.x, info.y + ui.dp(36), ui.dp(9), theme.text);
             y += previewSpace;
         }
         y -= offset;
-        MuiRect rowsClip = {rect.x, rect.y + previewSpace, rect.w, rect.h - previewSpace};
+        MuiRect rowsClip = { rect.x, rect.y + previewSpace, rect.w, rect.h - previewSpace };
         muiPushClip(rowsClip);
 
         for (size_t index = 0; index < rows.size(); index++) {

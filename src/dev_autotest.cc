@@ -40,10 +40,11 @@
 #include "mouse.h"
 #include "movie.h"
 #include "mui.h"
+#include "mui_display_settings.h"
+#include "mui_map_view.h"
 #include "mui_notify.h"
 #include "object.h"
 #include "party_member.h"
-#include "mui_map_view.h"
 #include "perf_monitor.h"
 #include "perk.h"
 #include "platform_compat.h"
@@ -52,7 +53,6 @@
 #include "save_storage.h"
 #include "scripts.h"
 #include "settings.h"
-#include "mui_display_settings.h"
 #include "skill.h"
 #include "sound.h"
 #include "stat.h"
@@ -3305,9 +3305,7 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_LOG_PARTY_CONTROL: {
             PartyControlView view;
             if (gameDialogGetPartyControlView(&view)) {
-                if (step->a > 0 && (view.weapon == nullptr || view.weapon->pid != static_cast<int>(step->a)
-                    || view.armor == nullptr || view.armor->pid != static_cast<int>(step->b)
-                    || ammoGetQuantity(view.weapon) != static_cast<int>(step->c))) {
+                if (step->a > 0 && (view.weapon == nullptr || view.weapon->pid != static_cast<int>(step->a) || view.armor == nullptr || view.armor->pid != static_cast<int>(step->b) || ammoGetQuantity(view.weapon) != static_cast<int>(step->c))) {
                     devAutotestLog("autotest failed: companion equipment/ammo mismatch\n");
                     exit(EXIT_FAILURE);
                 }
@@ -3918,7 +3916,10 @@ void devAutotestTick()
         }
         case DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP: {
             if (step->b == 2) {
-                if (gDude->tile != gDevAutotestTouchStartTile) { devAutotestLog("autotest failed: wall tap moved dude\n"); exit(EXIT_FAILURE); }
+                if (gDude->tile != gDevAutotestTouchStartTile) {
+                    devAutotestLog("autotest failed: wall tap moved dude\n");
+                    exit(EXIT_FAILURE);
+                }
                 devAutotestLog("  wall tap ignored: ok\n");
                 break;
             }
@@ -3928,19 +3929,29 @@ void devAutotestTick()
                 for (Object* obj = objectFindFirstAtElevation(gElevation); obj; obj = objectFindNextAtElevation()) {
                     float wallX, wallY;
                     if (FrmId(obj).objectType() == OBJ_TYPE_WALL && tileDistanceBetween(gDude->tile, obj->tile) < 12
-                        && touchHudGetMapTileCenter(obj->tile, &wallX, &wallY)) { target = obj->tile; break; }
+                        && touchHudGetMapTileCenter(obj->tile, &wallX, &wallY)) {
+                        target = obj->tile;
+                        break;
+                    }
                 }
             } else {
                 for (int direction = 0; direction < 6; ++direction) {
                     int tile = tileGetTileInDirection(gDude->tile, static_cast<Rotation>(direction), static_cast<int>(step->a));
-                    if (_make_path(gDude, gDude->tile, tile, nullptr, 1) > 0) { target = tile; break; }
+                    if (_make_path(gDude, gDude->tile, tile, nullptr, 1) > 0) {
+                        target = tile;
+                        break;
+                    }
                 }
             }
             float x, y;
-            if (target < 0 || !(step->c == 1 ? muiAutomapTileCenter(target, &x, &y) : touchHudGetMapTileCenter(target, &x, &y))) { devAutotestLog("autotest failed: map target unavailable\n"); exit(EXIT_FAILURE); }
+            if (target < 0 || !(step->c == 1 ? muiAutomapTileCenter(target, &x, &y) : touchHudGetMapTileCenter(target, &x, &y))) {
+                devAutotestLog("autotest failed: map target unavailable\n");
+                exit(EXIT_FAILURE);
+            }
             int width, height;
             bottomScreenGetSize(&width, &height);
-            x = x / width * screenGetWidth(); y = y / height * screenGetHeight();
+            x = x / width * screenGetWidth();
+            y = y / height * screenGetHeight();
             gDevAutotestBottomTouch = true;
             devAutotestLog("  bottom map tap tile %d from %d\n", target, gDude->tile);
             devAutotestStartTouch(x, y, x, y, 1, 0);
@@ -4148,7 +4159,8 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_SUSPEND: {
             bool enabled = settings.enhancements.auto_quicksave_on_suspend;
             settings.enhancements.auto_quicksave_on_suspend = step->c == 0;
-            GameMode::Flags mode = step->b == 1 ? GameMode::kDialog : step->b == 2 ? GameMode::kBarter : GameMode::kNone;
+            GameMode::Flags mode = step->b == 1 ? GameMode::kDialog : step->b == 2 ? GameMode::kBarter
+                                                                                   : GameMode::kNone;
             if (step->b == 5 && lsgSaveGameToSlot(lsgGetTotalSlotCount() - 1, "Automatic suspend") != 0) exit(EXIT_FAILURE);
             lsgMobileRefreshSlots();
             MobileSaveSlotInfo before, after;
@@ -4160,7 +4172,10 @@ void devAutotestTick()
                 if (step->b == 3) {
                     gCombatState |= COMBAT_STATE_IN_COMBAT;
                     _combat_anim_begin();
-                    if (combatSaveIsSafe()) { devAutotestLog("FAIL: combat animation accepted\n"); exit(EXIT_FAILURE); }
+                    if (combatSaveIsSafe()) {
+                        devAutotestLog("FAIL: combat animation accepted\n");
+                        exit(EXIT_FAILURE);
+                    }
                 }
                 SDL_Event event = {};
                 event.type = step->b == 4 ? SDL_WINDOWEVENT : SDL_APP_WILLENTERBACKGROUND;
@@ -4387,7 +4402,10 @@ void devAutotestTick()
             bool isWalking;
             Rect viewRect;
             wmGetInterfaceState(&offsetX, &offsetY, &partyX, &partyY, &isWalking, &viewRect);
-            if (step->a == 1 && !isWalking) { devAutotestLog("autotest failed: world map tap did not start travel\n"); exit(EXIT_FAILURE); }
+            if (step->a == 1 && !isWalking) {
+                devAutotestLog("autotest failed: world map tap did not start travel\n");
+                exit(EXIT_FAILURE);
+            }
             devAutotestLog("  world map offset (%d, %d), party (%d, %d), walking %d\n", offsetX, offsetY, partyX, partyY, isWalking ? 1 : 0);
             break;
         }

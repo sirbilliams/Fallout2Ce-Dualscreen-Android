@@ -1,6 +1,6 @@
+#include "mui_gameskin.h"
 #include "mui_screens.h"
 #include "mui_skin.h"
-#include "mui_gameskin.h"
 
 #include <algorithm>
 #include <cmath>
@@ -140,7 +140,8 @@ namespace {
 
         lists[SIDE_LEFT] = muiInventoryItems(view.leftOwner, filters[SIDE_LEFT]);
         lists[SIDE_RIGHT] = muiInventoryItems(view.rightOwner, filters[SIDE_RIGHT]);
-        for (int side = 0; side < SIDE_COUNT; ++side) if (lists[side].empty()) previews[side].clear();
+        for (int side = 0; side < SIDE_COUNT; ++side)
+            if (lists[side].empty()) previews[side].clear();
 
         float gap = ui.dp(12.0f);
         float sideWidth = (content.w - gap) / 2.0f;
@@ -160,7 +161,7 @@ namespace {
 
             float listHeight = content.bottom() - bottomHeight - rowGap - ui.dp(32.0f) - y;
             buildList(ui, view, static_cast<Side>(side), { x, y, sideWidth, listHeight });
-            MuiRect preview = {x, content.bottom() - bottomHeight - ui.dp(32.0f), sideWidth, ui.dp(28.0f)};
+            MuiRect preview = { x, content.bottom() - bottomHeight - ui.dp(32.0f), sideWidth, ui.dp(28.0f) };
             themedWell(ui, preview);
             muiDrawTextAligned(previews[side], preview.inset(ui.dp(4.0f), 0), ui.dp(11.0f), theme.accent, MuiAlign::Center, MuiAlign::Center);
             buildBottom(ui, view, static_cast<Side>(side), { x, content.bottom() - bottomHeight, sideWidth, bottomHeight });

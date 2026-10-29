@@ -183,7 +183,6 @@ namespace {
         return true;
     }
 
-
     void TalkScreen::build(MuiContext& ui)
     {
         if (split()) {
@@ -389,7 +388,10 @@ namespace {
             MuiRect badgeRect = { row.x + padding, row.centerY() - badge / 2.0f, badge, badge };
             muiFillRoundRect(badgeRect, ui.dp(5.0f), dimmed(theme.well, mirror));
             muiStrokeRoundRect(badgeRect, ui.dp(5.0f), ui.dp(1.5f), dimmed(tint, mirror));
-            std::u32string number = muiDecodeUtf8((std::to_string(index + 1) + (settings.touch.colour_blind_safe && reaction != -1 ? (reaction == 0 ? "+" : reaction == 2 ? "!" : "=") : "")).c_str());
+            std::u32string number = muiDecodeUtf8((std::to_string(index + 1) + (settings.touch.colour_blind_safe && reaction != -1 ? (reaction == 0 ? "+" : reaction == 2 ? "!"
+                                                                                                                                                                          : "=")
+                                                                                                                                   : ""))
+                                                      .c_str());
             muiDrawTextAligned(number, badgeRect, muiFitTextSize(number, badge - ui.dp(6.0f), ui.dp(17.0f), ui.dp(10.0f)), dimmed(tint, mirror), MuiAlign::Center, MuiAlign::Center);
 
             float textX = badgeRect.right() + padding;
@@ -660,7 +662,9 @@ namespace {
         for (int index = 0; index < count; index++) {
             int reaction = gameDialogGetOptionReaction(index);
             std::u32string cue = settings.touch.colour_blind_safe && reaction != -1
-                ? (reaction == 0 ? U"[+] " : reaction == 2 ? U"[!] " : U"[=] ") : U"";
+                ? (reaction == 0 ? U"[+] " : reaction == 2 ? U"[!] "
+                                                           : U"[=] ")
+                : U"";
             texts.push_back(muiWrapText(cue + muiDecodeGameText(gameDialogGetOptionText(index)), rect.w - padding * 2.0f, size));
             heights.push_back(std::max(texts.back().size() * lineHeight + padding * 1.4f, minHeight));
             total += heights.back() + (index > 0 ? gap : 0.0f);

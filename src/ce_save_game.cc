@@ -8,9 +8,9 @@
 
 #include "character_editor.h"
 #include "config.h"
-#include "stat.h"
 #include "debug.h"
 #include "platform_compat.h"
+#include "stat.h"
 
 namespace fallout {
 

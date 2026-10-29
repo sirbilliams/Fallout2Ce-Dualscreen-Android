@@ -1,7 +1,7 @@
 #include "mui_dual.h"
-#include "settings.h"
 #include "mui_gameskin.h"
 #include "mui_skin.h"
+#include "settings.h"
 
 #include <math.h>
 #include <stdio.h>
