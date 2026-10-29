@@ -98,6 +98,9 @@ final class BottomDisplay {
         if (d.getDisplayId() == Display.DEFAULT_DISPLAY) return false;
         if (!d.isValid()) return false;
         if ((d.getFlags() & Display.FLAG_PRIVATE) != 0) return false;       // another app's virtual display
+        // Exactly the Thor's panel size is the bottom screen, even as an overlay display (the CI emulator's
+        // stand-in); never HDMI / external.
+        if (type != TYPE_EXTERNAL && (d.getFlags() & Display.FLAG_PRESENTATION) != 0 && thorBottomSize(d)) return true;
         if (type == TYPE_WIFI || type == TYPE_OVERLAY || type == TYPE_VIRTUAL) return false;
         String name = d.getName() != null ? d.getName().toLowerCase(Locale.ROOT) : "";
         String[] cast = { "wifi", "wi-fi", "wireless", "miracast", "cast", "chromecast", "mirror",

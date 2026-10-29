@@ -50,6 +50,7 @@ for d in $(adb shell dumpsys SurfaceFlinger --display-id 2>/dev/null | grep -o "
 done
 adb shell dumpsys activity activities | grep -iE "display|fallout2ce" | head -30 > "$OUT/activities.txt" || true
 adb shell "cat /sdcard/Android/data/$PKG/files/display-log.txt" > "$OUT/display-log.txt" 2>/dev/null || true
+grep -q "bottom screen = display" "$OUT/display-log.txt" 2>/dev/null || fail "the 1240x1080 display was not picked as the bottom screen (display-log.txt)"
 alive "$PKG" && echo "game process still running" || echo "note: game process ended (expected with placeholder data)"
 
 # 4. Verdict from logcat
