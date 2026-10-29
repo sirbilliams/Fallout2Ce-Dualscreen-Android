@@ -36,6 +36,8 @@ namespace {
         int cellHeight = 0;
         int width[256] = {};
         int height[256] = {};
+        SDL_Rect ink[256] = {};
+        int digitStroke = 1;
     };
 
     GameFont gFonts[kFontCount];
@@ -86,6 +88,7 @@ namespace {
             const unsigned char* pixels;
             font.width[ch] = 0;
             font.height[ch] = 0;
+            font.ink[ch] = {};
             if (interfaceFontGetGlyph(index, static_cast<unsigned char>(ch), &width, &height, &pixels)) {
                 font.width[ch] = width;
                 font.height[ch] = height;
@@ -105,6 +108,23 @@ namespace {
             if (!interfaceFontGetGlyph(index, static_cast<unsigned char>(ch), &width, &height, &pixels)) {
                 continue;
             }
+            int left = width, right = -1, first = height, last = -1;
+            for (int row = 0; row < height; row++) {
+                int run = 0;
+                for (int col = 0; col <= width; col++) {
+                    if (col < width && pixels[row * width + col] > 0) {
+                        left = std::min(left, col);
+                        right = std::max(right, col);
+                        first = std::min(first, row);
+                        last = std::max(last, row);
+                        run++;
+                    } else if (run > 0) {
+                        if (ch == '0' && row == height / 2) font.digitStroke = run;
+                        run = 0;
+                    }
+                }
+            }
+            font.ink[ch] = { left, first, std::max(0, right - left + 1), std::max(0, last - first + 1) };
             int originX = (ch % 16) * font.cellWidth;
             int originY = (ch / 16) * font.cellHeight;
             for (int y = 0; y < height; y++) {
@@ -126,20 +146,79 @@ namespace {
         return &font;
     }
 
-    unsigned char glyphOf(char32_t codepoint, const GameFont& font)
+    struct TextGlyph {
+        GameFont* font;
+        unsigned char ch;
+        bool pixelDollar = false;
+        bool fittedDollar = false;
+    };
+
+    bool hasGlyph(const GameFont& font, unsigned char ch)
     {
-        unsigned char ch = gameCharsetEncode(codepoint);
-        if ((ch == 0 || font.width[ch] == 0) && (codepoint == 0xB7 || codepoint == 0x2022 || codepoint == 0x2219)) {
-            return '-';
-        }
-        if (ch == 0 || (ch != ' ' && font.width[ch] == 0)) {
-            // The face has no capitals' lowercase? Try the other case, then '?'.
-            if (codepoint < 0x80 && codepoint >= 'a' && codepoint <= 'z' && font.width[codepoint - 32] != 0) {
-                return static_cast<unsigned char>(codepoint - 32);
+        return ch != 0 && (ch == ' ' || (font.width[ch] > 0 && font.height[ch] > 0));
+    }
+
+    // Resolve once for both measurement and drawing. Only substitute when the
+    // active charset and the actual AAF glyph table cannot represent the text.
+    void appendGlyph(std::vector<TextGlyph>& out, char32_t cp, GameFont* font)
+    {
+        unsigned char ch = gameCharsetEncode(cp);
+        if (cp == U'$') {
+            GameFont* best = nullptr;
+            for (int index = 0; index < kFontCount; index++) {
+                GameFont* other = loadFont(index);
+                if (other != nullptr && other->ink['$'].h >= 5 && other->ink['$'].w >= 3
+                    && (best == nullptr || other->ink['$'].h > best->ink['$'].h)) {
+                    best = other;
+                }
             }
-            return '?';
+            out.push_back({ best != nullptr ? best : font, '$', best == nullptr, true });
+            return;
         }
-        return ch;
+        if (hasGlyph(*font, ch)) {
+            out.push_back({ font, ch });
+            return;
+        }
+        const char32_t* replacement = nullptr;
+        switch (cp) {
+        case U'\u2212': case U'\u2010': case U'\u2011':
+        case U'\u2012': case U'\u2013': case U'\u2014':
+        case U'\u00ad': replacement = U"-"; break;
+        case U'\u2018': case U'\u2019': case U'\u201a':
+        case U'\u2032': replacement = U"'"; break;
+        case U'\u201c': case U'\u201d': case U'\u201e':
+        case U'\u2033': replacement = U"\""; break;
+        case U'\u2026': replacement = U"..."; break;
+        case U'\u00b7': case U'\u2022': case U'\u2219': replacement = U"-"; break;
+        case U'\u00a0': case U'\u2007': case U'\u202f': replacement = U" "; break;
+        case U'\u2039': case U'\u00ab': case U'\u2190': replacement = U"<"; break;
+        case U'\u203a': case U'\u00bb': case U'\u2192': replacement = U">"; break;
+        case U'\u00d7': replacement = U"x"; break;
+        default: break;
+        }
+        if (replacement != nullptr) {
+            for (; *replacement != 0; replacement++) {
+                appendGlyph(out, *replacement, font);
+            }
+            return;
+        }
+        if (cp >= U'a' && cp <= U'z' && hasGlyph(*font, cp - 32)) {
+            ch = static_cast<unsigned char>(cp - 32);
+        } else if (cp >= U'A' && cp <= U'Z' && hasGlyph(*font, cp + 32)) {
+            ch = static_cast<unsigned char>(cp + 32);
+        } else {
+            ch = hasGlyph(*font, '?') ? '?' : ' ';
+        }
+        out.push_back({ font, ch });
+    }
+
+    std::vector<TextGlyph> resolveText(const std::u32string& text, GameFont* font)
+    {
+        std::vector<TextGlyph> glyphs;
+        for (char32_t cp : text) {
+            appendGlyph(glyphs, cp, font);
+        }
+        return glyphs;
     }
 
     float advanceOf(unsigned char ch, const GameFont& font)
@@ -148,6 +227,19 @@ namespace {
             return static_cast<float>(font.wordSpacing + font.letterSpacing);
         }
         return static_cast<float>(font.width[ch] + font.letterSpacing);
+    }
+
+    SDL_Rect digitInk(const GameFont& font)
+    {
+        SDL_Rect ink = font.ink['0'];
+        if (ink.h == 0) ink = font.ink['S'];
+        if (ink.h == 0) ink = { 0, 0, std::max(5, font.maxHeight / 2), font.maxHeight };
+        return ink;
+    }
+
+    float glyphAdvance(const TextGlyph& glyph, const GameFont& font)
+    {
+        return glyph.fittedDollar ? (font.width['0'] > 0 ? font.width['0'] : digitInk(font).w) + font.letterSpacing : advanceOf(glyph.ch, *glyph.font);
     }
 
     struct Pick {
@@ -173,8 +265,8 @@ namespace {
             return 0.0f;
         }
         float width = 0.0f;
-        for (char32_t codepoint : text) {
-            width += advanceOf(glyphOf(codepoint, *font), *font);
+        for (const TextGlyph& glyph : resolveText(text, font)) {
+            width += glyphAdvance(glyph, *font);
         }
         return width * scale;
     }
@@ -187,35 +279,50 @@ namespace {
             return;
         }
 
-        bool whole = scale == floorf(scale);
-        SDL_SetTextureScaleMode(font->texture, whole ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
-        SDL_SetTextureBlendMode(font->texture, SDL_BLENDMODE_BLEND);
-
+        const auto glyphs = resolveText(text, font);
         float offset = std::max(1.0f, roundf(scale * 0.8f));
         for (int pass = shadow ? 0 : 1; pass < 2; pass++) {
-            if (pass == 0) {
-                SDL_SetTextureColorMod(font->texture, 0, 0, 0);
-                SDL_SetTextureAlphaMod(font->texture, static_cast<Uint8>(color.a * 0.8f));
-            } else {
-                SDL_SetTextureColorMod(font->texture, color.r, color.g, color.b);
-                SDL_SetTextureAlphaMod(font->texture, color.a);
-            }
-
+            MuiColor ink = pass == 0 ? MuiColor { 0, 0, 0, static_cast<Uint8>(color.a * 0.8f) } : color;
             float pen = roundf(x) + (pass == 0 ? offset : 0.0f);
             float top = roundf(y) + (pass == 0 ? offset : 0.0f);
-            for (char32_t codepoint : text) {
-                unsigned char ch = glyphOf(codepoint, *font);
-                if (font->width[ch] > 0 && ch != ' ') {
-                    SDL_Rect source = { (ch % 16) * font->cellWidth, (ch / 16) * font->cellHeight, font->width[ch], font->height[ch] };
+            for (const TextGlyph& glyph : glyphs) {
+                GameFont& face = *glyph.font;
+                unsigned char ch = glyph.ch;
+                if (glyph.fittedDollar) {
+                    SDL_Rect digit = digitInk(*font);
+                    SDL_FRect dest = { roundf(pen),
+                        roundf(top + (font->maxHeight - font->height['0'] + digit.y) * scale),
+                        roundf(digit.w * scale), roundf(digit.h * scale) };
+                    unsigned char shape = glyph.pixelDollar ? 'S' : '$';
+                    SDL_Rect source = face.ink[shape];
+                    source.x += (shape % 16) * face.cellWidth;
+                    source.y += (shape / 16) * face.cellHeight;
+                    SDL_SetTextureScaleMode(face.texture, SDL_ScaleModeNearest);
+                    SDL_SetTextureColorMod(face.texture, ink.r, ink.g, ink.b);
+                    SDL_SetTextureAlphaMod(face.texture, ink.a);
+                    SDL_RenderCopyF(renderer, face.texture, &source, &dest);
+                    if (glyph.pixelDollar) {
+                        // Reuse the face's S and digit stroke weight at the digit baseline.
+                        float stroke = std::max(1.0f, roundf(font->digitStroke * scale));
+                        SDL_FRect bar = { roundf(dest.x + (dest.w - stroke) / 2), dest.y, stroke, dest.h };
+                        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+                        SDL_SetRenderDrawColor(renderer, ink.r, ink.g, ink.b, ink.a);
+                        SDL_RenderFillRectF(renderer, &bar);
+                    }
+                } else if (face.width[ch] > 0 && ch != ' ') {
+                    SDL_SetTextureScaleMode(face.texture, scale == floorf(scale) ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
+                    SDL_SetTextureColorMod(face.texture, ink.r, ink.g, ink.b);
+                    SDL_SetTextureAlphaMod(face.texture, ink.a);
+                    SDL_Rect source = { (ch % 16) * face.cellWidth, (ch / 16) * face.cellHeight, face.width[ch], face.height[ch] };
                     SDL_FRect dest = {
                         roundf(pen),
-                        roundf(top + (font->maxHeight - font->height[ch]) * scale),
-                        roundf(font->width[ch] * scale),
-                        roundf(font->height[ch] * scale),
+                        roundf(top + (font->maxHeight - face.height[ch]) * scale),
+                        roundf(face.width[ch] * scale),
+                        roundf(face.height[ch] * scale),
                     };
-                    SDL_RenderCopyF(renderer, font->texture, &source, &dest);
+                    SDL_RenderCopyF(renderer, face.texture, &source, &dest);
                 }
-                pen += advanceOf(ch, *font) * scale;
+                pen += glyphAdvance(glyph, *font) * scale;
             }
         }
     }
