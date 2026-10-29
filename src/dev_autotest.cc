@@ -1697,6 +1697,26 @@ static const DevAutotestStep kDevAutotestDualScreenSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 60, "d07_combat_turn" },
 };
 
+// Pip-Boy page on the dual-screen bottom (Fallout theme).
+static const DevAutotestStep kDevAutotestDualPipboySteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "pb00_start" },
+    { DEV_AUTOTEST_ACTION_LOAD_GAME, 0, 0, 0, 120, "pb01_dashboard" },
+    { DEV_AUTOTEST_ACTION_SET_GVAR, 183, 3, 0, 1, "pb01b_gvar" },
+    { DEV_AUTOTEST_ACTION_SET_GVAR, 191, 1, 0, 1, "pb01c_gvar" },
+    { DEV_AUTOTEST_ACTION_SET_GVAR, 100, 1, 0, 1, "pb01d_gvar" },
+    { DEV_AUTOTEST_ACTION_SET_GVAR, 101, 2, 0, 1, "pb01e_gvar" },
+    { DEV_AUTOTEST_ACTION_SET_GVAR, 550, 1, 0, 1, "pb01f_gvar" },
+    { DEV_AUTOTEST_ACTION_SET_GVAR, 221, 1, 0, 1, "pb01g_holodisk" },
+    { DEV_AUTOTEST_ACTION_SET_GVAR, 222, 1, 0, 1, "pb01h_holodisk" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Pipboy), 0, 0, 60, "pb02_status" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "pb03_quest2", "pipboy.quests.1" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "pb04_data", "pipboy.section.data" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "pb05_holodisk", "pipboy.data.1" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "pb06_maps", "pipboy.section.maps" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "pb07_rest", "pipboy.section.rest" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 10, "pb08_end" },
+};
+
 // Bottom-screen theme captures: the game menu and the settings.
 static const DevAutotestStep kDevAutotestThemeSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "e00_start" },
@@ -2497,6 +2517,12 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "dualendproof") == 0) {
         gDevAutotestSteps = kDevAutotestDualEndProofSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestDualEndProofSteps) / sizeof(kDevAutotestDualEndProofSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "dualpipboy") == 0) {
+        gDevAutotestSteps = kDevAutotestDualPipboySteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDualPipboySteps) / sizeof(kDevAutotestDualPipboySteps[0]);
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif

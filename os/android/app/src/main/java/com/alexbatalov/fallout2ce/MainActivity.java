@@ -49,6 +49,17 @@ public class MainActivity extends SDLActivity {
 
         super.onCreate(savedInstanceState);
 
+        // The first launch: the setup guide (the game's files, layout, theme,
+        // controls), once. Not for the debug builds' automated runs.
+        final boolean automated = BuildConfig.DEBUG && getIntent().getStringExtra("args") != null;
+        if (!automated && !GuideSettings.isDone(externalFilesDir)) {
+            startActivity(new Intent(this, SetupGuideActivity.class));
+
+            noExit = true;
+            finish();
+            return;
+        }
+
         // Without the game's files (or copied in part): the import screen.
         if (!GameImport.isInstalled(externalFilesDir)) {
             final Intent intent = new Intent(this, ImportActivity.class);
@@ -206,6 +217,13 @@ public class MainActivity extends SDLActivity {
                 finish();
             }
         });
+    }
+
+    // Called from native code (mui_preferences.cc, "Setup guide"): the
+    // first-run guide over the game (paused behind it; it comes back at the
+    // guide's end).
+    public void openSetupGuide() {
+        runOnUiThread(() -> startActivity(new Intent(this, SetupGuideActivity.class)));
     }
 
     // Debug builds: the game's command line from the launch intent, for

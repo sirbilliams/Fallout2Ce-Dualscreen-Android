@@ -1,4 +1,5 @@
 #include "mui.h"
+#include "mui_gameskin.h"
 #include "mui_icons.h"
 #include "mui_map_view.h"
 #include "mui_notify.h"
@@ -877,6 +878,20 @@ namespace {
         MuiRect inner = left.inset(ui.dp(12.0f));
         float clockSize = std::min(ui.dp(48.0f), inner.w / 4.0f);
         float y = inner.y + ui.dp(12.0f);
+
+        // The Pip-Boy's own alarm clock (rings while resting).
+        if (muiSkinFallout()) {
+            const char* art = resting ? "alarmin" : "alarmout";
+            int artWidth;
+            int artHeight;
+            if (muiGameArtSize(MuiArtGroup::Interface, art, &artWidth, &artHeight) && artWidth > 0) {
+                int scale = std::max(1, static_cast<int>(std::min(inner.w * 0.6f / artWidth, inner.h * 0.28f / artHeight)));
+                float w = static_cast<float>(artWidth * scale);
+                float h = static_cast<float>(artHeight * scale);
+                muiGameDrawArt(MuiArtGroup::Interface, art, { inner.x + (inner.w - w) / 2.0f, y, w, h });
+                y += h + ui.dp(8.0f);
+            }
+        }
         muiDrawTextAligned(clockText(time), { inner.x, y, inner.w, muiLineHeight(clockSize) }, clockSize, theme.accent, MuiAlign::Center, MuiAlign::Start);
         y += muiLineHeight(clockSize);
         muiDrawTextAligned(dateText(), { inner.x, y, inner.w, ui.dp(20.0f) }, ui.dp(14.0f), theme.textDim, MuiAlign::Center, MuiAlign::Start);
