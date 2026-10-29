@@ -221,6 +221,36 @@ public class GameSavesTest {
     }
 
     @Test
+    public void steamFolderAndZipKeepSfallGlobalsWithoutOverwriting() throws IOException {
+        installSave(0, "existing", 1600000000000000L, "");
+        byte[] original = java.nio.file.Files.readAllBytes(new File(GameSaves.savesFolder(game), "SLOT01/SAVE.DAT").toPath());
+        GameFilesTest.MemorySource folder = new GameFilesTest.MemorySource();
+        folder.files.put("SAVEGAME/SLOT01/SAVE.DAT", saveDat("Steam", "import", 1, 1, 2024, 1));
+        folder.files.put("SAVEGAME/SLOT01/sfallgv.sav", new byte[] {1, 2, 3, 4});
+        folder.files.put("SAVEGAME/SLOT01/MAPS/TEST.SAV", new byte[] {5, 6});
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (java.util.zip.ZipOutputStream zip = new java.util.zip.ZipOutputStream(bytes)) {
+            for (Map.Entry<String, byte[]> entry : folder.files.entrySet()) {
+                zip.putNextEntry(new ZipEntry(entry.getKey()));
+                zip.write(entry.getKey().endsWith("SAVE.DAT") ? saveDat("Steam", "zip", 1, 1, 2024, 2) : entry.getValue());
+                zip.closeEntry();
+            }
+        }
+        for (GameImport.Source source : new GameImport.Source[] {folder, unzip(bytes.toByteArray())}) {
+            GameSaves.Found found = GameSaves.find(source, game, "now", "", COMPARER);
+            GameSaves.Plan plan = GameSaves.plan(found, game, false);
+            assertTrue(plan.removed.isEmpty());
+            assertFalse(plan.slots.isEmpty());
+            assertFalse(plan.slots.contains(0));
+            GameSaves.apply(source, plan, game, records, NO_PROGRESS);
+            File imported = new File(GameSaves.savesFolder(game), GameSaves.slotName(plan.slots.get(0)));
+            org.junit.Assert.assertArrayEquals(new byte[] {1, 2, 3, 4}, java.nio.file.Files.readAllBytes(new File(imported, "sfallgv.sav").toPath()));
+            org.junit.Assert.assertArrayEquals(new byte[] {5, 6}, java.nio.file.Files.readAllBytes(new File(imported, "MAPS/TEST.SAV").toPath()));
+            org.junit.Assert.assertArrayEquals(original, java.nio.file.Files.readAllBytes(new File(GameSaves.savesFolder(game), "SLOT01/SAVE.DAT").toPath()));
+        }
+    }
+
+    @Test
     public void bareSlotsAreUnknown() throws IOException {
         GameFilesTest.MemorySource source = new GameFilesTest.MemorySource();
         source.files.put("SLOT05/SAVE.DAT", saveDat("B", "bare", 1, 1, 2024, 1));

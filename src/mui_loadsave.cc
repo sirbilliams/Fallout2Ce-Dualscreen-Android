@@ -1,6 +1,11 @@
 #include "mui.h"
 #include "mui_screens.h"
 #include "mui_skin.h"
+#include "mui_gameskin.h"
+#include <SDL.h>
+#ifdef __ANDROID__
+#include <jni.h>
+#endif
 
 #include <algorithm>
 #include <cstdio>
@@ -30,8 +35,6 @@ namespace {
     const MuiColor kPanel = muiRgb(0x0C0F09);
     const MuiColor kSelected = muiRgb(0x24401E);
     const MuiColor kDanger = muiRgb(0xFF8E72);
-    const MuiColor kDangerFill = muiRgb(0x1B100E);
-    const MuiColor kDangerPressed = muiRgb(0x47211D);
 
     // Texts in `game\ce.msg`.
     constexpr int kTextSaveGame = 215;
@@ -101,6 +104,8 @@ namespace {
     struct SlotRow {
         int slot;
         MobileSaveSlotInfo info;
+        std::vector<unsigned char> thumbnail;
+        bool thumbnailRead = false;
         // Against the game's files now (save_compatibility.h).
         SaveCompatibility compatibility = SaveCompatibility::kSame;
         std::vector<SaveCompatibilityChange> changes;
@@ -138,13 +143,14 @@ namespace {
     // Save / load screen: the saves newest first (the game's slots aren't
     // shown, quick saves are marked), the selected one's picture and details
     // at the right, its actions under them. Saving makes a new save (the
-    // "New save" row at the top, with a description), existing ones aren't
-    // overwritten; quick saves can be copied to keep them. From the main menu
+    // "New save" row at the top, with a description), or replaces a selected
+    // slot after confirmation; quick saves can be copied. From the main menu
     // it only loads.
     class LoadSaveScreen : public MuiScreen {
     public:
         LoadSaveScreen(bool save, bool mainMenu);
 
+        MuiSurface surface() override { return muiGameScreenSurface(); }
         bool coversScreen() override { return true; }
         void build(MuiContext& ui) override;
         void back() override;
@@ -174,6 +180,8 @@ namespace {
         bool editing = false;
         bool loading = false;
 
+        unsigned int slotsRevision = 0;
+        int pendingQuick = 0;
         int pendingAction = -1;
         int pendingDelete = -1;
         int pendingPermanent = -1;
@@ -295,6 +303,7 @@ namespace {
             }
         }
         select(selected);
+        slotsRevision = lsgMobileSlotsRevision();
     }
 
     const MobileSaveSlotInfo* LoadSaveScreen::infoFor(int slot) const
@@ -380,6 +389,7 @@ namespace {
 
     void LoadSaveScreen::build(MuiContext& ui)
     {
+        if (slotsRevision != lsgMobileSlotsRevision()) refresh();
         // The keyboard sheet and the loading plate keep the screen visible
         // under them, not touchable.
         bool interactive = ui.isInteractive;
@@ -409,6 +419,18 @@ namespace {
             buildTabs(ui, { list.x, content.y, list.w, ui.dp(38.0f) });
         }
 
+        float quickHeight = fromMainMenu ? ui.dp(40.0f) : ui.dp(88.0f);
+        MuiRect quick = {list.x, list.y, list.w, ui.dp(40.0f)};
+        if (!fromMainMenu) {
+            quick.w = (list.w - gap) / 2;
+            if (ui.button("loadsave.quicksave", quick, text(1061, "Quicksave"), MuiButtonStyle::Primary)) pendingQuick = 1;
+            quick.x += quick.w + gap;
+            if (ui.button("loadsave.quickload", quick, text(1062, "Quickload"))) pendingQuick = 2;
+            quick = {list.x, list.y + ui.dp(44.0f), list.w, ui.dp(36.0f)};
+        }
+        if (ui.button("loadsave.import", quick, text(1063, "Import Steam / sfall saves"))) pendingQuick = 3;
+        list.y += quickHeight + gap;
+        list.h -= quickHeight + gap;
         buildList(ui, list);
         buildDetails(ui, details);
 
@@ -449,7 +471,7 @@ namespace {
         muiStrokeRoundRect(list, ui.dp(7.0f), ui.dp(1.0f), theme.panelBorder);
 
         MuiRect inner = list.inset(ui.dp(6.0f));
-        float rowHeight = ui.dp(50.0f);
+        float rowHeight = ui.dp(74.0f);
         bool hasNewRow = saving && newSlot != -1;
 
         if (!hasNewRow && rows.empty()) {
@@ -470,8 +492,6 @@ namespace {
         }
         float offset = ui.scroll("loadsave.slots", scrollArea, rows.size() * rowHeight);
 
-        float numberWidth = ui.dp(31.0f);
-        float badgeWidth = ui.dp(43.0f);
         int count = static_cast<int>(rows.size()) + (hasNewRow ? 1 : 0);
         for (int index = 0; index < count; index++) {
             bool isNew = hasNewRow && index == 0;
@@ -497,7 +517,7 @@ namespace {
                 select(slot);
             }
 
-            float textX = rect.x + numberWidth + ui.dp(13.0f);
+            float textX = rect.x + ui.dp(95.0f);
             float textWidth = rect.right() - textX - ui.dp(5.0f);
 
             if (isNew) {
@@ -508,18 +528,27 @@ namespace {
                 continue;
             }
 
-            const MobileSaveSlotInfo& info = rows[rowIndex].info;
+            SlotRow& row = rows[rowIndex];
+            if (!row.thumbnailRead) {
+                row.thumbnailRead = true;
+                std::vector<unsigned char> indexed(kMobileSavePreviewWidth * kMobileSavePreviewHeight);
+                if (lsgMobileReadPreview(slot, indexed.data(), indexed.size())) convertThumbnail(indexed, &row.thumbnail);
+            }
+            const MobileSaveSlotInfo& info = row.info;
+            if (!rows[rowIndex].thumbnail.empty()) {
+                SDL_Texture* thumb = muiRgbaTexture("loadsave.thumb." + std::to_string(slot), rows[rowIndex].thumbnail.data(), kMobileSavePreviewWidth, kMobileSavePreviewHeight, pictureVersion);
+                if (thumb) muiDrawTextureCover(thumb, {rect.x + ui.dp(3.0f), rect.y + ui.dp(3.0f), ui.dp(86.0f), ui.dp(51.0f)});
+            }
 
             // Position in the list, newest first.
-            std::string number = std::to_string(rowIndex + 1);
-            muiDrawTextAligned(muiDecodeUtf8(number.c_str()), { rect.x + ui.dp(4.0f), rect.y, numberWidth, rect.h }, ui.dp(12.0f), theme.textDim, MuiAlign::End, MuiAlign::Center);
+            std::string number = std::to_string(slot + 1) + "  L" + (info.level > 0 ? std::to_string(info.level) : "?");
+            std::u32string slotLabel = muiDecodeUtf8(number.c_str());
+            if (lsgMobileIsQuickSlot(slot)) slotLabel += U" " + text(kTextQuick, "Quick");
+            muiDrawTextAligned(slotLabel, { rect.x + ui.dp(4.0f), rect.y + ui.dp(53.0f), ui.dp(84.0f), ui.dp(16.0f) }, muiFitTextSize(slotLabel, ui.dp(84.0f), ui.dp(10.0f), ui.dp(8.0f)), theme.textDim, MuiAlign::End, MuiAlign::Center);
 
+            float rowTextWidth = textWidth;
             float badgeRight = rect.right() - ui.dp(2.0f);
-            if (lsgMobileIsQuickSlot(slot)) {
-                textWidth -= badgeWidth;
-                muiDrawTextAligned(text(kTextQuick, "Quick"), { badgeRight - badgeWidth, rect.y, badgeWidth, rect.h }, ui.dp(10.0f), theme.accent, MuiAlign::Center, MuiAlign::Center);
-                badgeRight -= badgeWidth;
-            }
+
 
             // Made with other game files: likely works (?) or not (x).
             SaveCompatibility compatibility = rows[rowIndex].compatibility;
@@ -527,21 +556,26 @@ namespace {
                 float markWidth = ui.dp(20.0f);
                 textWidth -= markWidth;
                 bool unlikely = compatibility == SaveCompatibility::kUnlikely;
-                muiDrawTextAligned(unlikely ? U"\u00D7" : U"?", { badgeRight - markWidth, rect.y, markWidth, rect.h }, ui.dp(unlikely ? 18.0f : 15.0f), unlikely ? kDanger : theme.accent, MuiAlign::Center, MuiAlign::Center);
+                muiDrawTextAligned(unlikely ? U"\u00D7" : U"?", { badgeRight - markWidth, rect.y + ui.dp(2.0f), markWidth, ui.dp(23.0f) }, ui.dp(unlikely ? 18.0f : 15.0f), unlikely ? kDanger : theme.accent, MuiAlign::Center, MuiAlign::Center);
             }
 
             bool occupied = info.state == MobileSaveSlotState::Occupied;
             std::u32string title = titleOf(info);
             MuiRect titleRect = { textX, rect.y + ui.dp(2.0f), textWidth, ui.dp(23.0f) };
+            muiPushClip(titleRect);
             muiDrawTextAligned(title, titleRect, muiFitTextSize(title, textWidth, ui.dp(15.0f), ui.dp(11.0f)), occupied ? theme.text : kDanger, MuiAlign::Start, MuiAlign::Center);
+
+            muiPopClip();
 
             // Under the description where it was made; under the place
             // (no description) the game's date.
             if (occupied) {
                 std::u32string subtitle = info.description[0] != '\0'
                     ? placeOf(info)
-                    : gameDateText(info.gameDay, info.gameMonth, info.gameYear, info.gameTime);
-                muiDrawTextAligned(subtitle, { textX, rect.y + ui.dp(25.0f), textWidth, ui.dp(19.0f) }, ui.dp(12.0f), theme.textDim, MuiAlign::Start, MuiAlign::Center);
+                    : text(1064, "Level") + U" " + (info.level > 0 ? muiDecodeUtf8(std::to_string(info.level).c_str()) : U"?");
+                std::u32string stamp = gameDateText(info.gameDay, info.gameMonth, info.gameYear, info.gameTime);
+                muiDrawTextAligned(stamp, {textX, rect.y + ui.dp(47.0f), rowTextWidth, ui.dp(18.0f)}, muiFitTextSize(stamp, rowTextWidth, ui.dp(10.0f), ui.dp(7.0f)), theme.textDim, MuiAlign::Start, MuiAlign::Center);
+                muiDrawTextAligned(subtitle, { textX, rect.y + ui.dp(25.0f), rowTextWidth, ui.dp(19.0f) }, muiFitTextSize(subtitle, rowTextWidth, ui.dp(12.0f), ui.dp(8.0f)), theme.textDim, MuiAlign::Start, MuiAlign::Center);
             }
 
             muiPopClip();
@@ -615,6 +649,7 @@ namespace {
             y += lineHeight;
 
             line(placeOf(*info), 11.0f, theme.text);
+            line(text(1064, "Level") + U" " + (info->level > 0 ? muiDecodeUtf8(std::to_string(info->level).c_str()) : U"?"), 11.0f, theme.accent);
             line(gameDateText(info->gameDay, info->gameMonth, info->gameYear, info->gameTime), 10.0f, theme.textDim);
 
             std::time_t created = static_cast<std::time_t>(info->created);
@@ -663,7 +698,7 @@ namespace {
         }
 
         // Delete at the left of the main action (alone for broken saves).
-        bool canAct = saving ? newSlot != -1 : info != nullptr && info->state == MobileSaveSlotState::Occupied;
+        bool canAct = saving ? selected != -1 : info != nullptr && info->state == MobileSaveSlotState::Occupied;
         if (info != nullptr) {
             float deleteWidth = canAct ? std::min(ui.dp(155.0f), action.w * 0.38f) : action.w;
             MuiRect deleteButton = { action.x, action.y, deleteWidth, action.h };
@@ -671,7 +706,7 @@ namespace {
             if (ui.touchable("loadsave.delete", deleteButton, &pressed)) {
                 pendingDelete = selected;
             }
-            muiFillRoundRect(deleteButton, ui.dp(6.0f), pressed ? kDangerPressed : kDangerFill);
+            themedButton(ui, deleteButton, pressed);
             muiStrokeRoundRect(deleteButton, ui.dp(6.0f), ui.dp(1.0f), kDanger);
             muiDrawTextAligned(text(kTextDelete, "Delete"), deleteButton, ui.dp(13.0f), kDanger, MuiAlign::Center, MuiAlign::Center);
 
@@ -680,14 +715,14 @@ namespace {
         }
 
         if (canAct) {
-            // Saving over an existing save makes a new one.
+            // Existing saves are overwritten only after confirmation.
             std::u32string label;
             if (!saving) {
                 label = text(kTextLoadGame, "Load game");
             } else if (isNew) {
                 label = text(kTextSaveGame, "Save game");
             } else {
-                label = text(kTextNewSave, "New save");
+                label = text(kTextSaveGame, "Save game");
             }
 
             if (ui.button("loadsave.action", action, label, MuiButtonStyle::Primary)) {
@@ -755,6 +790,52 @@ namespace {
 
     void LoadSaveScreen::runPending()
     {
+        int quick = pendingQuick;
+        pendingQuick = 0;
+        if (quick == 3) {
+#ifdef __ANDROID__
+            JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+            jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+            if (env && activity) {
+                jclass cls = env->GetObjectClass(activity);
+                jmethodID method = env->GetMethodID(cls, "openGameFiles", "(Ljava/lang/String;)V");
+                if (method) {
+                    jstring mode = env->NewStringUTF("saves_import");
+                    env->CallVoidMethod(activity, method, mode);
+                    env->DeleteLocalRef(mode);
+                }
+                if (env->ExceptionCheck()) env->ExceptionClear();
+                env->DeleteLocalRef(cls);
+                env->DeleteLocalRef(activity);
+            }
+#else
+            const char* body[] = {"Choose Import saves in the Android file picker.", "Select a SAVEGAME folder or zip; replacement asks first."};
+            showDialogBox("Import Steam / sfall saves", body, 2, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, 0);
+#endif
+            refresh();
+            return;
+        }
+        if (quick == 1) {
+            const char* body[] = {muiText(1065, "Write a quicksave of the current game?")};
+            if (showDialogBox(muiText(1061, "Quicksave"), body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) != 0) {
+                // A free manual slot also works when rotating quicksaves are off.
+                if (lsgQuickSaveCount() > 0) {
+                    result = lsgSaveGame(LOAD_SAVE_MODE_QUICK);
+                    finished = result == 1;
+                } else if (newSlot != -1 && lsgMobileSaveGame(newSlot, "Quicksave") == 0) {
+                    result = 1;
+                    finished = true;
+                }
+                refresh();
+            }
+            return;
+        }
+        if (quick == 2) {
+            int slot = lsgSessionLoadSlot();
+            if (slot < 0) slot = lsgMobileNewestSlot();
+            loadGame(slot);
+            return;
+        }
         int permanentSlot = pendingPermanent;
         int deleteSlot = pendingDelete;
         int actionSlot = pendingAction;
@@ -781,14 +862,8 @@ namespace {
 
     void LoadSaveScreen::saveGame(int slot)
     {
-        // An existing save selected: the new save row.
-        if (slot != newSlot) {
-            if (newSlot != -1) {
-                select(newSlot);
-            }
-            return;
-        }
-
+        const char* body[] = {muiText(1066, "Save the current game to this slot?")};
+        if (showDialogBox(muiText(kTextSaveGame, "Save game"), body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) == 0) return;
         std::string encoded = muiEncodeGameText(description);
         encoded.resize(std::min(encoded.size(), kDescriptionLength));
 
@@ -807,6 +882,9 @@ namespace {
         if (info == nullptr || info->state != MobileSaveSlotState::Occupied) {
             return;
         }
+
+        const char* confirm[] = {muiText(1067, "Load this save and leave the current game?")};
+        if (showDialogBox(muiText(kTextLoadGame, "Load game"), confirm, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) == 0) return;
 
         // Likely not to load right: asked first.
         if (rowFor(slot)->compatibility == SaveCompatibility::kUnlikely) {

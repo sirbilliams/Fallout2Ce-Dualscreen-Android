@@ -133,6 +133,7 @@ namespace {
 
 void SaveCatalog::configure(const std::string& root, int total, int firstQuick, int quickCount, SaveRecords* saveRecords)
 {
+    reservedSlot = -1;
     saveRoot = root;
     records = saveRecords;
     saveStorage::openDirectories(saveRoot);
@@ -174,7 +175,7 @@ std::string SaveCatalog::cleanupPath(int slot) const
 
 bool SaveCatalog::isQuick(int slot) const
 {
-    return slot >= firstQuickSlot && slot < firstQuickSlot + quickSlotCount;
+    return slot != reservedSlot && slot >= firstQuickSlot && slot < firstQuickSlot + quickSlotCount;
 }
 
 const SaveCatalog::Entry& SaveCatalog::entry(int slot) const
@@ -409,7 +410,7 @@ void SaveCatalog::updateRecords()
 int SaveCatalog::freeManual() const
 {
     for (int slot = 0; slot < static_cast<int>(entries.size()); slot++) {
-        if (!isQuick(slot) && !entries[slot].present) {
+        if (slot != reservedSlot && !isQuick(slot) && !entries[slot].present) {
             return slot;
         }
     }
@@ -432,6 +433,7 @@ int SaveCatalog::nextQuick(const std::function<bool(int)>& canReplace) const
 {
     int oldest = -1;
     for (int slot = firstQuickSlot; slot < firstQuickSlot + quickSlotCount; slot++) {
+        if (slot == reservedSlot) continue;
         const Entry& current = entries[slot];
         if (!current.present) {
             return slot;
@@ -589,6 +591,7 @@ std::vector<int> SaveCatalog::quickSavesNewestFirst() const
 {
     std::vector<int> slots;
     for (int slot = firstQuickSlot; slot < firstQuickSlot + quickSlotCount; slot++) {
+        if (slot == reservedSlot) continue;
         if (entries[slot].identity != 0) {
             slots.push_back(slot);
         }
@@ -606,7 +609,7 @@ int SaveCatalog::quickCapacity(int firstQuick, int quickCount) const
     int capacity = 0;
     int total = static_cast<int>(entries.size());
     for (int slot = std::max(firstQuick, 0); slot < std::min(firstQuick + quickCount, total); slot++) {
-        if (!entries[slot].present || entries[slot].identity != 0) {
+        if (slot != reservedSlot && (!entries[slot].present || entries[slot].identity != 0)) {
             capacity++;
         }
     }
@@ -618,7 +621,7 @@ int SaveCatalog::freeOutside(int firstA, int countA, int firstB, int countB) con
     for (int slot = 0; slot < static_cast<int>(entries.size()); slot++) {
         bool inA = slot >= firstA && slot < firstA + countA;
         bool inB = slot >= firstB && slot < firstB + countB;
-        if (!inA && !inB && !entries[slot].present) {
+        if (slot != reservedSlot && !inA && !inB && !entries[slot].present) {
             return slot;
         }
     }
@@ -652,6 +655,7 @@ bool SaveCatalog::setQuickRange(int firstQuick, int quickCount, int* madePermane
 
     // Manual saves in the new range leave it (to slots manual for both).
     for (int slot = newFirst; slot < newFirst + newCount; slot++) {
+        if (slot == reservedSlot) continue;
         if (entries[slot].identity != 0 && !inOld(slot)) {
             int target = freeOutside(oldFirst, oldCount, newFirst, newCount);
             if (target == -1 || !move(slot, target)) {
@@ -685,7 +689,7 @@ bool SaveCatalog::setQuickRange(int firstQuick, int quickCount, int* madePermane
 
         int target = -1;
         for (int candidate = newFirst; candidate < newFirst + newCount; candidate++) {
-            if (!entries[candidate].present) {
+            if (candidate != reservedSlot && !entries[candidate].present) {
                 target = candidate;
                 break;
             }

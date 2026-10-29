@@ -713,7 +713,8 @@ final class GameSaves {
         List<Integer> freeQuick = new ArrayList<>();
         List<Integer> freeManual = new ArrayList<>();
         for (int slot = 0; slot < TOTAL_SLOTS; slot++) {
-            if (taken.contains(slot)) {
+            // SLOT1000 belongs to automatic suspend saves (loadsave.cc).
+            if (slot == TOTAL_SLOTS - 1 || taken.contains(slot)) {
                 continue;
             }
             if (slot >= quick[0] && slot < quick[0] + quick[1]) {

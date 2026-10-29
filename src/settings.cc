@@ -394,6 +394,7 @@ void initSettingsRegistry(bool isMapper)
 
 #define SECT enhancements
     SETTING(combat_speed_all_animations);
+    SETTING(auto_quicksave_on_suspend);
     SETTING(main_menu_continue);
     SETTING(worldmap_follow_party);
     SETTING(tactical_view);

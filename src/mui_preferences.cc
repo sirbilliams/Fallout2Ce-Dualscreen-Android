@@ -223,6 +223,7 @@ namespace {
         bool barterConfirm;
         int bottomTheme;
         bool saveCompatibility;
+        bool suspendSave;
         int interfaceSize;
         int mapFilter;
         bool autoOpenDoors;
@@ -256,6 +257,7 @@ namespace {
         values.barterConfirm = settings.touch.barter_confirm;
         values.bottomTheme = settings.touch.bottom_theme;
         values.saveCompatibility = settings.enhancements.save_compatibility;
+        values.suspendSave = settings.enhancements.auto_quicksave_on_suspend;
         values.interfaceSize = settings.touch.hud_scale;
         values.mapFilter = settings.world_view.filter;
         values.autoOpenDoors = settings.qol.auto_open_doors;
@@ -290,6 +292,7 @@ namespace {
         values.barterConfirm = TouchSettings().barter_confirm;
         values.bottomTheme = TouchSettings().bottom_theme;
         values.saveCompatibility = EnhancementSettings().save_compatibility;
+        values.suspendSave = true;
         values.interfaceSize = TouchSettings().hud_scale;
         values.mapFilter = WorldViewSettings().filter;
         QolSettings qol;
@@ -374,6 +377,7 @@ namespace {
         settings.touch.barter_confirm = values.barterConfirm;
         settings.touch.bottom_theme = values.bottomTheme;
         settings.enhancements.save_compatibility = values.saveCompatibility;
+        settings.enhancements.auto_quicksave_on_suspend = values.suspendSave;
         settings.touch.hud_scale = values.interfaceSize;
         settings.world_view.filter = values.mapFilter;
         worldViewSetFilter(values.mapFilter);
@@ -617,6 +621,7 @@ namespace {
             row.set = [](Values& values, float value) { values.quickSaves = static_cast<int>(std::lround(value / 10.0f)) * 10; };
             rows.push_back(row);
         }
+        toggle(Section::Game, 1060, "Quicksave on suspend", Origin::Port, &Values::suspendSave);
         toggle(Section::Game, kTextAutoOpenDoors, "Open unlocked doors on the way", Origin::Ce, &Values::autoOpenDoors);
         toggle(Section::Game, kTextWalkWhenSneaking, "Walk instead of leaving sneak", Origin::Ce, &Values::walkWhenSneaking);
         toggle(Section::Game, kTextFastAmmoLoad, "Fast ammo loading", Origin::Ce, &Values::fastAmmoLoad);

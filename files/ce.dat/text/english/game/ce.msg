@@ -362,3 +362,13 @@
 {1045}{}{Ammo}
 {1046}{}{Unarmed}
 {1047}{}{None}
+
+# Saves lane
+{1060}{}{Quicksave on suspend}
+{1061}{}{Quicksave}
+{1062}{}{Quickload}
+{1063}{}{Import Steam / sfall saves}
+{1064}{}{Level}
+{1065}{}{Write a quicksave of the current game?}
+{1066}{}{Save the current game to this slot? Existing contents will be replaced.}
+{1067}{}{Load this save and leave the current game?}

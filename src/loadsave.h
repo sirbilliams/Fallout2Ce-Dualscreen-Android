@@ -19,6 +19,9 @@ typedef enum LoadSaveMode {
     LOAD_SAVE_MODE_QUICK,
 } LoadSaveMode;
 
+// Safe, silent automatic save; false when disabled, unsafe, or failed.
+bool lsgSuspendSave();
+bool lsgCanSuspendSave();
 void _InitLoadSave();
 void _ResetLoadSave();
 int lsgSaveGame(int mode);
@@ -52,6 +55,7 @@ struct MobileSaveSlotInfo {
     unsigned int gameTime = 0;
     int map = -1;
     int elevation = 0;
+    int level = 0;
     // When it was made (Unix seconds, 0 - unknown) and the creation order.
     std::int64_t created = 0;
     std::int64_t order = 0;
@@ -62,6 +66,7 @@ void lsgMobileRefreshSlots();
 // The game is back in front: the app's import of saves may have changed the
 // saves and their records meanwhile - read again (once loadsave is set up).
 void lsgMobileSavesMayHaveChanged();
+unsigned int lsgMobileSlotsRevision();
 bool lsgMobileGetSlotInfo(int slot, MobileSaveSlotInfo* info);
 // SAVE.DAT of [slot] (save_compatibility.h).
 std::string lsgMobileSaveDatPath(int slot);

@@ -268,6 +268,7 @@ void get_input_position(int* x, int* y)
 // 0x4C8BDC
 void _process_bk()
 {
+    if (!gProgramIsActive) return;
     int v1;
 
     tickersExecute();
@@ -1251,7 +1252,9 @@ void _GNW95_process_message()
                 lsgMobileSavesMayHaveChanged();
                 touchRefreshLongPressMs();
                 break;
+            case SDL_WINDOWEVENT_MINIMIZED:
             case SDL_WINDOWEVENT_FOCUS_LOST:
+                if (gProgramIsActive) lsgSuspendSave();
                 touchLogFocus(false);
                 actionLog("the game went to the background");
                 actionLogFlush();
@@ -1272,6 +1275,19 @@ void _GNW95_process_message()
                 keyboardReset();
                 break;
             }
+            break;
+        case SDL_APP_WILLENTERBACKGROUND:
+            if (gProgramIsActive) lsgSuspendSave();
+            gProgramIsActive = false;
+            audioEnginePause();
+            muiForgetMissingFingers(nullptr, 0);
+            touch_forget_missing(nullptr, 0);
+            inputResetTouchGestures();
+            keyboardReset();
+            break;
+        case SDL_APP_DIDENTERFOREGROUND:
+            gProgramIsActive = true;
+            audioEngineResume();
             break;
         case SDL_QUIT:
             touchLogExit();
