@@ -5684,9 +5684,21 @@ void calledShotGetTargets(Object* critter, HitMode hitMode, CalledShotTarget* ta
     }
 }
 
+static int gPresetHitLocation = -1;
+
+void combatSetPresetHitLocation(int location)
+{
+    gPresetHitLocation = location;
+}
+
 static int calledShotSelectHitLocation(Object* critter, HitLocation* hitLocation, HitMode hitMode)
 {
     *hitLocation = HIT_LOCATION_TORSO;
+
+    if (gPresetHitLocation >= 0 && critter != nullptr) {
+        *hitLocation = static_cast<HitLocation>(gPresetHitLocation);
+        return 0;
+    }
 
     if (critter == nullptr) {
         *hitLocation = HIT_LOCATION_HEAD;

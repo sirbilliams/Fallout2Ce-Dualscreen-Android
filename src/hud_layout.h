@@ -157,6 +157,8 @@ int hudDpToPixels(const HudMetrics& metrics, float dp);
 const HudLayout& hudLayoutLandscape();
 // The HUD on a dual-screen device's bottom screen (mui.h `muiHudSurface`).
 const HudLayout& hudLayoutDashboard();
+// Bottom screen in combat, around the combat panel (mui_combat_panel.cc).
+const HudLayout& hudLayoutCombatPanel();
 
 // Computes screen rects of all groups and their elements.
 std::vector<HudPlacedGroup> hudLayoutPlace(const HudLayout& layout, const HudMetrics& metrics);

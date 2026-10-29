@@ -368,6 +368,12 @@ struct TouchSettings {
     bool barter_confirm = false;
     // Bottom-screen look: 0 - Fallout (the game's own art and fonts), 1 - classic (drawn from code).
     int bottom_theme = 0;
+    // Combat panel on the bottom screen in combat (enemies, aimed shots).
+    bool combat_panel = true;
+    // Quick-use hotbar (dashboard and combat panel), its slots: item prototype
+    // ids separated by commas, -1 - empty.
+    bool hotbar = true;
+    std::string hotbar_slots;
 };
 
 struct MapperSettings {

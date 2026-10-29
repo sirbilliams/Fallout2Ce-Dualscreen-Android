@@ -33,6 +33,8 @@ enum class GameCommandType {
     EndCombat,
     // Touch HUD's own action, `value` - its event (touch_hud.cc).
     Hud,
+    // Combat panel and hotbar of the bottom screen (mui_combat_panel.cc).
+    Panel,
 };
 
 struct GameCommand {

@@ -22,6 +22,7 @@
 #include "skill.h"
 #include "skilldex.h"
 #include "touch_hud.h"
+#include "mui_combat_panel.h"
 
 namespace fallout {
 
@@ -200,6 +201,9 @@ void gameCommandExecute(const GameCommand& command, bool isInCombatMode)
         break;
     case GameCommandType::Hud:
         touchHudHandleEvent(command.value);
+        break;
+    case GameCommandType::Panel:
+        muiCombatPanelRun(command.value);
         break;
     }
 }

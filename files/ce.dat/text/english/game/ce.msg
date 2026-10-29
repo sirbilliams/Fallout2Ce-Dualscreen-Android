@@ -349,3 +349,16 @@
 {956}{}{Offer}
 {957}{}{Cancel}
 {958}{}{Total}
+{1020}{}{ENEMIES}
+{1021}{}{AIM}
+{1022}{}{END TURN}
+{1023}{}{END COMBAT}
+{1024}{}{NO ENEMIES IN SIGHT}
+{1025}{}{ENEMY TURN}
+{1026}{}{BACK}
+{1027}{}{AIMED SHOT}
+{1028}{}{hex}
+{1029}{}{QUICK-USE}
+{1030}{}{Unarmed}
+{1031}{}{REMOVE FROM QUICK-USE}
+{1032}{}{ITEM MENU}
