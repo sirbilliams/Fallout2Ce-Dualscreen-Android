@@ -85,7 +85,7 @@ public:
     float viewCenterY() const { return view.centerY; }
 
     // Where the center of tile ([x], [y]) was drawn in the last `build`
-    // (output pixels); false before any.
+    // (output pixels); false before any or outside the viewport.
     bool tileToScreen(float x, float y, float* screenX, float* screenY) const
     {
         if (lastRect.w <= 0.0f) {
@@ -93,8 +93,11 @@ public:
         }
         *screenX = lastRect.centerX() + (x + 0.5f - view.centerX) * view.zoom;
         *screenY = lastRect.centerY() + (y + 0.5f - view.centerY) * view.zoom;
-        return true;
+        return lastRect.contains(*screenX, *screenY);
     }
+
+    // Engine hex tile selected by the last build, or -1 (pan/pinch/no tap).
+    int tappedTile = -1;
 
     void build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers, const std::vector<MuiMapLabel>* labels = nullptr);
 
@@ -152,6 +155,9 @@ void muiFillDiamond(float x, float y, float radius, MuiColor color);
 // members, and with [critters] the motion sensor's critters. Dude is the
 // caller's.
 void muiAutomapDetail(const AutomapView& view, bool critters, std::vector<MuiMapMarker>* markers, std::vector<MuiMapLabel>* labels);
+
+// Screen position of an engine tile on the open automap (automated tests).
+bool muiAutomapTileCenter(int tile, float* x, float* y);
 
 // What the markers are: a row of keys along the bottom of [area].
 void muiAutomapLegend(MuiContext& ui, const MuiRect& area);

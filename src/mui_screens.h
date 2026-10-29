@@ -98,6 +98,8 @@ void muiDrawUnavailableOverlay(MuiContext& ui, const MuiRect& button, float radi
 
 // Talk screen opens its review panel when it shows next.
 void muiGameDialogOpenReview();
+// Open the control tab when this companion's queued talk begins.
+void muiGameDialogRequestParty(Object* companion);
 // Talk screen opens its party member control panel when it shows next.
 void muiGameDialogOpenParty();
 

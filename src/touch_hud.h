@@ -54,6 +54,7 @@ void touchHudSetIndicators(const InterfaceIndicator* indicators, int count);
 bool touchHudGetElementScreenCenter(HudElementId id, int* x, int* y);
 // Rect of element [id] of the last frame in output pixels (mobile UI).
 bool touchHudGetElementRect(HudElementId id, MuiRect* rect);
+bool touchHudGetMapTileCenter(int tile, float* x, float* y);
 bool touchHudGetModeScreenCenter(int index, int* x, int* y);
 
 } // namespace fallout

@@ -349,3 +349,13 @@
 {956}{}{Offer}
 {957}{}{Cancel}
 {958}{}{Total}
+
+# Map and party dashboard
+{1040}{}{Tap maps to walk or travel}
+{1041}{}{PARTY}
+{1042}{}{No companions in your party}
+{1043}{}{Weapon}
+{1044}{}{Armor}
+{1045}{}{Ammo}
+{1046}{}{Unarmed}
+{1047}{}{None}
