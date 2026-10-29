@@ -415,6 +415,7 @@ void initSettingsRegistry(bool isMapper)
     SETTING_P(barter_layout, clamp(0, 1));
     SETTING(dialogue_tap_skip);
     SETTING(barter_confirm);
+    SETTING_P(bottom_theme, clamp(0, 1));
 #undef SECT
 
 #define SECT world_view

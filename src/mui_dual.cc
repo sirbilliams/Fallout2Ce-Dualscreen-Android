@@ -1,4 +1,5 @@
 #include "mui_dual.h"
+#include "mui_gameskin.h"
 #include "mui_skin.h"
 
 #include <math.h>
@@ -271,7 +272,7 @@ void muiDualHitPointsBar(MuiContext& ui, const MuiRect& rect)
 
     char label[48];
     snprintf(label, sizeof(label), "HP %d/%d", critterGetHitPoints(gDude), critterGetStat(gDude, STAT_MAXIMUM_HIT_POINTS));
-    muiDrawTextAligned(muiDecodeUtf8(label), rect, rect.h * 0.62f, muiRgb(0x041006), MuiAlign::Center, MuiAlign::Center);
+    muiDrawTextAligned(muiDecodeUtf8(label), rect, rect.h * 0.62f, muiSkinFallout() ? muiRgb(0xF0FFE0) : muiRgb(0x041006), MuiAlign::Center, MuiAlign::Center);
 }
 
 void muiDualDayArc(MuiContext& ui, const MuiRect& rect, int hour)

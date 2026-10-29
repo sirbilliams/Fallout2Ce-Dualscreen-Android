@@ -19,6 +19,9 @@ int interfaceFontGetStringWidthScaled(const char* string, ColorWithFlags color, 
 int interfaceFontCount();
 // CE: The picture of [ch] in interface font [font]: its size and pixels (a
 // byte each, row by row); false - no such font or an empty picture.
+// CE: Metrics of interface font [font] (its pixels): height of a line,
+// space after each letter, width of a space; false - no such font.
+bool interfaceFontGetMetrics(int font, int* maxHeight, int* letterSpacing, int* wordSpacing);
 bool interfaceFontGetGlyph(int font, unsigned char ch, int* width, int* height, const unsigned char** pixels);
 
 } // namespace fallout

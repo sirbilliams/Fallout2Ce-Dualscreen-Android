@@ -103,6 +103,7 @@ namespace {
     constexpr int kTextBarterLayout = 947;
     constexpr int kTextDialogueTapSkip = 950;
     constexpr int kTextBarterConfirm = 951;
+    constexpr int kTextBottomTheme = 960;
     constexpr int kTextDualScreen = 900;
     constexpr int kTextDualScreenNote = 901;
     constexpr int kTextTacticalViewNote = 374;
@@ -215,6 +216,7 @@ namespace {
         int barterLayout;
         bool dialogueTapSkip;
         bool barterConfirm;
+        int bottomTheme;
         bool saveCompatibility;
         int interfaceSize;
         int mapFilter;
@@ -246,6 +248,7 @@ namespace {
         values.barterLayout = settings.touch.barter_layout;
         values.dialogueTapSkip = settings.touch.dialogue_tap_skip;
         values.barterConfirm = settings.touch.barter_confirm;
+        values.bottomTheme = settings.touch.bottom_theme;
         values.saveCompatibility = settings.enhancements.save_compatibility;
         values.interfaceSize = settings.touch.hud_scale;
         values.mapFilter = settings.world_view.filter;
@@ -278,6 +281,7 @@ namespace {
         values.barterLayout = TouchSettings().barter_layout;
         values.dialogueTapSkip = TouchSettings().dialogue_tap_skip;
         values.barterConfirm = TouchSettings().barter_confirm;
+        values.bottomTheme = TouchSettings().bottom_theme;
         values.saveCompatibility = EnhancementSettings().save_compatibility;
         values.interfaceSize = TouchSettings().hud_scale;
         values.mapFilter = WorldViewSettings().filter;
@@ -360,6 +364,7 @@ namespace {
         settings.touch.barter_layout = values.barterLayout;
         settings.touch.dialogue_tap_skip = values.dialogueTapSkip;
         settings.touch.barter_confirm = values.barterConfirm;
+        settings.touch.bottom_theme = values.bottomTheme;
         settings.enhancements.save_compatibility = values.saveCompatibility;
         settings.touch.hud_scale = values.interfaceSize;
         settings.world_view.filter = values.mapFilter;
@@ -717,6 +722,14 @@ namespace {
             rows.push_back(row);
         }
         {
+            Row row { Section::Display, RowKind::Choice, kTextBottomTheme, "Bottom screen theme", Origin::Port };
+            row.options = { 961, 962 };
+            row.optionsFromCe = true;
+            row.get = [](const Values& values) { return static_cast<float>(values.bottomTheme); };
+            row.set = [](Values& values, float value) { values.bottomTheme = static_cast<int>(value); };
+            rows.push_back(row);
+        }
+        {
             Row row { Section::Display, RowKind::Toggle, kTextWorldmapFollow, "Camera follows the party on the world map", Origin::Port, kTextWorldmapFollowNote, "Moving the map pauses it until the next destination" };
             row.get = [](const Values& values) { return values.worldmapFollow ? 1.0f : 0.0f; };
             row.set = [](Values& values, float value) { values.worldmapFollow = value != 0.0f; };
@@ -829,11 +842,13 @@ namespace {
             static const char* const kDialogueFallbacks[] = { "Top", "Split", "Split, mirrored" };
             static const char* const kSizeFallbacks[] = { "Normal", "Large" };
             static const char* const kBarterFallbacks[] = { "Top", "Bottom" };
+            static const char* const kThemeFallbacks[] = { "Fallout", "Classic" };
             const char* fallback = row.textId == kTextDashboardLayout ? kDashboardFallbacks[index]
                 : row.textId == kTextScreenNav                        ? kNavFallbacks[index]
                 : row.textId == kTextDialogueLayout                   ? kDialogueFallbacks[index]
                 : row.textId == kTextDialogueOptionSize               ? kSizeFallbacks[index]
                 : row.textId == kTextBarterLayout                     ? kBarterFallbacks[index]
+                : row.textId == kTextBottomTheme                      ? kThemeFallbacks[index]
                                                                       : kFallbacks[std::min(index, 2)];
             return muiDecodeGameText(muiText(id, fallback));
         }
