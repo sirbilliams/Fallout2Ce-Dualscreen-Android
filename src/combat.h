@@ -39,6 +39,10 @@ void attackInit(Attack* attack, Object* attacker, Object* defender, HitMode hitM
 int _combat_attack(Object* attacker, Object* defender, HitMode hitMode, HitLocation hitLocation);
 int _combat_bullet_start(const Object* attacker, const Object* target);
 void _compute_explosion_on_extras(Attack* attack, bool isFromAttacker, bool isGrenade, bool noDamage);
+// CE: Combat panel (mui_combat_panel.cc): the part an aimed attack goes for
+// (-1 - ask as the game does).
+void combatSetPresetHitLocation(int location);
+
 int _determine_to_hit(Object* a1, Object* a2, HitLocation hitLocation, HitMode hitMode);
 int _determine_to_hit_no_range(Object* attacker, Object* defender, HitLocation hitLocation, HitMode hitMode, unsigned char* a5);
 int _determine_to_hit_from_tile(Object* attacker, int tile, Object* defender, HitLocation hitLocation, HitMode hitMode);

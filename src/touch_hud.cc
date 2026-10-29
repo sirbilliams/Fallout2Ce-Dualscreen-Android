@@ -35,6 +35,7 @@
 #include "map_hints.h"
 #include "message.h"
 #include "mui.h"
+#include "mui_combat_panel.h"
 #include "mui_dual.h"
 #include "mui_gameskin.h"
 #include "mui_icons.h"
@@ -1629,7 +1630,10 @@ namespace {
         // closes up.
         bool partyOrders = partyOrdersAvailable();
         bool tacticalView = settings.enhancements.tactical_view;
-        HudLayout layout = ui.surface == MuiSurface::Bottom ? hudLayoutDashboard() : hudLayoutLandscape();
+        // In combat the bottom screen is the combat panel's (it has its own
+        // end buttons, weapon and modes): a layout around it.
+        bool combatPanel = ui.surface == MuiSurface::Bottom && muiCombatPanelActive();
+        HudLayout layout = ui.surface == MuiSurface::Bottom ? (combatPanel ? hudLayoutCombatPanel() : hudLayoutDashboard()) : hudLayoutLandscape();
         for (HudGroupSpec& group : layout.groups) {
             for (auto& line : group.lines) {
                 line.erase(std::remove_if(line.begin(), line.end(), [&](const HudElementSpec& element) {
@@ -1742,6 +1746,7 @@ namespace {
         }
 
         float gap = ui.dp(6.0f);
+        MuiRect panelRect;
 
         // Dual-screen devices: the live map fills the middle of the bottom
         // screen, between the groups around it.
@@ -1763,14 +1768,36 @@ namespace {
                 break;
             }
             if (gPartyPanel) {
-                mapLeft = safe.x;
-                mapRight = safe.right();
-                mapBottom = safe.bottom();
-            }
-            buildLiveMap(ui, { mapLeft, mapTop, mapRight - mapLeft, mapBottom - mapTop });
-            if (gPartyPanel) {
+                // The party panel (mapparty lane) takes the whole area.
+                buildLiveMap(ui, { safe.x, mapTop, safe.right() - safe.x, safe.bottom() - mapTop });
                 muiNotifyHudArea({}, true);
                 return;
+            }
+            MuiRect middle = { mapLeft, mapTop, mapRight - mapLeft, mapBottom - mapTop };
+            if (combatPanel) {
+                // Right of the tools, under the top rows, to the bottom edge.
+                float left = std::max(toolsGroup.right(), safe.x) + gap;
+                float top = std::max(screensGroup.bottom(), systemGroup.bottom()) + gap;
+                MuiRect panel = { left, top, safe.right() - left, safe.bottom() - top };
+                MuiRect modes;
+                panelRect = panel;
+                muiCombatPanelBuild(ui, panel, &modes);
+                buildModes(ui, modes);
+            } else {
+                // The quick-use hotbar: in the free room under the live map
+                // when the weapon panel leaves it (the classic dashboard),
+                // else a strip off the map's foot.
+                if (muiQuickUseEnabled()) {
+                    MuiRect freeRoom = { mapLeft, weaponGroup.y, weaponGroup.x - gap - mapLeft, weaponGroup.bottom() - weaponGroup.y };
+                    float height = muiQuickUseHeight(ui);
+                    if (settings.touch.dashboard_layout == 0 && weaponGroup.w > 0.0f && freeRoom.w > ui.dp(120.0f) && freeRoom.h > ui.dp(100.0f)) {
+                        muiQuickUseBuild(ui, freeRoom);
+                    } else if (middle.h > height + ui.dp(110.0f)) {
+                        muiQuickUseBuild(ui, { middle.x, middle.bottom() - height, middle.w, height });
+                        middle.h -= height + gap;
+                    }
+                }
+                buildLiveMap(ui, middle);
             }
         }
 
@@ -1783,6 +1810,14 @@ namespace {
             left = safe.x;
             right = std::min(safe.right(), left + screen.w * 0.55f);
             bottom = std::min(toolsGroup.y, weaponGroup.y) - gap;
+        }
+
+        // In combat the notifications go over the foot of the combat panel's
+        // list.
+        if (combatPanel && panelRect.w > 0.0f) {
+            left = panelRect.x + gap;
+            right = panelRect.right() - gap;
+            bottom = panelRect.bottom() - ui.dp(42.0f + 58.0f + 24.0f);
         }
 
         if (gLogOpen) {

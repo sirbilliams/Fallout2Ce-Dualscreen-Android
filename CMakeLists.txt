@@ -387,6 +387,7 @@ set(FALLOUT_PLATFORM_SOURCES
     "src/mui_automap.cc"
     "src/mui_barter.cc"
     "src/mui_called_shot.cc"
+    "src/mui_combat_panel.cc"
     "src/mui_character.cc"
     "src/mui_game_dialog.cc"
     "src/mui_icons.cc"

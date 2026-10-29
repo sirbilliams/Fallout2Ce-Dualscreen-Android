@@ -275,6 +275,8 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_MOVE_NEAR_CRITTER,
     // Sets dude's action points to [a] (combat).
     DEV_AUTOTEST_ACTION_SET_ACTION_POINTS,
+    // Game clock to hour `a` (HHMM) of the same day.
+    DEV_AUTOTEST_ACTION_SET_GAME_HOUR,
     // Adds [a] experience points to dude.
     DEV_AUTOTEST_ACTION_ADD_EXPERIENCE,
     // Logs dude's level, skill points, owed perks, perks, some skills.
@@ -2100,6 +2102,39 @@ static const DevAutotestStep kDevAutotestCalledShotSteps[] = {
     { DEV_AUTOTEST_ACTION_LOG_COMBAT, 0, 0, 0, 1, "s09_after_attack" },
 };
 
+// Combat panel and quick-use hotbar on the bottom screen: slots assigned by
+// long press in the inventory, then a fight: enemies list, an attack, an
+// aimed shot, the hotbar in use, end turn.
+static const DevAutotestStep kDevAutotestCombatPanelSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "k00_dashboard" },
+    { DEV_AUTOTEST_ACTION_SET_GAME_HOUR, 1200, 0, 0, 20, "k00a_noon" },
+    { DEV_AUTOTEST_ACTION_EQUIP_ITEM, 9, HAND_RIGHT, 0, 20, "k00b_smg" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 40, 3, 0, 1, "k01_give_stimpak" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 29, 40, 0, 1, "k01b_give_ammo" },
+    { DEV_AUTOTEST_ACTION_GIVE_ITEM, 25, 2, 0, 1, "k01c_give_grenade" },
+    { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Inventory), 0, 0, 60, "k02_inventory" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 20, "k03_long_press_stimpak", "inventory.pid.40" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "k04_slot_1", "inventory.quickuse.0" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 20, "k05_long_press_ammo", "inventory.pid.29" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "k06_slot_2", "inventory.quickuse.1" },
+    { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 20, "k07_long_press_grenade", "inventory.pid.25" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "k08_slot_3", "inventory.quickuse.2" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 40, "k09_dashboard_hotbar" },
+    { DEV_AUTOTEST_ACTION_MOVE_NEAR_CRITTER, 4, 0, 0, 20, "k10_near_critter" },
+    { DEV_AUTOTEST_ACTION_START_COMBAT, 0, 0, 0, 60, "k11_combat_panel" },
+    { DEV_AUTOTEST_ACTION_LOG_COMBAT, 0, 0, 0, 1, "k11b_state" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 60, "k12_hotbar_stimpak", "hotbar.0" },
+    { DEV_AUTOTEST_ACTION_LOG_COMBAT, 0, 0, 0, 1, "k12b_state" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "k13_aim", "combat.aim.1" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 120, "k14_torso_shot", "combat.part.4" },
+    { DEV_AUTOTEST_ACTION_LOG_COMBAT, 0, 0, 0, 1, "k14b_state" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 120, "k15_attack", "combat.enemy.1" },
+    { DEV_AUTOTEST_ACTION_LOG_COMBAT, 0, 0, 0, 1, "k15b_state" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 120, "k16_reload", "hotbar.1" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 6, "k17_end_turn", "combat.endturn" },
+    { DEV_AUTOTEST_ACTION_LOG_COMBAT, 0, 0, 0, 1, "k17b_state" },
+};
+
 // Combat speed: dude walks, runs and punches in combat (4 hexes there and
 // back, the time logged when each ends) with the game's rule, with
 // `combat_speed_all_animations`, and so on a slow device (animations catch
@@ -2747,6 +2782,12 @@ void devAutotestSetScenario(const char* name)
         gDevAutotestSteps = kDevAutotestCombatScreensSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestCombatScreensSteps) / sizeof(kDevAutotestCombatScreensSteps[0]);
         gDevAutotestTraceItems = true;
+    } else if (strcmp(name, "combatpanel") == 0) {
+        gDevAutotestSteps = kDevAutotestCombatPanelSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestCombatPanelSteps) / sizeof(kDevAutotestCombatPanelSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "calledtrace") == 0) {
         gDevAutotestSteps = kDevAutotestCalledShotSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestCalledShotSteps) / sizeof(kDevAutotestCalledShotSteps[0]);
@@ -3791,6 +3832,16 @@ void devAutotestTick()
             gDude->data.critter.combat.ap = static_cast<int>(step->a);
             interfaceRenderActionPoints(gDude->data.critter.combat.ap, _combat_free_move);
             break;
+        case DEV_AUTOTEST_ACTION_SET_GAME_HOUR: {
+            int hour = gameTimeGetHour();
+            int target = static_cast<int>(step->a);
+            int minutes = (target / 100 * 60 + target % 100) - (hour / 100 * 60 + hour % 100);
+            if (minutes < 0) {
+                minutes += 24 * 60;
+            }
+            gameTimeAddSeconds(minutes * 60);
+            break;
+        }
         case DEV_AUTOTEST_ACTION_ADD_EXPERIENCE:
             pcAddExperience(static_cast<int>(step->a));
             break;

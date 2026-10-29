@@ -12,6 +12,7 @@
 #include "inventory.h"
 #include "item.h"
 #include "kb.h"
+#include "mui_combat_panel.h"
 #include "mui_icons.h"
 #include "object.h"
 #include "proto_types.h"
@@ -163,6 +164,8 @@ namespace {
 
         Object* draggedItem(MuiContext& ui, const InventoryView& view, InventorySlot* slot);
         void openActionMenu(MuiContext& ui, Object* item, InventorySlot slot);
+        // Long press on an item the hotbar takes: its slots, or the game's menu.
+        void openQuickUseMenu(MuiContext& ui, Object* item, const MuiRect& anchor);
         void move(Object* item, InventorySlot slot, InventoryDropTarget target, Object* targetItem);
     };
 
@@ -379,7 +382,11 @@ namespace {
             }
 
             if (longPressed && !scrolling) {
-                openActionMenu(ui, item, InventorySlot::None);
+                if (muiQuickUseCanAssign(item)) {
+                    openQuickUseMenu(ui, item, cellRect);
+                } else {
+                    openActionMenu(ui, item, InventorySlot::None);
+                }
             } else if (tapped && !scrolling) {
                 selected = selected == item ? nullptr : item;
             }
@@ -868,6 +875,47 @@ namespace {
 
         *slot = InventorySlot::None;
         return payload < static_cast<int>(items.size()) ? items[payload].item : nullptr;
+    }
+
+    void InventoryScreen::openQuickUseMenu(MuiContext& ui, Object* item, const MuiRect& anchor)
+    {
+        std::vector<MuiActionItem> entries;
+        for (int slot = 0; slot < kQuickUseSlotCount; slot++) {
+            std::string label = std::string(muiText(1029, "QUICK-USE")) + " " + std::to_string(slot + 1);
+            entries.push_back({ MuiIcon::Use, muiDecodeGameText(label.c_str()), U"" });
+        }
+        int current = muiQuickUseSlotOf(item);
+        int clearIndex = -1;
+        if (current != -1) {
+            clearIndex = static_cast<int>(entries.size());
+            entries.push_back({ MuiIcon::Cancel, muiDecodeGameText(muiText(1031, "REMOVE FROM QUICK-USE")), U"" });
+        }
+        int menuIndex = static_cast<int>(entries.size());
+        entries.push_back({ MuiIcon::Inventory, muiDecodeGameText(muiText(1032, "ITEM MENU")), U"" });
+
+        // The item can be gone by the time a row is chosen: keep the kind
+        // and the place of the menu.
+        InventorySlot none = InventorySlot::None;
+        MuiRect avoid = anchor;
+        float x = ui.pointerX();
+        float y = ui.pointerY();
+        muiShowActionList("inventory.quickuse", entries, anchor, avoid, [=](int index) {
+            if (index < 0) {
+                return;
+            }
+            if (index < kQuickUseSlotCount) {
+                muiQuickUseAssign(index, item);
+            } else if (index == clearIndex) {
+                muiQuickUseClear(item);
+            } else if (index == menuIndex) {
+                InventoryAction action;
+                action.type = InventoryActionType::OpenActionMenu;
+                action.item = item;
+                action.slot = none;
+                muiToScreen(x, y, &(action.x), &(action.y));
+                inventoryQueueAction(action);
+            }
+        });
     }
 
     void InventoryScreen::openActionMenu(MuiContext& ui, Object* item, InventorySlot slot)

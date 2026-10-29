@@ -380,6 +380,12 @@ struct TouchSettings {
     int bottom_text_size = 100; // Percent of the bottom screen game fonts.
     bool colour_blind_safe = false;
     bool top_scanlines = false;
+    // Combat panel on the bottom screen in combat (enemies, aimed shots).
+    bool combat_panel = true;
+    // Quick-use hotbar (dashboard and combat panel), its slots: item prototype
+    // ids separated by commas, -1 - empty.
+    bool hotbar = true;
+    std::string hotbar_slots;
 };
 
 struct MapperSettings {

@@ -157,6 +157,29 @@ static const HudLayout kTwoColumnsDashboardLayout = {
     },
 };
 
+// In combat on the bottom screen: screens and system along the top, a column
+// of tools at the left, the rest is the combat panel's.
+static const HudLayout kCombatPanelLayout = {
+    10.0f,
+    6.0f,
+    {
+        { HudGroupId::Screens, HudAnchor::TopLeft, HudFlow::Rows, HudAlign::Start,
+            { { { HudElementId::Inventory, kDashButton, kDashButton }, { HudElementId::Character, kDashButton, kDashButton }, { HudElementId::Pipboy, kDashButton, kDashButton }, { HudElementId::Map, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::System, HudAnchor::TopRight, HudFlow::Rows, HudAlign::End,
+            { { { HudElementId::Menu, kDashButton, kDashButton }, { HudElementId::QuickSave, kDashButton, kDashButton }, { HudElementId::QuickLoad, kDashButton, kDashButton } } },
+            false },
+        { HudGroupId::Tools, HudAnchor::Left, HudFlow::Columns, HudAlign::Start,
+            { { { HudElementId::PartyOrders, kDashButton, kDashButton }, { HudElementId::Skills, kDashButton, kDashButton }, { HudElementId::SwapHands, kDashButton, kDashButton }, { HudElementId::TacticalView, kDashButton, kDashButton }, { HudElementId::Log, kDashButton, kDashButton } } },
+            false },
+    },
+};
+
+const HudLayout& hudLayoutCombatPanel()
+{
+    return kCombatPanelLayout;
+}
+
 const HudLayout& hudLayoutLandscape()
 {
     return kLandscapeLayout;

@@ -427,6 +427,9 @@ void initSettingsRegistry(bool isMapper)
     SETTING_P(bottom_text_size, clamp(100, 130));
     SETTING(colour_blind_safe);
     SETTING(top_scanlines);
+    SETTING(combat_panel);
+    SETTING(hotbar);
+    SETTING(hotbar_slots);
 #undef SECT
 
 #define SECT world_view
