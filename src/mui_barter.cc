@@ -14,6 +14,7 @@
 #include "kb.h"
 #include "message.h"
 #include "object.h"
+#include "settings.h"
 #include "stat.h"
 
 namespace fallout {
@@ -25,6 +26,10 @@ namespace {
     constexpr int kTextYourOffer = 118;
     constexpr int kTextRequest = 119;
     constexpr int kTextWeight = 120;
+    constexpr int kTextTalk = 954;
+    constexpr int kTextConfirmLossy = 955;
+    constexpr int kTextConfirmOffer = 956;
+    constexpr int kTextConfirmCancel = 957;
 
     const MuiColor kBackground = muiRgb(0x070A06);
 
@@ -58,6 +63,8 @@ namespace {
         MuiItemFilterState playerFilter;
         MuiItemFilterState bartererFilter;
         bool wasActive = false;
+        // `[touch] barter_confirm`: asking before a lossy offer.
+        bool confirmOpen = false;
 
         std::vector<MuiListItem> lists[LIST_COUNT];
         MuiRect listRects[LIST_COUNT];
@@ -74,10 +81,19 @@ namespace {
 
         bool coversScreen() override { return true; }
 
+        // The bottom screen while it is in use and `[touch] barter_layout`
+        // says so (the top one keeps the head, see TopBarterBackdrop).
+        MuiSurface surface() override { return onBottom() ? MuiSurface::Bottom : MuiSurface::Top; }
+
+        static bool onBottom() { return muiBottomActive() && settings.touch.barter_layout == 1; }
+
         bool isActive() override
         {
             BarterView view;
             bool active = muiIsEnabled() && barterGetView(&view);
+            if (!active) {
+                confirmOpen = false;
+            }
             if (active && !wasActive) {
                 // New barter.
                 playerFilter = MuiItemFilterState();
@@ -105,6 +121,8 @@ namespace {
 
     private:
         void buildList(MuiContext& ui, int list, int columns, const MuiRect& rect);
+        void requestOffer(MuiContext& ui);
+        void buildConfirm(MuiContext& ui);
         void buildPartyTabs(MuiContext& ui, const BarterView& view, const MuiRect& rect);
         void handleTap(int list, Object* item);
         void openActionMenu(MuiContext& ui, int list, Object* item);
@@ -113,6 +131,24 @@ namespace {
     };
 
     BarterScreen* gBarterScreen = nullptr;
+
+    // Top screen while barter runs on the bottom one: the head, the trader's
+    // name and caps and the last reply. Nothing on it is touchable.
+    class TopBarterBackdrop : public MuiScreen {
+    public:
+        TopBarterBackdrop() { modal = true; }
+
+        MuiSurface surface() override { return MuiSurface::Top; }
+        bool coversScreen() override { return true; }
+        bool isActive() override
+        {
+            BarterView view;
+            return gBarterScreen != nullptr && BarterScreen::onBottom() && muiIsEnabled() && barterGetView(&view);
+        }
+        void build(MuiContext& ui) override { muiGameDialogBuildBarterTop(ui); }
+    };
+
+    TopBarterBackdrop* gTopBarterBackdrop = nullptr;
 
     void queue(BarterActionType type, bool playerSide, Object* item, int partyIndex = -1)
     {
@@ -154,7 +190,8 @@ namespace {
 
         // Item columns: player 3, offer 1, request 1, trader 3. A list is its
         // cells with gaps between them and around.
-        constexpr int kSideColumns = 3;
+        bool bottom = ui.surface == MuiSurface::Bottom;
+        int kSideColumns = bottom ? 2 : 3;
         float cellGap = ui.dp(4.0f);
         float groupGap = ui.dp(8.0f);
         int listGaps = (kSideColumns + 1) * 2 + 2 * 2;
@@ -170,15 +207,17 @@ namespace {
         // totals, the offer button under both.
         float rowHeight = ui.dp(30.0f);
         float gap = ui.dp(6.0f);
-        float buttonHeight = ui.dp(40.0f);
+        float buttonHeight = ui.dp(bottom ? 52.0f : 40.0f);
         float infoHeight = ui.dp(18.0f);
         float headerY = content.y;
         float filterY = headerY + rowHeight + gap;
         float listY = filterY + rowHeight + gap;
-        float sideInfoY = content.bottom() - infoHeight;
+        // Bottom screen: a footer row (Talk, OFFER) under everything.
+        float footerSpace = bottom ? buttonHeight + gap : 0.0f;
+        float sideInfoY = content.bottom() - footerSpace - infoHeight;
         float sideListHeight = sideInfoY - gap - listY;
         float buttonY = content.bottom() - buttonHeight;
-        float tableInfoY = buttonY - gap - infoHeight;
+        float tableInfoY = bottom ? sideInfoY : buttonY - gap - infoHeight;
         float tableListHeight = tableInfoY - gap - listY;
 
         // Headers: party tabs (or player name), trader name and money.
@@ -222,21 +261,109 @@ namespace {
         }
         muiDrawTextAligned(playerInfo, { playerX, sideInfoY, sideWidth, infoHeight }, infoSize, theme.textDim, MuiAlign::Start, MuiAlign::Center);
 
+        // The request costs more than the offer is worth: red (the engine
+        // still decides whether the trade is accepted).
         std::u32string prefix = view.partyMemberBarter ? weightLabel + U" " : U"$";
+        bool lossy = bottom && view.requestValue > view.offerValue;
         muiDrawTextAligned(prefix + number(view.offerValue), { offerX, tableInfoY, unit, infoHeight }, ui.dp(13.0f), theme.text, MuiAlign::Center, MuiAlign::Center);
-        muiDrawTextAligned(prefix + number(view.requestValue), { requestX, tableInfoY, unit, infoHeight }, ui.dp(13.0f), theme.text, MuiAlign::Center, MuiAlign::Center);
+        muiDrawTextAligned(prefix + number(view.requestValue), { requestX, tableInfoY, unit, infoHeight }, ui.dp(13.0f), lossy ? theme.warning : theme.text, MuiAlign::Center, MuiAlign::Center);
 
         // The trader's shown items' weight, every filter ("All" too).
         muiDrawTextAligned(weightLabel + U" " + number(muiItemsWeight(lists[LIST_BARTERER])), { bartererX, sideInfoY, sideWidth, infoHeight }, infoSize, theme.textDim, MuiAlign::Start, MuiAlign::Center);
 
-        // Offer under both tables.
-        MuiRect offerRect = { offerX, buttonY, requestX + unit - offerX, buttonHeight };
-        if (ui.button("barter.offer.button", offerRect, muiDecodeGameText(text(kTextOffer, "OFFER")), MuiButtonStyle::Primary)) {
-            barterRequest(BarterRequest::Offer);
+        if (bottom) {
+            // Footer: Talk under the player's side, OFFER under the tables.
+            MuiRect talkRect = { playerX, buttonY, sideWidth, buttonHeight };
+            if (ui.button("barter.talk.button", talkRect, muiDecodeGameText(muiText(kTextTalk, "Talk")))) {
+                barterRequest(BarterRequest::Talk);
+            }
+            MuiRect offerButton = { offerX, buttonY, bartererX + sideWidth - offerX, buttonHeight };
+            if (ui.button("barter.offer.button", offerButton, muiDecodeGameText(text(kTextOffer, "OFFER")), MuiButtonStyle::Primary)) {
+                requestOffer(ui);
+            }
+        } else {
+            // Offer under both tables.
+            MuiRect offerRect = { offerX, buttonY, requestX + unit - offerX, buttonHeight };
+            if (ui.button("barter.offer.button", offerRect, muiDecodeGameText(text(kTextOffer, "OFFER")), MuiButtonStyle::Primary)) {
+                requestOffer(ui);
+            }
         }
 
         handleDrop(ui, view);
         drawDragged(ui, view);
+        if (confirmOpen) {
+            buildConfirm(ui);
+        }
+    }
+
+    // OFFER: asks first when `barter_confirm` is on and the offer is lossy
+    // (worth over 30% less than the request, or all the player's weapons and
+    // armor are on the table).
+    void BarterScreen::requestOffer(MuiContext& ui)
+    {
+        if (confirmOpen) {
+            return;
+        }
+
+        BarterView view;
+        if (settings.touch.barter_confirm && barterGetView(&view)) {
+            bool lossy = !view.partyMemberBarter && view.requestValue > 0 && view.offerValue * 10 < view.requestValue * 7;
+
+            if (!lossy) {
+                MuiItemFilterState all;
+                auto gear = [&all](Object* container) {
+                    int count = 0;
+                    for (const MuiListItem& entry : muiInventoryItems(container, all)) {
+                        ItemType type = itemGetType(entry.item);
+                        if (type == ITEM_TYPE_WEAPON || type == ITEM_TYPE_ARMOR) {
+                            count += entry.quantity;
+                        }
+                    }
+                    return count;
+                };
+                lossy = gear(view.playerTable) > 0 && gear(view.dude) == 0;
+            }
+
+            if (lossy) {
+                confirmOpen = true;
+                return;
+            }
+        }
+
+        barterRequest(BarterRequest::Offer);
+    }
+
+    void BarterScreen::buildConfirm(MuiContext& ui)
+    {
+        const MuiTheme& theme = muiTheme();
+        ui.dim();
+
+        MuiRect safe = ui.safeRect();
+        float width = std::min(safe.w - ui.dp(32.0f), ui.dp(360.0f));
+        float padding = ui.dp(16.0f);
+        float size = ui.dp(16.0f);
+        std::vector<std::u32string> lines = muiWrapText(muiDecodeGameText(text(kTextConfirmLossy, "This offer is worth much less than the request. Offer anyway?")), width - padding * 2.0f, size);
+        float buttonHeight = ui.dp(46.0f);
+        float height = padding * 2.0f + lines.size() * muiLineHeight(size) + ui.dp(12.0f) + buttonHeight;
+        MuiRect card = { safe.x + (safe.w - width) / 2.0f, safe.y + (safe.h - height) / 2.0f, width, height };
+        ui.panel(card);
+
+        float y = card.y + padding;
+        for (const std::u32string& line : lines) {
+            muiDrawText(line, card.x + padding, y, size, theme.text);
+            y += muiLineHeight(size);
+        }
+        y += ui.dp(12.0f);
+
+        float gap = ui.dp(8.0f);
+        float buttonWidth = (card.w - padding * 2.0f - gap) / 2.0f;
+        if (ui.button("barter.confirm.cancel", { card.x + padding, y, buttonWidth, buttonHeight }, muiDecodeGameText(text(kTextConfirmCancel, "CANCEL")))) {
+            confirmOpen = false;
+        }
+        if (ui.button("barter.confirm.offer", { card.x + padding + buttonWidth + gap, y, buttonWidth, buttonHeight }, muiDecodeGameText(text(kTextConfirmOffer, "OFFER")), MuiButtonStyle::Primary)) {
+            confirmOpen = false;
+            barterRequest(BarterRequest::Offer);
+        }
     }
 
     void BarterScreen::buildPartyTabs(MuiContext& ui, const BarterView& view, const MuiRect& rect)
@@ -488,6 +615,8 @@ void muiBarterInit()
         gBarterScreen->messageListLoaded = messageListLoadInLanguage(&(gBarterScreen->messageList), "game\\ce.msg", gameCharsetUiLanguage());
     }
     muiPush(gBarterScreen);
+    gTopBarterBackdrop = new TopBarterBackdrop();
+    muiPush(gTopBarterBackdrop);
 }
 
 void muiBarterExit()
@@ -496,6 +625,9 @@ void muiBarterExit()
         return;
     }
 
+    muiRemove(gTopBarterBackdrop);
+    delete gTopBarterBackdrop;
+    gTopBarterBackdrop = nullptr;
     muiRemove(gBarterScreen);
     if (gBarterScreen->messageListLoaded) {
         messageListFree(&(gBarterScreen->messageList));

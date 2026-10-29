@@ -148,7 +148,11 @@ namespace {
         void buildHead(MuiContext& ui, const MuiRect& rect);
         void buildIconButtons(MuiContext& ui, const MuiRect& column);
         void buildReply(MuiContext& ui, const MuiRect& rect, float textSize = 0.0f);
-        void buildSplitTop(MuiContext& ui);
+        void buildSplitTop(MuiContext& ui, bool barter = false);
+    public:
+        void buildBarterTop(MuiContext& ui) { buildSplitTop(ui, true); }
+
+    private:
         void buildOptionRows(MuiContext& ui, const MuiRect& rect, bool mirror);
         void buildOptions(MuiContext& ui, const MuiRect& rect);
         void buildReview(MuiContext& ui, const MuiRect& rect);
@@ -239,7 +243,7 @@ namespace {
 
     // Split layout, top screen: the head, the speaker and the reply large
     // under it; with the mirrored setting the options dimmed on the right.
-    void TalkScreen::buildSplitTop(MuiContext& ui)
+    void TalkScreen::buildSplitTop(MuiContext& ui, bool barter)
     {
         muiSkinBackdrop(ui, ui.screenRect());
 
@@ -251,7 +255,7 @@ namespace {
             ui.setScroll("talk.reply", 0.0f);
         }
 
-        bool mirror = settings.touch.dialogue_layout == 2;
+        bool mirror = !barter && settings.touch.dialogue_layout == 2;
         float gap = ui.dp(14.0f);
         MuiRect main = ui.safeRect().inset(ui.dp(16.0f));
         MuiRect side = { 0.0f, 0.0f, 0.0f, 0.0f };
@@ -269,10 +273,18 @@ namespace {
         MuiRect below = { column.x, column.y + headHeight + gap, column.w, column.h - headHeight - gap };
 
         PartyControlView partyView;
-        if (partyOpen && gameDialogGetPartyControlView(&partyView)) {
+        if (!barter && partyOpen && gameDialogGetPartyControlView(&partyView)) {
             buildPartyStats(ui, below, partyView);
         } else {
             buildReply(ui, below, ui.dp(22.0f));
+        }
+
+        // Barter: the trader's caps at the reply's header.
+        if (barter && gGameDialogSpeaker != nullptr && !gameDialogSpeakerIsPartyMember()) {
+            const MuiTheme& theme = muiTheme();
+            MuiRect header = below.inset(ui.dp(12.0f), ui.dp(10.0f));
+            header.h = muiLineHeight(ui.dp(15.0f));
+            muiDrawTextAligned(U"$" + muiDecodeUtf8(std::to_string(itemGetTotalCaps(gGameDialogSpeaker)).c_str()), header, ui.dp(15.0f), theme.accent, MuiAlign::End, MuiAlign::Start);
         }
 
         if (mirror) {
@@ -1183,6 +1195,13 @@ void muiGameDialogOpenParty()
 {
     if (gTalkScreen != nullptr) {
         gTalkScreen->partyPending = true;
+    }
+}
+
+void muiGameDialogBuildBarterTop(MuiContext& ui)
+{
+    if (gTalkScreen != nullptr) {
+        gTalkScreen->buildBarterTop(ui);
     }
 }
 

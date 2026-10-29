@@ -27,6 +27,10 @@ enum class MuiDialogTab {
 
 // Dialog screens' content area and the tab column at the right edge, the
 // same on every dialog screen.
+// Top screen while barter runs on the bottom one: the head, the trader's
+// name, caps and last reply.
+void muiGameDialogBuildBarterTop(MuiContext& ui);
+
 void muiDialogLayout(MuiContext& ui, MuiRect* content, MuiRect* tabs);
 
 // Tab buttons in [column] (barter only when available), returns the tapped
