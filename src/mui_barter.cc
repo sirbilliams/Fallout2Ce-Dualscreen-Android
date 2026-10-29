@@ -448,6 +448,9 @@ namespace {
 
         std::string id = kListIds[list];
         float offset = ui.scroll(id, area, contentHeight);
+        if (!items.empty()) {
+            ui.padPrefer(id + ".0");
+        }
         bool scrolling = ui.isScrolling(id);
         // Vertical moves scroll only a list that doesn't fit.
         bool scrollable = contentHeight > area.h;

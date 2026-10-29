@@ -233,6 +233,10 @@ public:
     // changed.
     bool toggle(const std::string& id, const MuiRect& rect, bool* value);
 
+    // Gamepad: the widget [id] (built in this frame) takes the focus when the
+    // screen shows, instead of the first one (the content, not the tabs).
+    void padPrefer(const std::string& id);
+
     // One of [labels] in a row of joined buttons over [rect] (ids
     // "<id>.<index>"): a tap picks it. Returns true when [selected] changed.
     bool segmented(const std::string& id, const MuiRect& rect, const std::vector<std::u32string>& labels, int* selected);

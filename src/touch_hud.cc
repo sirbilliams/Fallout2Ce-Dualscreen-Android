@@ -1,4 +1,5 @@
 #include "touch_hud.h"
+#include "mui_pad.h"
 
 #include <string.h>
 
@@ -1846,6 +1847,11 @@ bool touchHudHandleEvent(int eventCode)
             if (showDialogBox(text(kTextQuickLoadConfirm), nullptr, 0, 169, 117, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) != 0) {
                 gameCommandPost(GameCommandType::QuickLoad);
             }
+        }
+        return true;
+    case kHudEventPadQuickUse:
+        if (interfaceBarEnabled()) {
+            muiPadQuickUseRun();
         }
         return true;
     case kEventHighlight:
