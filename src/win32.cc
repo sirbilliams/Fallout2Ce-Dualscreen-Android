@@ -109,7 +109,9 @@ int main(int argc, char* argv[])
     }
 
     // CE: Game controllers (gamepad.h); the game runs without them.
+#ifndef FALLOUT_MAPPER
     gamepadInit();
+#endif
 
     atexit([] {
         audioEngineExit();
