@@ -1691,8 +1691,25 @@ static const DevAutotestStep kDevAutotestControlsSteps[] = {
     { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 12, "c05_pad_focus" },
     { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 12, "c05_pad_next" },
     { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 9, 760, 0, 30, "c06_controls_scrolled" },
-    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "c07_reset_assert", "prefs.rows.1159" },
-    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "c08_reset", "prefs.rows.1159" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "c07_reset_assert", "prefs.reset" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "c08_reset", "prefs.reset" },
+};
+
+// Every settings tab (the theme comes from the scenario's name suffix).
+static const DevAutotestStep kDevAutotestSettingsShotsSteps[] = {
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 10, 2, 0, 30, "s00_theme" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 40, "s01_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "s02_settings", "menu.settings" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 10, "s03_game" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 9, 300, 0, 20, "s03_game_scrolled" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s04_combat", "prefs.sections.1" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s05_sound", "prefs.sections.2" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s06_display", "prefs.sections.3" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 9, 250, 0, 20, "s07_display_rows" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 9, 520, 0, 20, "s08_display_rows2" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 9, 800, 0, 20, "s09_display_rows3" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "s10_controls", "prefs.sections.4" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 9, 760, 0, 20, "s11_controls_scrolled" },
 };
 
 static const DevAutotestStep kDevAutotestPreferencesSteps[] = {
@@ -2666,10 +2683,18 @@ void devAutotestSetScenario(const char* name)
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif
-    } else if (strcmp(name, "controls") == 0 || strcmp(name, "controlsclassic") == 0) {
-        gDevAutotestControlsTheme = strcmp(name, "controlsclassic") == 0 ? 1 : 2;
+    } else if (strcmp(name, "controls") == 0 || strcmp(name, "controlsclassic") == 0 || strcmp(name, "controlsfallout") == 0) {
+        gDevAutotestControlsTheme = strcmp(name, "controlsfallout") == 0 ? 0 : strcmp(name, "controlsclassic") == 0 ? 1
+                                                                                                                    : 2;
         gDevAutotestSteps = kDevAutotestControlsSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestControlsSteps) / sizeof(kDevAutotestControlsSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strncmp(name, "settingsshots", 13) == 0) {
+        gDevAutotestControlsTheme = name[13] != '\0' ? name[13] - '0' : 2;
+        gDevAutotestSteps = kDevAutotestSettingsShotsSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestSettingsShotsSteps) / sizeof(kDevAutotestSettingsShotsSteps[0]);
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif

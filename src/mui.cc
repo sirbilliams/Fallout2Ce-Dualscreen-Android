@@ -872,6 +872,24 @@ bool MuiContext::toggle(const std::string& id, const MuiRect& rect, bool* value)
     return tapped;
 }
 
+float MuiContext::segmentedSize()
+{
+    if (muiSkinFallout() && !muiSkinPipboy()) {
+        return 1.5f;
+    }
+    return muiSkinPipboy() ? dp(12.0f) : dp(kTheme.buttonTextSize) * 0.9f;
+}
+
+float MuiContext::segmentedWidth(const std::vector<std::u32string>& labels)
+{
+    float size = segmentedSize();
+    float sum = dp(12.0f) * labels.size();
+    for (const std::u32string& label : labels) {
+        sum += muiSkinFallout() && !muiSkinPipboy() ? muiGameRoleWidth(label, MuiFontRole::Heading, size) : muiTextWidth(label, size);
+    }
+    return sum;
+}
+
 bool MuiContext::segmented(const std::string& id, const MuiRect& rect, const std::vector<std::u32string>& labels, int* selected)
 {
     if (labels.empty()) {
@@ -879,34 +897,47 @@ bool MuiContext::segmented(const std::string& id, const MuiRect& rect, const std
     }
 
     // One text size for all, as large as fits; each cell as wide as its
-    // label with the room left shared equally.
+    // label with the room left shared equally. The size starts at one
+    // standard for every strip (segmentedWidth) so rows look alike.
     float padding = dp(12.0f);
-    float size = dp(kTheme.buttonTextSize) * 0.9f;
-    float textWidth = 0.0f;
-    for (const std::u32string& label : labels) {
-        textWidth += muiTextWidth(label, size);
-    }
-    float room = rect.w - padding * labels.size();
-    if (textWidth > room && textWidth > 0.0f) {
-        size = std::max(size * room / textWidth, dp(10.0f));
-        textWidth = 0.0f;
+    bool game = muiSkinFallout();
+    bool pipboy = muiSkinPipboy();
+    auto labelWidth = [&](const std::u32string& label, float size) {
+        return game && !pipboy ? muiGameRoleWidth(label, MuiFontRole::Heading, size) : muiTextWidth(label, size);
+    };
+    auto totalWidth = [&](float size) {
+        float sum = 0.0f;
         for (const std::u32string& label : labels) {
-            textWidth += muiTextWidth(label, size);
+            sum += labelWidth(label, size);
+        }
+        return sum;
+    };
+    float room = rect.w - padding * labels.size();
+    float size = segmentedSize();
+    if (game && !pipboy) {
+        while (size > 1.0f && totalWidth(size) > room) {
+            size -= 0.25f;
+        }
+    } else {
+        // Steps (the game's face snaps to quarter scales).
+        float minSize = game ? dp(7.0f) : dp(10.0f);
+        while (size > minSize && totalWidth(size) > room) {
+            size -= dp(0.5f);
         }
     }
+    float textWidth = totalWidth(size);
     float extra = std::max(room - textWidth, 0.0f) / labels.size();
 
     bool changed = false;
     float radius = dp(kTheme.radius);
     // Joined metal keys; the chosen one lit amber.
-    bool game = muiSkinFallout();
     if (!game) {
         muiSkinButton(*this, rect, false, false);
     }
 
     float x = rect.x;
     for (size_t index = 0; index < labels.size(); index++) {
-        float width = index + 1 == labels.size() ? rect.right() - x : muiTextWidth(labels[index], size) + padding + extra;
+        float width = index + 1 == labels.size() ? rect.right() - x : labelWidth(labels[index], size) + padding + extra;
         MuiRect cell = { x, rect.y, width, rect.h };
         x += width;
 
@@ -919,7 +950,12 @@ bool MuiContext::segmented(const std::string& id, const MuiRect& rect, const std
         bool on = *selected == static_cast<int>(index);
         if (game) {
             muiSkinButton(*this, cell.inset(1.0f, 0.0f), on || pressed, false);
-            muiGameButtonLabel(*this, cell, labels[index], on ? muiRgb(0xFFE890) : muiRgb(0xB8A040));
+            if (pipboy) {
+                muiDrawTextAligned(labels[index], cell, size, muiTheme().text, MuiAlign::Center, MuiAlign::Center);
+            } else {
+                float height = muiGameRoleHeight(MuiFontRole::Heading, size);
+                muiGameDrawRole(labels[index], cell.x + (cell.w - labelWidth(labels[index], size)) / 2.0f, cell.y + (cell.h - height) / 2.0f, MuiFontRole::Heading, size, on ? muiRgb(0xFFE890) : muiRgb(0xB8A040));
+            }
             continue;
         }
         if (on) {

@@ -542,7 +542,6 @@ namespace {
     enum class RowKind {
         Header,
         Binding,
-        ResetControls,
         Choice,
         Toggle,
         Slider,
@@ -690,19 +689,11 @@ namespace {
             rows.push_back(row);
         }
         header(Section::Controls, 1141, "Map button bindings");
+        header(Section::Controls, 1158, "Right-stick mode overrides A / B / R3");
         for (int button = 0; button < gamepadButtonCount(); ++button) {
             Row row { Section::Controls, RowKind::Binding, 1142 + button, gamepadButtonLabel(button), Origin::Port };
             row.get = [button](const Values& v) { return float(v.bindings[button]); };
             row.set = [button](Values& v, float value) { v.bindings[button] = int(value); };
-            if (button == 0 || button == 1 || button == 9) {
-                row.noteId = 1158;
-                row.noteFallback = "Right-stick mode overrides A / B / R3";
-            }
-            rows.push_back(row);
-        }
-        {
-            Row row { Section::Controls, RowKind::ResetControls, 1159, "Reset controls to defaults", Origin::Port };
-            row.get = [](const Values&) { return 0.0f; };
             rows.push_back(row);
         }
 
@@ -985,6 +976,9 @@ namespace {
         FilesAction pendingFiles = FilesAction::None;
 
         std::u32string optionLabel(const Row& row, int index);
+        float choiceNeeded(MuiContext& ui, const Row& row);
+        float choiceLabelMin(MuiContext& ui, const Row& row, float width);
+        float rowHeightOf(MuiContext& ui, const Row& row, float width);
         bool changed(const Row& row) const;
         bool anyChanged() const;
         void previewChanges(const Values& before);
@@ -1022,6 +1016,58 @@ namespace {
         messageListFree(&optionsMessages);
     }
 
+    // The strips' options come from several message files, some in capitals:
+    // one case for all ("MAP FIRST" -> "Map first").
+    static std::u32string optionCase(std::u32string text)
+    {
+        bool hasLower = false;
+        bool hasUpper = false;
+        for (char32_t ch : text) {
+            hasLower = hasLower || (ch >= U'a' && ch <= U'z');
+            hasUpper = hasUpper || (ch >= U'A' && ch <= U'Z');
+        }
+        if (hasLower || !hasUpper) {
+            return text;
+        }
+        bool first = true;
+        for (char32_t& ch : text) {
+            if (ch >= U'A' && ch <= U'Z') {
+                ch = first ? ch : ch - U'A' + U'a';
+                first = false;
+            }
+        }
+        return text;
+    }
+
+    // What a choice's strip needs at the standard size, and what its label
+    // needs at least; when both don't fit side by side the strip goes below.
+    float PreferencesScreen::choiceNeeded(MuiContext& ui, const Row& row)
+    {
+        std::vector<std::u32string> options;
+        for (size_t option = 0; option < row.options.size(); option++) {
+            options.push_back(optionLabel(row, static_cast<int>(option)));
+        }
+        return ui.segmentedWidth(options);
+    }
+
+    float PreferencesScreen::choiceLabelMin(MuiContext& ui, const Row& row, float width)
+    {
+        float badgeRoom = row.origin == Origin::Port ? ui.dp(40.0f) : row.origin == Origin::Ce ? ui.dp(28.0f)
+                                                                                               : 0.0f;
+        return std::min(muiTextWidth(muiDecodeGameText(muiText(row.textId, row.fallback)), ui.dp(13.0f)) + badgeRoom + ui.dp(20.0f), width * 0.4f);
+    }
+
+    float PreferencesScreen::rowHeightOf(MuiContext& ui, const Row& row, float width)
+    {
+        if (row.kind == RowKind::Header) {
+            return ui.dp(30.0f);
+        }
+        if (row.kind == RowKind::Choice && choiceNeeded(ui, row) > width - choiceLabelMin(ui, row, width) - ui.dp(12.0f)) {
+            return ui.dp(88.0f);
+        }
+        return ui.dp(50.0f);
+    }
+
     std::u32string PreferencesScreen::optionLabel(const Row& row, int index)
     {
         int id = row.options[index];
@@ -1041,13 +1087,13 @@ namespace {
                 : row.textId == kTextBarterLayout       ? kBarterFallbacks[index]
                 : row.textId == kTextBottomTheme        ? kThemeFallbacks[index]
                                                         : kFallbacks[std::min(index, 2)];
-            return muiDecodeGameText(muiText(id, fallback));
+            return optionCase(muiDecodeGameText(muiText(id, fallback)));
         }
 
         MessageListItem item;
         item.num = id;
         if (optionsLoaded && messageListGetItem(&optionsMessages, &item)) {
-            return muiDecodeGameText(item.text);
+            return optionCase(muiDecodeGameText(item.text));
         }
         return U"?";
     }
@@ -1189,7 +1235,7 @@ namespace {
         float buttonGap = ui.dp(8.0f);
         MuiRect reset = { buttons.x, buttons.y, (buttons.w - buttonGap) / 2.0f, buttons.h };
         MuiRect apply = { reset.right() + buttonGap, buttons.y, reset.w, buttons.h };
-        if (ui.button("prefs.reset", reset, muiDecodeGameText((section == Section::Controls ? muiText(1159, "Reset controls to defaults") : muiText(kTextResetAll, "Reset all"))))) {
+        if (ui.button("prefs.reset", reset, muiDecodeGameText((section == Section::Controls ? muiText(1159, "Reset controls") : muiText(kTextResetAll, "Reset all"))))) {
             pendingReset = true;
         }
 
@@ -1438,15 +1484,13 @@ namespace {
     void PreferencesScreen::buildRows(MuiContext& ui, const MuiRect& rect)
     {
         const MuiTheme& theme = muiTheme();
-        float rowHeight = ui.dp(50.0f);
-        float headerHeight = ui.dp(30.0f);
         bool showPreview = section == Section::Display;
         float previewSpace = showPreview ? std::min(rect.h * 0.45f, ui.dp(130.0f)) + ui.dp(8.0f) : 0.0f;
 
         float contentHeight = previewSpace;
         for (const Row& row : rows) {
             if (row.section == section) {
-                contentHeight += row.kind == RowKind::Header ? headerHeight : rowHeight;
+                contentHeight += rowHeightOf(ui, row, rect.w);
             }
         }
 
@@ -1501,7 +1545,7 @@ namespace {
                 continue;
             }
 
-            float height = row.kind == RowKind::Header ? headerHeight : rowHeight;
+            float height = rowHeightOf(ui, row, rect.w);
             MuiRect rowRect = { rect.x, y, rect.w, height };
             if (rowRect.bottom() >= rowsClip.y && rowRect.y <= rowsClip.bottom()) {
                 buildRow(ui, index, rowRect);
@@ -1520,18 +1564,7 @@ namespace {
         std::u32string label = muiDecodeGameText(muiText(row.textId, row.fallback));
 
         if (row.kind == RowKind::Header) {
-            muiDrawTextAligned(label, { rect.x + ui.dp(4.0f), rect.y + ui.dp(8.0f), rect.w, rect.h - ui.dp(8.0f) }, ui.dp(12.0f), theme.textDim, MuiAlign::Start, MuiAlign::Center);
-            return;
-        }
-
-        if (row.kind == RowKind::ResetControls) {
-            if (ui.button("prefs.rows." + std::to_string(row.textId), rect.inset(ui.dp(4.0f)), label)) {
-                Values defaults = defaultValues();
-                for (const Row& controlRow : rows) {
-                    if (controlRow.section == Section::Controls && controlRow.set)
-                        controlRow.set(edited, controlRow.get(defaults));
-                }
-            }
+            muiDrawTextAligned(label, { rect.x + ui.dp(4.0f), rect.y + ui.dp(8.0f), rect.w - ui.dp(8.0f), rect.h - ui.dp(8.0f) }, muiFitTextSize(label, rect.w - ui.dp(8.0f), ui.dp(12.0f), ui.dp(8.0f)), theme.textDim, MuiAlign::Start, MuiAlign::Center);
             return;
         }
 
@@ -1540,16 +1573,28 @@ namespace {
         // Label: a dot when changed, the origin badge, a note under it.
         // Choices get more room (several labels side by side).
         float controlWidth = (row.kind == RowKind::Choice || row.kind == RowKind::Binding) ? std::min(rect.w * 0.6f, ui.dp(400.0f)) : std::min(rect.w * 0.48f, ui.dp(300.0f));
+        if (row.kind == RowKind::Toggle) {
+            // Only the switch takes room: the label (and its badge) gets the rest.
+            controlWidth = ui.dp(52.0f);
+        } else if (row.kind == RowKind::Choice) {
+            // Long options take room from the label, down to what the label
+            // needs; past that the strip goes below the label.
+            float needed = choiceNeeded(ui, row);
+            controlWidth = std::max(controlWidth, std::min(needed, rect.w - choiceLabelMin(ui, row, rect.w) - ui.dp(12.0f)));
+        }
         MuiRect control = { rect.right() - controlWidth, rect.y + ui.dp(8.0f), controlWidth, rect.h - ui.dp(16.0f) };
+        bool stacked = row.kind == RowKind::Choice && rect.h > ui.dp(60.0f);
+        if (stacked) {
+            controlWidth = std::min(std::max(choiceNeeded(ui, row), controlWidth), rect.w - ui.dp(8.0f));
+            control = { rect.right() - controlWidth, rect.y + ui.dp(38.0f), controlWidth, rect.h - ui.dp(38.0f) - ui.dp(8.0f) };
+        }
         float x = rect.x + ui.dp(4.0f);
-        float labelWidth = control.x - x - ui.dp(12.0f);
+        float labelWidth = stacked ? rect.w - ui.dp(8.0f) : control.x - x - ui.dp(12.0f);
 
         bool hasNote = row.noteId != -1;
-        if (hasNote && row.kind == RowKind::Binding) {
-            control.h = ui.dp(24.0f);
-        }
         float labelTop = rect.y + ui.dp(4.0f);
-        float labelHeight = hasNote ? ui.dp(24.0f) : rect.h - ui.dp(8.0f);
+        float labelHeight = hasNote ? ui.dp(24.0f) : stacked ? ui.dp(30.0f)
+                                                             : rect.h - ui.dp(8.0f);
         if (changed(row)) {
             float dot = ui.dp(4.0f);
             muiFillCircle(x + dot, labelTop + labelHeight / 2.0f, dot, kChanged);
@@ -1569,10 +1614,16 @@ namespace {
 
         float badgeSize = ui.dp(10.0f);
         float badgeWidth = badge.empty() ? 0.0f : muiTextWidth(badge, badgeSize) + ui.dp(10.0f);
-        float labelSize = muiFitTextSize(label, labelRect.w - (badge.empty() ? 0.0f : badgeWidth + ui.dp(6.0f)), ui.dp(14.0f), ui.dp(11.0f));
+        // The badge follows the label; when label and badge do not fit side
+        // by side at a legible size it goes on a line of its own below.
+        bool badgeBelow = !badge.empty() && !hasNote && !stacked && muiTextWidth(label, ui.dp(11.0f)) + badgeWidth + ui.dp(6.0f) > labelRect.w;
+        if (badgeBelow) {
+            labelRect = { labelRect.x, rect.y + ui.dp(3.0f), labelRect.w, ui.dp(28.0f) };
+        }
+        float labelSize = muiFitTextSize(label, labelRect.w - (badge.empty() || badgeBelow ? 0.0f : badgeWidth + ui.dp(6.0f)), ui.dp(14.0f), ui.dp(8.0f));
         if (row.section == Section::Controls && row.kind != RowKind::Binding) {
             auto lines = muiWrapText(label, labelRect.w, ui.dp(11.0f));
-            float lineHeight = ui.dp(12.0f);
+            float lineHeight = std::max(ui.dp(12.0f), muiLineHeight(ui.dp(11.0f)));
             float lineY = labelRect.centerY() - lines.size() * lineHeight / 2.0f;
             for (const auto& line : lines) {
                 muiDrawTextAligned(line, { labelRect.x, lineY, labelRect.w, lineHeight }, ui.dp(11.0f), theme.text, MuiAlign::Start, MuiAlign::Center);
@@ -1584,7 +1635,10 @@ namespace {
 
         if (!badge.empty()) {
             float textWidth = muiTextWidth(label, labelSize);
-            MuiRect badgeRect = { labelRect.x + textWidth + ui.dp(6.0f), labelRect.centerY() - ui.dp(9.0f), badgeWidth, ui.dp(18.0f) };
+            MuiRect badgeRect = { std::min(labelRect.x + textWidth + ui.dp(6.0f), labelRect.right() - badgeWidth), labelRect.centerY() - ui.dp(9.0f), badgeWidth, ui.dp(18.0f) };
+            if (badgeBelow) {
+                badgeRect = { labelRect.x, labelRect.bottom() - ui.dp(2.0f), badgeWidth, ui.dp(16.0f) };
+            }
             muiStrokeRoundRect(badgeRect, ui.dp(4.0f), ui.dp(1.0f), badgeColor);
             muiDrawTextAligned(badge, badgeRect, badgeSize, badgeColor, MuiAlign::Center, MuiAlign::Center);
         }
@@ -1613,8 +1667,6 @@ namespace {
             }
             break;
         }
-        case RowKind::ResetControls:
-            break;
         case RowKind::Choice: {
             std::vector<std::u32string> options;
             for (size_t option = 0; option < row.options.size(); option++) {
@@ -1680,7 +1732,7 @@ namespace {
         if (pendingReset) {
             pendingReset = false;
             const char* body[] = { section == Section::Controls ? muiText(1179, "Controls go back to their defaults. Apply to save.") : muiText(kTextResetBody, "Every setting goes back to its default.") };
-            if (showDialogBox(section == Section::Controls ? muiText(1159, "Reset controls to defaults") : muiText(kTextResetTitle, "Reset all settings?"), body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) != 0) {
+            if (showDialogBox(section == Section::Controls ? muiText(1159, "Reset controls") : muiText(kTextResetTitle, "Reset all settings?"), body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) != 0) {
                 Values before = edited;
                 Values defaults = defaultValues();
                 if (section == Section::Controls) {

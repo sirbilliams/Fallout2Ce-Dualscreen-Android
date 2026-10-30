@@ -1079,8 +1079,10 @@ void muiGameButton(MuiContext& ui, const MuiRect& rect, bool pressed, bool prima
 {
     if (muiSkinPipboy()) {
         muiGameDrawNineSlice(pressed ? "alarmin" : "alarmout", rect, 3, artScale(ui), muiRgb(0xA0BA9B));
-        muiFillRect(rect.inset(ui.dp(3)), pressed ? muiRgb(0x082817, 225) : muiRgb(0x14331F, 210));
-        pixelBevel(rect, ui.dp(2), muiRgb(0x809174), muiRgb(0x020904), pressed);
+        // A primary button (Apply with changes to apply) glows brighter.
+        muiFillRect(rect.inset(ui.dp(3)), pressed ? muiRgb(0x082817, 225) : primary ? muiRgb(0x2A7A3E, 235)
+                                                                                    : muiRgb(0x14331F, 210));
+        pixelBevel(rect, ui.dp(2), primary ? muiRgb(0xB1FF9B) : muiRgb(0x809174), muiRgb(0x020904), pressed);
         float lamp = std::min(ui.dp(9), rect.h * 0.22f);
         muiGameDrawArt(MuiArtGroup::Interface, pressed ? "lilreddn" : "lilredup", { rect.x + ui.dp(3), rect.y + ui.dp(3), lamp, lamp });
         return;

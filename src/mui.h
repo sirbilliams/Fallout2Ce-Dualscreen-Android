@@ -242,6 +242,9 @@ public:
     // One of [labels] in a row of joined buttons over [rect] (ids
     // "<id>.<index>"): a tap picks it. Returns true when [selected] changed.
     bool segmented(const std::string& id, const MuiRect& rect, const std::vector<std::u32string>& labels, int* selected);
+    // The width at which every label of a strip is drawn at the same standard size.
+    float segmentedSize();
+    float segmentedWidth(const std::vector<std::u32string>& labels);
 
     float scrollAlong(const std::string& id, const MuiRect& rect, float contentSize, bool horizontal);
 
