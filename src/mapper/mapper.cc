@@ -59,6 +59,12 @@
 
 namespace fallout {
 
+// The mapper has no game loop (main.cc is game-only); the engine UI asks.
+bool mainIsPlaying()
+{
+    return false;
+}
+
 static void MapperInit();
 static int mapper_edit_init(int argc, char** argv);
 static void mapper_edit_exit();

@@ -807,6 +807,8 @@ if((NOT ANDROID) AND (NOT IOS) AND (NOT CMAKE_SYSTEM_NAME MATCHES "Emscripten"))
     endif()
 
     target_sources(mapper-ce PUBLIC
+        "src/bottom_screen_desktop.cc" # the engine's UI posts frames to a second screen the mapper doesn't have
+        "src/bottom_screen.h"
         ${FALLOUT_ENGINE_SOURCES}
         ${FALLOUT_PLATFORM_SOURCES}
         "src/mapper/map_edge_setup.cc"
