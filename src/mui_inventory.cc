@@ -1,3 +1,4 @@
+#include "mui_gameskin.h"
 #include "mui_screens.h"
 #include "mui_skin.h"
 
@@ -432,7 +433,8 @@ namespace {
         const char* label = confirming ? muiText(kTextSure, "SURE?") : muiText(kTextDropAll, "DROP ALL");
         MuiRect labelRect = button.inset(ui.dp(4.0f), 0.0f);
         muiPushClip(labelRect);
-        muiDrawTextAligned(muiDecodeGameText(label), labelRect, ui.dp(13.0f), color, MuiAlign::Center, MuiAlign::Center);
+        std::u32string labelText = muiDecodeGameText(label);
+        muiDrawTextAligned(labelText, labelRect, muiFitTextSize(labelText, labelRect.w, ui.dp(13.0f), ui.dp(8.0f)), color, MuiAlign::Center, MuiAlign::Center);
         muiPopClip();
     }
 
@@ -550,7 +552,8 @@ namespace {
                 if (y + lineHeight > figure.bottom()) {
                     break;
                 }
-                float valueWidth = muiTextWidth(stat.value, ui.dp(11.0f));
+                float statMinimum = muiSkinPipboy() ? ui.dp(7.0f) : ui.dp(11.0f);
+                float valueWidth = muiTextWidth(stat.value, statMinimum);
                 bool showIcon = ui.surface != MuiSurface::Bottom || valueWidth + iconSize + ui.dp(6.0f) <= armor.w;
                 if (showIcon) {
                     muiDrawIcon(stat.icon, armor.x + iconSize / 2.0f, y + lineHeight / 2.0f, iconSize, ui.dp(1.5f), theme.accent);
@@ -560,7 +563,7 @@ namespace {
                     valueRect.x = armor.x;
                     valueRect.w = armor.w;
                 }
-                float size = ui.surface == MuiSurface::Bottom ? muiFitTextSize(stat.value, valueRect.w, ui.dp(13.0f), ui.dp(11.0f)) : ui.dp(13.0f);
+                float size = ui.surface == MuiSurface::Bottom ? muiFitTextSize(stat.value, valueRect.w, ui.dp(13.0f), statMinimum) : ui.dp(13.0f);
                 muiDrawTextAligned(stat.value, valueRect, size, stat.color, MuiAlign::Start, MuiAlign::Center);
                 y += lineHeight;
             }
@@ -750,10 +753,12 @@ namespace {
             return;
         }
 
-        float size = ui.dp(13.0f);
+        // The Pip-Boy face is wide: smaller type keeps the whole info in view.
+        float size = muiSkinPipboy() ? ui.dp(10.0f) : ui.dp(13.0f);
+        float titleSize = muiSkinPipboy() ? ui.dp(12.0f) : ui.dp(15.0f);
         float start = *y;
         InfoWriter writer = { content, y, draw, ui.surface == MuiSurface::Bottom };
-        writer.text(muiDecodeGameText(summary.name.c_str()), ui.dp(15.0f), theme.accent);
+        writer.text(muiDecodeGameText(summary.name.c_str()), titleSize, theme.accent);
         writer.separator(ui.dp(1.0f), ui.dp(4.0f), theme.panelBorder);
 
         // Primary stats in two columns.
@@ -800,12 +805,14 @@ namespace {
     void InventoryScreen::buildItemInfo(MuiContext& ui, const MuiRect& content, float* y, bool draw)
     {
         const MuiTheme& theme = muiTheme();
-        float size = ui.dp(13.0f);
+        // The Pip-Boy face is wide: smaller type keeps the whole info in view.
+        float size = muiSkinPipboy() ? ui.dp(10.0f) : ui.dp(13.0f);
+        float titleSize = muiSkinPipboy() ? ui.dp(12.0f) : ui.dp(15.0f);
         float start = *y;
         InfoWriter writer = { content, y, draw, ui.surface == MuiSurface::Bottom };
 
-        for (const std::u32string& line : muiWrapText(muiDecodeGameText(info.name.c_str()), content.w, ui.dp(15.0f))) {
-            writer.text(line, ui.dp(15.0f), theme.accent);
+        for (const std::u32string& line : muiWrapText(muiDecodeGameText(info.name.c_str()), content.w, titleSize)) {
+            writer.text(line, titleSize, theme.accent);
         }
         writer.separator(ui.dp(1.0f), ui.dp(4.0f), theme.panelBorder);
 

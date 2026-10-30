@@ -593,11 +593,13 @@ namespace {
         char clock[16];
         snprintf(clock, sizeof(clock), "%02d:%02d", hour / 100, hour % 100);
         chipText += (chipText.empty() ? U"" : U"  \u00B7  ") + muiDecodeUtf8(clock);
-        float size = ui.dp(12.0f);
-        float padding = ui.dp(8.0f);
-        float buttonSize = ui.dp(40.0f);
+        // A thin map strip: smaller chip and button, so they cover less of it.
+        bool thin = inner.h < ui.dp(150.0f);
+        float size = ui.dp(thin ? 10.0f : 12.0f);
+        float padding = ui.dp(thin ? 6.0f : 8.0f);
+        float buttonSize = ui.dp(thin ? 30.0f : 40.0f);
         float chipWidth = std::min(muiTextWidth(chipText, size) + padding * 2.0f, inner.w - buttonSize - ui.dp(16.0f));
-        MuiRect chip = { inner.x + ui.dp(4.0f), inner.y + ui.dp(4.0f), chipWidth, ui.dp(24.0f) };
+        MuiRect chip = { inner.x + ui.dp(4.0f), inner.y + ui.dp(4.0f), chipWidth, ui.dp(thin ? 18.0f : 24.0f) };
         muiFillRoundRect(chip, chip.h / 2.0f, muiRgb(0x070A06, 215));
         muiStrokeRoundRect(chip, chip.h / 2.0f, ui.dp(1.0f), theme.panelBorder);
         muiPushClip(chip);
@@ -1099,15 +1101,16 @@ namespace {
             float chipWidth;
         };
 
-        float textSize = ui.dp(12.0f);
-        float padding = ui.dp(10.0f);
+        // The Pip-Boy face is wide: smaller names and tighter chips keep all modes in view.
+        float textSize = muiSkinPipboy() ? ui.dp(10.0f) : ui.dp(12.0f);
+        float padding = muiSkinPipboy() ? ui.dp(6.0f) : ui.dp(10.0f);
         std::vector<Chip> chips;
         int selectedIndex = 0;
         for (int index = 0; index < count; index++) {
             bool aiming;
             InterfaceFrmId frmId = interfaceGetItemActionFrmId(actions[index], &aiming);
 
-            Chip chip = { actions[index], MuiIcon::Count, std::u32string(), rect.h };
+            Chip chip = { actions[index], MuiIcon::Count, std::u32string(), std::min(rect.h, ui.dp(34.0f)) };
             if (aiming) {
                 chip.icon = MuiIcon::Aim;
             } else if (actions[index] == INTERFACE_ITEM_ACTION_RELOAD) {

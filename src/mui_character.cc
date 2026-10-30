@@ -1,4 +1,5 @@
 #include "mui.h"
+#include "mui_gameskin.h"
 #include "mui_icons.h"
 #include "mui_notify.h"
 #include "mui_screens.h"
@@ -501,7 +502,7 @@ namespace {
     float CharacterScreen::chip(MuiContext& ui, const std::string& id, float x, const MuiRect& bar, const std::u32string& text, MuiColor color, MuiIcon icon, bool hasIcon, bool* tapped)
     {
         const MuiTheme& theme = muiTheme();
-        float size = ui.dp(14.0f);
+        float size = muiSkinPipboy() ? ui.dp(11.0f) : ui.dp(14.0f);
         float padding = ui.dp(9.0f);
         float iconSize = ui.dp(15.0f);
         float width = padding * 2.0f + muiTextWidth(text, size) + (hasIcon ? iconSize + ui.dp(5.0f) : 0.0f);
@@ -738,7 +739,7 @@ namespace {
     {
         const MuiTheme& theme = muiTheme();
         float gap = ui.dp(8.0f);
-        MuiRect left = { rect.x, rect.y, (rect.w - gap) * 0.54f, rect.h };
+        MuiRect left = { rect.x, rect.y, (rect.w - gap) * (muiSkinPipboy() ? 0.5f : 0.54f), rect.h };
         MuiRect right = { left.right() + gap, rect.y, rect.right() - left.right() - gap, rect.h };
 
         float rowHeight = std::clamp(rect.h / kCharacterEditorDerivedStatCount, ui.dp(21.0f), ui.dp(30.0f));
@@ -751,8 +752,10 @@ namespace {
         // Bottom screen: one size for every name of a column (the longest
         // one's fit, 11 dp at least), values in a column of their own.
         bool bottom = ui.surface == MuiSurface::Bottom;
-        float minimumSize = ui.dp(11.0f);
-        float primaryValueWidth = muiTextWidth(number(10), size);
+        // The Pip-Boy face is wide: it goes smaller before a name is cut.
+        float minimumSize = muiSkinPipboy() ? ui.dp(8.0f) : ui.dp(11.0f);
+        float primaryValueSize = muiSkinPipboy() ? ui.dp(11.0f) : size;
+        float primaryValueWidth = muiTextWidth(number(10), primaryValueSize);
         float primaryLabelSize = size;
         if (bottom) {
             float width = std::max(left.w - primaryValueWidth - padding * 4.0f, 0.0f);
@@ -810,7 +813,7 @@ namespace {
                 muiPushClip(labelRect);
                 muiDrawTextAligned(label, labelRect, primaryLabelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
                 muiPopClip();
-                muiDrawTextAligned(number(value), valueRect, size, theme.accent, MuiAlign::End, MuiAlign::Center);
+                muiDrawTextAligned(number(value), valueRect, primaryValueSize, theme.accent, MuiAlign::End, MuiAlign::Center);
                 continue;
             }
 
@@ -875,19 +878,22 @@ namespace {
         std::u32string derivedValues[kCharacterEditorDerivedStatCount];
         bool derivedWarnings[kCharacterEditorDerivedStatCount];
         float derivedValueWidth = 0.0f;
+        float derivedValueSize = muiSkinPipboy() ? ui.dp(11.0f) : size;
         for (int index = 0; index < kCharacterEditorDerivedStatCount; index++) {
             derivedValues[index] = gameText(characterEditorFormatDerivedStat(index, &derivedWarnings[index]).c_str());
-            derivedValueWidth = std::max(derivedValueWidth, muiTextWidth(derivedValues[index], size));
+            derivedValueWidth = std::max(derivedValueWidth, muiTextWidth(derivedValues[index], derivedValueSize));
         }
         float derivedLabelWidth = std::max(right.w - derivedValueWidth - padding * 3.0f, 0.0f);
         float derivedLabelSize = size;
+        // Short names when the full ones do not fit (the wide Pip-Boy face).
+        float derivedMinimum = minimumSize;
         for (int index = 0; index < kCharacterEditorDerivedStatCount; index++) {
             derivedLabels[index] = gameText(characterEditorGetDerivedStatName(index));
             if (bottom) {
-                if (muiTextWidth(derivedLabels[index], minimumSize) > derivedLabelWidth) {
+                if (muiTextWidth(derivedLabels[index], derivedMinimum) > derivedLabelWidth) {
                     derivedLabels[index] = ceText(kTextDerivedShort + index, kDerivedShortLabels[index]);
                 }
-                derivedLabelSize = std::min(derivedLabelSize, muiFitTextSize(derivedLabels[index], derivedLabelWidth, size, minimumSize));
+                derivedLabelSize = std::min(derivedLabelSize, muiFitTextSize(derivedLabels[index], derivedLabelWidth, size, derivedMinimum));
             }
         }
 
@@ -906,7 +912,7 @@ namespace {
                 muiPushClip(labelRect);
                 muiDrawTextAligned(label, labelRect, derivedLabelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
                 muiPopClip();
-                muiDrawTextAligned(value, { rowRect.x, rowRect.y, rowRect.w - padding, rowRect.h }, size, warning ? kWarning : theme.accent, MuiAlign::End, MuiAlign::Center);
+                muiDrawTextAligned(value, { rowRect.x, rowRect.y, rowRect.w - padding, rowRect.h }, derivedValueSize, warning ? kWarning : theme.accent, MuiAlign::End, MuiAlign::Center);
                 continue;
             }
 
@@ -1223,6 +1229,7 @@ namespace {
         MuiRect textRect = { content.x, y, content.w, std::max(content.bottom() - y, 0.0f) };
         float gapAfterSubtitle = !card.subtitle.empty() ? ui.dp(6.0f) : 0.0f;
         float textSize = ui.dp(13.5f);
+        float minimumText = muiSkinPipboy() ? ui.dp(8.0f) : ui.dp(10.5f);
         float lineHeight;
         std::vector<std::u32string> lines;
         size_t subtitleLines;
@@ -1236,8 +1243,8 @@ namespace {
                 lines.push_back(line);
             }
             lineHeight = muiLineHeight(textSize);
-            if (lines.size() * lineHeight + gapAfterSubtitle <= textRect.h || textSize <= ui.dp(10.5f)) break;
-            textSize = std::max(textSize - ui.dp(0.5f), ui.dp(10.5f));
+            if (lines.size() * lineHeight + gapAfterSubtitle <= textRect.h || textSize <= minimumText) break;
+            textSize = std::max(textSize - ui.dp(0.5f), minimumText);
         }
         float offset = ui.scroll(id, textRect, lines.size() * lineHeight + gapAfterSubtitle);
 

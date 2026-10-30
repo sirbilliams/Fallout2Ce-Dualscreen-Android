@@ -1100,8 +1100,12 @@ void muiGameButton(MuiContext& ui, const MuiRect& rect, bool pressed, bool prima
 void muiGameNamePlate(MuiContext& ui, float x, float y, const std::u32string& text)
 {
     if (muiSkinPipboy()) {
-        float size = ui.dp(10);
-        muiDrawText(text, x - muiTextWidth(text, size) / 2, y - muiLineHeight(size) / 2, size, muiTheme().textDim);
+        // On a plate of the panel's own colour, so the frame's line does not run through it.
+        float size = ui.dp(8);
+        float width = muiTextWidth(text, size);
+        float height = muiLineHeight(size);
+        muiFillRect({ x - width / 2 - ui.dp(4), y - height / 2, width + ui.dp(8), height }, muiRgb(0x031109));
+        muiDrawText(text, x - width / 2, y - height / 2, size, muiTheme().textDim);
         return;
     }
     float scale = 1.0f;
