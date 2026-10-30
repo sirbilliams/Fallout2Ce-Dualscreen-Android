@@ -272,7 +272,24 @@ public class SetupGuideActivity extends Activity {
         titleText.setText(R.string.guide_controls_title);
         addControl(R.string.guide_controls_touch_title, R.string.guide_controls_touch);
         addControl(R.string.guide_controls_pad_title, R.string.guide_controls_pad);
+        addControl(R.string.guide_controls_mouse_title, R.string.guide_controls_mouse);
+        // Right-stick cursor ([touch] pad_cursor, on by default), a switch of the page.
+        final Button stick = new Button(this);
+        stick.setAllCaps(false);
+        stick.setText(stickText());
+        stick.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                save("pad_cursor", GuideSettings.getInt(game, "pad_cursor", 1) != 0 ? 0 : 1);
+                stick.setText(stickText());
+            }
+        });
+        content.addView(stick);
         addControl(R.string.guide_controls_again_title, R.string.guide_controls_again);
+    }
+
+    private String stickText() {
+        return getString(R.string.guide_controls_stick) + ": " + getString(GuideSettings.getInt(game, "pad_cursor", 1) != 0 ? R.string.guide_on : R.string.guide_off);
     }
 
     private void addControl(int title, int body) {

@@ -96,7 +96,12 @@
     <string name="guide_controls_touch_title">Touch</string>
     <string name="guide_controls_touch">The top screen is the world: tap to walk, tap a person or a thing to act on it, touch and hold for the action menu, two fingers to move and zoom the view. The bottom screen holds the buttons: screens (inventory, character, Pip-Boy, map), tools, weapon and the game menu.</string>
     <string name="guide_controls_pad_title">Gamepad</string>
-    <string name="guide_controls_pad">B back. Start menu. Y inventory, X skills, L1 character, R1 Pip-Boy, R3 map, L3 sneak. L2 swaps hands, R2 uses the active item. Hold Select to end the turn. Right stick moves the view, D-pad up and down zoom.</string>
+    <string name="guide_controls_pad">B back. Start menu. Y inventory, X skills, L1 character, R1 Pip-Boy, L3 sneak. L2 swaps hands, R2 uses the active item. Hold Select to end the turn. Left stick moves the view, D-pad up and down zoom.</string>
+    <string name="guide_controls_mouse_title">Cursor</string>
+    <string name="guide_controls_mouse">The cursor follows your finger on the top screen. Two fingers tapped together, or touch and hold, right click (the action menu). The TOUCHPAD button on the bottom screen opens a trackpad: drag moves the cursor, tap clicks, hold then drag carries. With a gamepad the right stick moves the cursor; R3 or A click, B or holding R3 right click.</string>
+    <string name="guide_controls_stick">Right-stick cursor</string>
+    <string name="guide_on">On</string>
+    <string name="guide_off">Off</string>
     <string name="guide_controls_again_title">Again</string>
     <string name="guide_controls_again">This guide is shown once. Open it again in the game\'s Settings, Setup guide.</string>
 </resources>

@@ -228,6 +228,12 @@ namespace {
         int bottomTextSize;
         bool colourBlindSafe;
         bool topScanlines;
+        bool padCursor;
+        int padR3HoldMs;
+        bool touchCursor;
+        bool twoFingerClick;
+        int touchHoldMs;
+        int cursorSpeed;
 
         bool saveCompatibility;
         bool suspendSave;
@@ -267,6 +273,12 @@ namespace {
         values.bottomTextSize = settings.touch.bottom_text_size;
         values.colourBlindSafe = settings.touch.colour_blind_safe;
         values.topScanlines = settings.touch.top_scanlines;
+        values.padCursor = settings.touch.pad_cursor;
+        values.padR3HoldMs = settings.touch.pad_r3_hold_ms;
+        values.touchCursor = settings.touch.touch_cursor;
+        values.twoFingerClick = settings.touch.two_finger_click;
+        values.touchHoldMs = settings.touch.touch_hold_ms;
+        values.cursorSpeed = settings.touch.cursor_speed;
         values.bottomTheme = settings.touch.bottom_theme;
         values.reduceMotion = settings.touch.reduce_motion;
         values.saveCompatibility = settings.enhancements.save_compatibility;
@@ -308,6 +320,12 @@ namespace {
         values.bottomTextSize = 100;
         values.colourBlindSafe = false;
         values.topScanlines = false;
+        values.padCursor = TouchSettings().pad_cursor;
+        values.padR3HoldMs = TouchSettings().pad_r3_hold_ms;
+        values.touchCursor = TouchSettings().touch_cursor;
+        values.twoFingerClick = TouchSettings().two_finger_click;
+        values.touchHoldMs = TouchSettings().touch_hold_ms;
+        values.cursorSpeed = TouchSettings().cursor_speed;
         values.bottomTheme = TouchSettings().bottom_theme;
         values.reduceMotion = TouchSettings().reduce_motion;
         values.saveCompatibility = EnhancementSettings().save_compatibility;
@@ -401,6 +419,12 @@ namespace {
         settings.touch.bottom_text_size = values.bottomTextSize;
         settings.touch.colour_blind_safe = values.colourBlindSafe;
         settings.touch.top_scanlines = values.topScanlines;
+        settings.touch.pad_cursor = values.padCursor;
+        settings.touch.pad_r3_hold_ms = values.padR3HoldMs;
+        settings.touch.touch_cursor = values.touchCursor;
+        settings.touch.two_finger_click = values.twoFingerClick;
+        settings.touch.touch_hold_ms = values.touchHoldMs;
+        settings.touch.cursor_speed = values.cursorSpeed;
 
         settings.enhancements.save_compatibility = values.saveCompatibility;
         settings.enhancements.auto_quicksave_on_suspend = values.suspendSave;
@@ -655,6 +679,37 @@ namespace {
             Row row { Section::Game, RowKind::Toggle, kTextKarmaChanges, "Karma change messages", Origin::Ce, kTextKarmaChangesNote, "In the log: \"You gained 5 karma.\"" };
             row.get = [](const Values& values) { return values.karmaChanges ? 1.0f : 0.0f; };
             row.set = [](Values& values, float value) { values.karmaChanges = value != 0.0f; };
+            rows.push_back(row);
+        }
+        header(Section::Game, 1125, "Mouse controls");
+        toggle(Section::Game, 1126, "Right-stick cursor (R3 / A click, B right click)", Origin::Port, &Values::padCursor);
+        toggle(Section::Game, 1127, "Cursor at the finger", Origin::Port, &Values::touchCursor);
+        toggle(Section::Game, 1128, "Two-finger tap right clicks", Origin::Port, &Values::twoFingerClick);
+        {
+            Row row { Section::Game, RowKind::Slider, 1129, "Cursor speed (%)", Origin::Port };
+            row.minValue = 25;
+            row.maxValue = 300;
+            row.get = [](const Values& v) { return float(v.cursorSpeed); };
+            row.set = [](Values& v, float n) { v.cursorSpeed = int(std::lround(n / 5.0f)) * 5; };
+            row.format = [](float n) { return std::to_string(int(std::lround(n / 5.0f)) * 5); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Game, RowKind::Slider, 1130, "Touch & hold right clicks after (ms, 0: system)", Origin::Port };
+            row.minValue = 0;
+            row.maxValue = 1000;
+            row.get = [](const Values& v) { return float(v.touchHoldMs); };
+            row.set = [](Values& v, float n) { v.touchHoldMs = int(std::lround(n / 50.0f)) * 50; };
+            row.format = [](float n) { return std::to_string(int(std::lround(n / 50.0f)) * 50); };
+            rows.push_back(row);
+        }
+        {
+            Row row { Section::Game, RowKind::Slider, 1131, "Hold R3 to right click after (ms)", Origin::Port };
+            row.minValue = 200;
+            row.maxValue = 1000;
+            row.get = [](const Values& v) { return float(v.padR3HoldMs); };
+            row.set = [](Values& v, float n) { v.padR3HoldMs = int(std::lround(n / 50.0f)) * 50; };
+            row.format = [](float n) { return std::to_string(int(std::lround(n / 50.0f)) * 50); };
             rows.push_back(row);
         }
         header(Section::Game, kTextPartyMembers, "Party members");
@@ -999,6 +1054,7 @@ namespace {
         settings.touch.bottom_text_size = edited.bottomTextSize;
         settings.touch.colour_blind_safe = edited.colourBlindSafe;
         settings.touch.top_scanlines = edited.topScanlines;
+        settings.touch.cursor_speed = edited.cursorSpeed;
 
         const PreferenceValues& a = before.preferences;
         const PreferenceValues& b = edited.preferences;
