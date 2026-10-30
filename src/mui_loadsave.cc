@@ -707,7 +707,14 @@ namespace {
             }
             themedButton(ui, deleteButton, pressed);
             muiStrokeRoundRect(deleteButton, ui.dp(6.0f), ui.dp(1.0f), kDanger);
-            muiDrawTextAligned(text(kTextDelete, "Delete"), deleteButton, ui.dp(13.0f), kDanger, MuiAlign::Center, MuiAlign::Center);
+            std::u32string deleteLabel = text(kTextDelete, "Delete");
+            if (muiSkinFallout()) {
+                // The game's capitals, as the other buttons of both its skins.
+                for (char32_t& ch : deleteLabel) {
+                    if (ch >= U'a' && ch <= U'z') ch = ch - U'a' + U'A';
+                }
+            }
+            muiDrawTextAligned(deleteLabel, deleteButton, muiFitTextSize(deleteLabel, deleteButton.w - ui.dp(8.0f), ui.dp(13.0f), ui.dp(8.0f)), kDanger, MuiAlign::Center, MuiAlign::Center);
 
             action.x = deleteButton.right() + ui.dp(6.0f);
             action.w = inner.right() - action.x;

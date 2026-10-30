@@ -1314,14 +1314,9 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
     }
 
     // Over every screen, not touchable: with the HUD's log.
-    bool dialogNoticesOnTop = muiBottomActive()
-        && ((gameDialogIsTalking() && settings.touch.dialogue_layout != 0)
-            || (gameDialogIsInBarter() && settings.touch.barter_layout != 0));
-    if (surface == (dialogNoticesOnTop ? MuiSurface::Top : muiHudSurface())) {
-        context.current = nullptr;
-        context.isInteractive = false;
-        muiNotifyRender(context);
-    }
+    context.current = nullptr;
+    context.isInteractive = false;
+    muiNotifyRender(context);
 
     if (surface == MuiSurface::Bottom && muiBottomDimmed()) {
         muiFillRect(context.screen, muiRgb(0, 190));

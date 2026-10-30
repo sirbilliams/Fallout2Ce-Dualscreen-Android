@@ -439,6 +439,15 @@ namespace {
         float offset = ui.scroll(id, inner, names.size() * rowHeight);
         bool scrolling = ui.isScrolling(id);
 
+        // One size for the whole list (the smallest any name needs, down to
+        // 10 dp); only the names that still do not fit are cut short.
+        float listSize = size;
+        for (int index = 0; index < static_cast<int>(names.size()); index++) {
+            const std::u32string& detail = index < static_cast<int>(details.size()) ? details[index] : std::u32string();
+            float detailWidth = detail.empty() ? 0.0f : muiTextWidth(detail, size) + padding;
+            listSize = std::min(listSize, muiFitTextSize(names[index], inner.w - padding * 2.0f - detailWidth, size, ui.dp(10.0f)));
+        }
+
         muiPushClip(inner);
         for (int index = 0; index < static_cast<int>(names.size()); index++) {
             MuiRect rowRect = { inner.x, inner.y - offset + index * rowHeight, inner.w, rowHeight };
@@ -454,7 +463,7 @@ namespace {
 
             const std::u32string& detail = index < static_cast<int>(details.size()) ? details[index] : std::u32string();
             float detailWidth = detail.empty() ? 0.0f : muiTextWidth(detail, size) + padding;
-            float textSize = muiFitTextSize(names[index], rowRect.w - padding * 2.0f - detailWidth, size, ui.dp(10.0f));
+            float textSize = listSize;
             muiDrawTextAligned(fitLine(names[index], rowRect.w - padding * 2.0f - detailWidth, textSize), { rowRect.x + padding, rowRect.y, rowRect.w, rowRect.h }, textSize, index == *selected ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
             if (!detail.empty()) {
                 muiDrawTextAligned(detail, { rowRect.x, rowRect.y, rowRect.w - padding, rowRect.h }, size, theme.textDim, MuiAlign::End, MuiAlign::Center);
@@ -696,7 +705,10 @@ namespace {
 
             std::u32string name = gameText(locations[index].name);
             float textX = ax + a + ui.dp(8.0f);
-            muiDrawTextAligned(fitLine(name, rowRect.right() - textX - padding, muiFitTextSize(name, rowRect.right() - textX - padding, size, ui.dp(10.0f))), { textX, rowRect.y, rowRect.right() - textX - padding, rowRect.h }, muiFitTextSize(name, rowRect.right() - textX - padding, size, ui.dp(10.0f)), open ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
+            // One size for every location (and one for the maps under them);
+            // a name too long for it is cut short.
+            float nameSize = ui.dp(12.5f);
+            muiDrawTextAligned(fitLine(name, rowRect.right() - textX - padding, nameSize), { textX, rowRect.y, rowRect.right() - textX - padding, rowRect.h }, nameSize, open ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
 
             if (!open) {
                 continue;
@@ -711,7 +723,7 @@ namespace {
                 }
 
                 std::u32string mapName = gameText(locations[index].maps[entry].name);
-                float mapSize = muiFitTextSize(mapName, subRect.w - padding * 2.0f, ui.dp(13.5f), ui.dp(10.0f));
+                float mapSize = ui.dp(11.5f);
                 muiDrawTextAligned(fitLine(mapName, subRect.w - padding * 2.0f, mapSize), { subRect.x + padding, subRect.y, subRect.w, subRect.h }, mapSize, entry == mapEntry ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
             }
         }
@@ -877,11 +889,12 @@ namespace {
         if (detail.empty()) {
             muiDrawTextAligned(label, rect, size, color, MuiAlign::Center, MuiAlign::Center);
         } else {
-            float detailSize = ui.dp(11.0f);
+            // The time it ends: readable, not a dim footnote.
+            float detailSize = std::min(ui.dp(12.5f), size);
             float total = muiLineHeight(size) + muiLineHeight(detailSize);
             float y = rect.centerY() - total / 2.0f;
             muiDrawTextAligned(label, { rect.x, y, rect.w, muiLineHeight(size) }, size, color, MuiAlign::Center, MuiAlign::Start);
-            muiDrawTextAligned(detail, { rect.x, y + muiLineHeight(size), rect.w, muiLineHeight(detailSize) }, detailSize, enabled ? theme.textDim : theme.textDim.withAlpha(90), MuiAlign::Center, MuiAlign::Start);
+            muiDrawTextAligned(detail, { rect.x, y + muiLineHeight(size), rect.w, muiLineHeight(detailSize) }, detailSize, enabled ? theme.text.withAlpha(215) : theme.textDim.withAlpha(90), MuiAlign::Center, MuiAlign::Start);
         }
         return tapped && enabled;
     }

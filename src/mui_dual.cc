@@ -500,26 +500,29 @@ void muiDualTopDim(MuiContext& ui)
 
     float progress = std::min(static_cast<float>(ui.now - gTopDimStart) / kDimMs, 1.0f);
     MuiRect screen = ui.screenRect();
-    muiFillRect(screen, muiRgb(0x000000, static_cast<Uint8>(progress * 170.0f)));
+    // Dim enough to say "paused", the world stays recognisable.
+    muiFillRect(screen, muiRgb(0x000000, static_cast<Uint8>(progress * 105.0f)));
 
     // Points down to where the game goes on: a chip at the bottom edge,
     // bobbing gently.
     std::u32string label = text(kTextPaused, "Game paused: continue on the bottom screen");
-    float size = ui.dp(15.0f);
-    float arrow = ui.dp(10.0f);
-    float chipWidth = muiTextWidth(label, size) + ui.dp(36.0f) + arrow * 2.0f;
-    float bob = sinf(static_cast<float>(ui.now) / 280.0f) * ui.dp(3.0f);
+    // The top screen is large and far from the eyes: the chip scales with it.
+    float scale = std::max(1.0f, screen.h / ui.dp(520.0f));
+    float size = ui.dp(15.0f) * scale;
+    float arrow = ui.dp(10.0f) * scale;
+    float chipWidth = muiTextWidth(label, size) + ui.dp(36.0f) * scale + arrow * 2.0f;
+    float bob = sinf(static_cast<float>(ui.now) / 280.0f) * ui.dp(3.0f) * scale;
     MuiRect safe = ui.safeRect();
-    MuiRect chip = { screen.centerX() - chipWidth / 2.0f, safe.bottom() - ui.dp(56.0f) + bob, chipWidth, ui.dp(36.0f) };
+    MuiRect chip = { screen.centerX() - chipWidth / 2.0f, safe.bottom() - ui.dp(56.0f) * scale + bob, chipWidth, ui.dp(36.0f) * scale };
     Uint8 alpha = static_cast<Uint8>(progress * 255.0f);
     muiFillRoundRect(chip, chip.h / 2.0f, muiRgb(0x0C0F09, static_cast<Uint8>(progress * 235.0f)));
-    muiStrokeRoundRect(chip, chip.h / 2.0f, ui.dp(1.5f), theme.accent.withAlpha(alpha));
+    muiStrokeRoundRect(chip, chip.h / 2.0f, ui.dp(1.5f) * scale, theme.accent.withAlpha(alpha));
 
-    float arrowX = chip.x + ui.dp(18.0f) + arrow;
+    float arrowX = chip.x + ui.dp(18.0f) * scale + arrow;
     float arrowY = chip.centerY();
     muiFillConvex({ { arrowX - arrow, arrowY - arrow * 0.5f }, { arrowX + arrow, arrowY - arrow * 0.5f }, { arrowX, arrowY + arrow * 0.6f } }, theme.accent.withAlpha(alpha));
 
-    MuiRect textRect = { arrowX + arrow + ui.dp(10.0f), chip.y, chip.right() - (arrowX + arrow + ui.dp(10.0f)) - ui.dp(16.0f), chip.h };
+    MuiRect textRect = { arrowX + arrow + ui.dp(10.0f) * scale, chip.y, chip.right() - (arrowX + arrow + ui.dp(10.0f) * scale) - ui.dp(16.0f) * scale, chip.h };
     muiDrawTextAligned(label, textRect, size, theme.text.withAlpha(alpha), MuiAlign::Start, MuiAlign::Center);
 }
 

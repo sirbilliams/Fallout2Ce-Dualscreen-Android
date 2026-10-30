@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "game_dialog.h"
+#include "settings.h"
 #include "touch_hud.h"
 
 namespace fallout {
@@ -45,6 +47,7 @@ namespace {
     bool gHudThisFrame = false;
     MuiRect gHudArea;
     bool gHudLogOpen = false;
+    bool gHudShownLast = false;
 
     unsigned int duration(const Notice& notice, bool hud)
     {
@@ -225,12 +228,31 @@ void muiNotifyHudArea(const MuiRect& area, bool logOpen)
 
 void muiNotifyRender(MuiContext& ui)
 {
-    bool hudShown = gHudThisFrame && !muiCoversSurface(ui.surface);
-    gHudThisFrame = false;
+    // Log lines go with the HUD; plates (toasts) go on the top screen of a
+    // dual-screen device, where nothing is touchable under them (on the bottom
+    // they covered tabs, slots and buttons).
+    MuiSurface hudSurface = muiHudSurface();
+    // (A dialogue or barter drawn on the top screen keeps them on the bottom.)
+    bool topIsBusy = (gameDialogIsTalking() && settings.touch.dialogue_layout == 0) || (gameDialogIsInBarter() && settings.touch.barter_layout == 0);
+    MuiSurface plateSurface = muiBottomActive() && !topIsBusy ? MuiSurface::Top : hudSurface;
+    bool hudPass = ui.surface == hudSurface;
+    bool platePass = ui.surface == plateSurface;
+    if (!hudPass && !platePass) {
+        return;
+    }
+
+    bool hudShown;
+    if (hudPass) {
+        hudShown = gHudThisFrame && !muiCoversSurface(hudSurface);
+        gHudThisFrame = false;
+        gHudShownLast = hudShown;
+    } else {
+        hudShown = gHudShownLast;
+    }
 
     // Where the log is seen: the HUD's log, or the game's interface bar when
     // the touch HUD is off and no screen covers it.
-    bool gameLogShown = !touchHudIsEnabled() && !muiCoversSurface(ui.surface);
+    bool gameLogShown = !touchHudIsEnabled() && !muiCoversSurface(hudSurface);
 
     std::vector<Notice*> hud;
     std::vector<Notice*> plates;
@@ -261,10 +283,10 @@ void muiNotifyRender(MuiContext& ui)
         }
     }
 
-    if (!hud.empty()) {
+    if (hudPass && !hud.empty()) {
         drawHud(ui, hud);
     }
-    if (!plates.empty()) {
+    if (platePass && !plates.empty()) {
         drawPlates(ui, plates);
     }
 

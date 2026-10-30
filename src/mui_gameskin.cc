@@ -1121,8 +1121,13 @@ void muiGameNamePlate(MuiContext& ui, float x, float y, const std::u32string& te
 void muiGameButtonLabel(MuiContext& ui, const MuiRect& rect, const std::u32string& label, MuiColor color)
 {
     if (muiSkinPipboy()) {
-        float size = muiFitTextSize(label, rect.w - ui.dp(14), ui.dp(14), ui.dp(7));
-        muiDrawTextAligned(label, rect, size, muiTheme().text, MuiAlign::Center, MuiAlign::Center);
+        // Capitals, as the game's own button lettering (and the Classic skin).
+        std::u32string upper = label;
+        for (char32_t& ch : upper) {
+            if (ch >= U'a' && ch <= U'z') ch = ch - U'a' + U'A';
+        }
+        float size = muiFitTextSize(upper, rect.w - ui.dp(14), ui.dp(14), ui.dp(7));
+        muiDrawTextAligned(upper, rect, size, muiTheme().text, MuiAlign::Center, MuiAlign::Center);
         return;
     }
     float room = rect.w - ui.dp(14.0f);
@@ -1135,6 +1140,25 @@ void muiGameButtonLabel(MuiContext& ui, const MuiRect& rect, const std::u32strin
 
 void muiGameLamp(MuiContext& ui, const MuiRect& rect, bool on, bool pressed)
 {
+    if (muiSkinPipboy()) {
+        // A phosphor switch: lit green with the knob at the right while on, a
+        // dark slot with an outlined knob at the left while off.
+        const MuiTheme& theme = muiTheme();
+        float height = std::min(rect.h, ui.dp(26.0f));
+        float width = std::min(rect.w, height * 1.9f);
+        MuiRect track = { rect.right() - width, rect.centerY() - height / 2.0f, width, height };
+        MuiColor line = on ? theme.text : theme.textDim;
+        muiFillRoundRect(track, height / 2.0f, on ? theme.text.withAlpha(pressed ? 120 : 80) : muiRgb(0x010603, 230));
+        muiStrokeRoundRect(track, height / 2.0f, ui.dp(1.5f), line);
+        float radius = height / 2.0f - ui.dp(4.0f);
+        float knobX = on ? track.right() - height / 2.0f : track.x + height / 2.0f;
+        if (on) {
+            muiFillCircle(knobX, track.centerY(), radius, theme.text);
+        } else {
+            muiStrokeCircle(knobX, track.centerY(), radius, ui.dp(1.5f), line);
+        }
+        return;
+    }
     (void)pressed;
     float size = std::min(rect.h, ui.dp(34.0f));
     float scale = std::max(1.0f, floorf(size / 34.0f * 1.0f + 0.5f));
