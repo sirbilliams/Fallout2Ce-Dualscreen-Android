@@ -88,8 +88,8 @@ static const HudLayout kDashboardLayout = {
             {
                 { { HudElementId::Indicators, kHudFill, 22.0f } },
                 { { HudElementId::Status, kHudFill, 24.0f } },
-                { { HudElementId::Modes, kHudFill, 44.0f } },
-                { { HudElementId::SwapHands, kDashButton, 64.0f }, { HudElementId::Weapon, 180.0f, 64.0f } },
+                { { HudElementId::Modes, kHudFill, 40.0f } },
+                { { HudElementId::SwapHands, kDashButton, 48.0f }, { HudElementId::Weapon, 180.0f, 48.0f } },
             },
             false, 6.0f },
         { HudGroupId::Combat, HudAnchor::Right, HudFlow::Columns, HudAlign::Start,

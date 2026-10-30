@@ -588,6 +588,10 @@ void muiCombatPanelBuild(MuiContext& ui, const MuiRect& rect, MuiRect* modes)
 
     float rowHeight = ui.dp(62.0f);
     float rowGap = ui.dp(5.0f);
+    // Two enemies fit without clipping the second row's state line.
+    if (found.size() >= 2) {
+        rowHeight = std::max(ui.dp(44.0f), std::min(rowHeight, (list.h - rowGap) / 2.0f));
+    }
     float contentHeight = found.size() * (rowHeight + rowGap);
     float offset = ui.scroll("combat.list", list, contentHeight);
     muiPushClip(list);
