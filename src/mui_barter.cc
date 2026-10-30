@@ -236,9 +236,11 @@ namespace {
         // Filters and table titles.
         muiItemFilterRow(ui, "barter.filter.player", { playerX, filterY, sideWidth, rowHeight }, &playerFilter);
         muiItemFilterRow(ui, "barter.filter.barterer", { bartererX, filterY, sideWidth, rowHeight }, &bartererFilter);
-        float titleSize = ui.dp(12.0f);
-        muiDrawTextAligned(muiDecodeGameText(text(kTextYourOffer, "OFFER")), { offerX, filterY, unit, rowHeight }, titleSize, theme.textDim, MuiAlign::Center, MuiAlign::Center);
-        muiDrawTextAligned(muiDecodeGameText(text(kTextRequest, "REQUEST")), { requestX, filterY, unit, rowHeight }, titleSize, theme.textDim, MuiAlign::Center, MuiAlign::Center);
+        std::u32string offerTitle = muiDecodeGameText(text(kTextYourOffer, "OFFER"));
+        std::u32string requestTitle = muiDecodeGameText(text(kTextRequest, "REQUEST"));
+        float titleSize = std::min(muiFitTextSize(offerTitle, unit - ui.dp(6.0f), ui.dp(12.0f), ui.dp(7.0f)), muiFitTextSize(requestTitle, unit - ui.dp(6.0f), ui.dp(12.0f), ui.dp(7.0f)));
+        muiDrawTextAligned(offerTitle, { offerX, filterY, unit, rowHeight }, titleSize, theme.textDim, MuiAlign::Center, MuiAlign::Center);
+        muiDrawTextAligned(requestTitle, { requestX, filterY, unit, rowHeight }, titleSize, theme.textDim, MuiAlign::Center, MuiAlign::Center);
 
         // Lists.
         MuiItemFilterState all;

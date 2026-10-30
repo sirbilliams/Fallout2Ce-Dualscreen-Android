@@ -135,6 +135,7 @@ enum DevAutotestAction {
     // Talks to the critter with pid `0x01000000 + a` (0: nearest),
     // placing the player beside it for a deterministic start.
     DEV_AUTOTEST_ACTION_TALK_TO_PID,
+    DEV_AUTOTEST_ACTION_OPEN_LOOT_CORPSE,
     // Chooses talk option `a`: the mobile UI screen's way, or the digit key
     // with the game's windows.
     DEV_AUTOTEST_ACTION_CHOOSE_OPTION,
@@ -698,7 +699,8 @@ static const DevAutotestStep kDevAutotestUiSteps[] = {
 static const DevAutotestStep kDevAutotestTalkSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "t00_map" },
     { DEV_AUTOTEST_ACTION_CENTER_CRITTER, 0, 0, 0, 10, "t01_center_critter" },
-    { DEV_AUTOTEST_ACTION_TOUCH_TAP_CRITTER, 0, 0, 0, 300, "t02_talk" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "t02_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 60, "t02_talk_ready" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "t03_option_0", "talk.options.0" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "t04_review", "dialog.tab.review" },
     { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 30, "t05_review_closed" },
@@ -927,7 +929,10 @@ static const DevAutotestStep kDevAutotestBarterSteps[] = {
     { DEV_AUTOTEST_ACTION_GIVE_ITEM, 40, 0, 0, 1, "b03_give_stimpak" },
     { DEV_AUTOTEST_ACTION_GIVE_ITEM, 4, 0, 0, 1, "b04_give_knife" },
     { DEV_AUTOTEST_ACTION_CENTER_CRITTER, 0, 0, 0, 10, "b05_center_critter" },
-    { DEV_AUTOTEST_ACTION_TOUCH_TAP_CRITTER, 0, 0, 0, 300, "b06_talk" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "b06_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 30, "b06_talk_ready" },
+    { DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM, 40, 6, 0, 1, "b06a_trader_stock" },
+    { DEV_AUTOTEST_ACTION_GIVE_SPEAKER_ITEM, 41, 200, 0, 1, "b06b_trader_caps" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "b07_barter", "dialog.tab.barter" },
     { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 40, "b08_quantity_item", "barter.player.pid.40" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b09_quantity_done", "quantity.done" },
@@ -1494,7 +1499,8 @@ static const DevAutotestStep kDevAutotestLootSteps[] = {
     { DEV_AUTOTEST_ACTION_GIVE_CORPSE_ITEM, 46, 0, 0, 1, "l06_corpse_bag" },
     { DEV_AUTOTEST_ACTION_GIVE_CORPSE_ITEM, 40, 3, 0, 1, "l07_corpse_stimpak" },
     { DEV_AUTOTEST_ACTION_CENTER_CORPSE, 0, 0, 0, 10, "l08_center" },
-    { DEV_AUTOTEST_ACTION_TOUCH_TAP_CORPSE, 0, 0, 0, 240, "l09_open_loot" },
+    { DEV_AUTOTEST_ACTION_OPEN_LOOT_CORPSE, 0, 0, 0, 240, "l09_open_loot" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "l09a_loot_ready" },
     { DEV_AUTOTEST_ACTION_LOG_INVENTORY, 0, 0, 0, 1, "l09b_log" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "l09c_quantity", "loot.right.pid.40" },
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "l09d_picker_present", "quantity.plus" },
@@ -2880,6 +2886,9 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "loot") == 0) {
         gDevAutotestSteps = kDevAutotestLootSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestLootSteps) / sizeof(kDevAutotestLootSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "pcbar") == 0) {
         gDevAutotestSteps = kDevAutotestPcBarSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestPcBarSteps) / sizeof(kDevAutotestPcBarSteps[0]);
@@ -3014,9 +3023,15 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "barter") == 0) {
         gDevAutotestSteps = kDevAutotestBarterSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestBarterSteps) / sizeof(kDevAutotestBarterSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "talk") == 0) {
         gDevAutotestSteps = kDevAutotestTalkSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestTalkSteps) / sizeof(kDevAutotestTalkSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "ui") == 0) {
         gDevAutotestSteps = kDevAutotestUiSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestUiSteps) / sizeof(kDevAutotestUiSteps[0]);
@@ -3440,6 +3455,22 @@ void devAutotestTick()
             devAutotestLog("  no critter pid %d\n", pid);
             break;
         }
+        case DEV_AUTOTEST_ACTION_OPEN_LOOT_CORPSE:
+            // The tap-driven open (a tap on the corpse) depends on where the
+            // camera and the dude are; this one stands next to the corpse and
+            // opens the loot screen, the same start every run.
+            if (gDevAutotestCorpse != nullptr) {
+                int tile = tileGetTileInDirection(gDevAutotestCorpse->tile, ROTATION_SW, 1);
+                Rect rect;
+                objectSetLocation(gDude, tile, gDevAutotestCorpse->elevation, &rect);
+                devAutotestLog("  loot corpse at tile %d from tile %d\n", gDevAutotestCorpse->tile, tile);
+                // As the game's own loot action: the request runs on the
+                // next frame, in the main loop.
+                scriptsRequestLooting(gDude, gDevAutotestCorpse);
+            } else {
+                devAutotestLog("  no corpse\n");
+            }
+            break;
         case DEV_AUTOTEST_ACTION_DIALOG_BARTER:
             if (muiIsEnabled()) {
                 gameDialogRequestBarter();

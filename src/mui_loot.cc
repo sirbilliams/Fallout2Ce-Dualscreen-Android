@@ -394,9 +394,9 @@ namespace {
 
         // Arrow towards where the items go.
         std::u32string label = muiDecodeGameText(primary ? muiText(kTextTakeAll, "TAKE ALL") : muiText(kTextGiveAll, "GIVE ALL"));
-        textSize = ui.dp(13.0f);
         float arrowSize = ui.dp(14.0f);
         float arrowGap = ui.dp(6.0f);
+        textSize = muiFitTextSize(label, button.w - arrowSize - arrowGap - ui.dp(12.0f), ui.dp(13.0f), ui.dp(8.0f));
         float textWidth = std::min(muiTextWidth(label, textSize), button.w - arrowSize - arrowGap - ui.dp(12.0f));
         float start = button.centerX() - (textWidth + arrowGap + arrowSize) / 2.0f;
         float arrowX = primary ? start + arrowSize / 2.0f : start + textWidth + arrowGap + arrowSize / 2.0f;
