@@ -417,7 +417,8 @@ void initSettingsRegistry(bool isMapper)
     SETTING_P(barter_layout, clamp(0, 1));
     SETTING(dialogue_tap_skip);
     SETTING(barter_confirm);
-    SETTING_P(bottom_theme, clamp(0, 1));
+    SETTING_P(bottom_theme, clamp(0, 2));
+    SETTING(reduce_motion);
     SETTING(gamepad_ui);
     SETTING(gamepad_bindings);
     SETTING_P(perf_mode, [](std::string& value, const char*, const char*) {

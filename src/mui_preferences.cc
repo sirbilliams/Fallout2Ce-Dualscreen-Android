@@ -222,6 +222,7 @@ namespace {
         bool dialogueTapSkip;
         bool barterConfirm;
         int bottomTheme;
+        bool reduceMotion;
         int perfMode;
         int bottomDimSeconds;
         int bottomTextSize;
@@ -267,6 +268,7 @@ namespace {
         values.colourBlindSafe = settings.touch.colour_blind_safe;
         values.topScanlines = settings.touch.top_scanlines;
         values.bottomTheme = settings.touch.bottom_theme;
+        values.reduceMotion = settings.touch.reduce_motion;
         values.saveCompatibility = settings.enhancements.save_compatibility;
         values.suspendSave = settings.enhancements.auto_quicksave_on_suspend;
         values.interfaceSize = settings.touch.hud_scale;
@@ -307,6 +309,7 @@ namespace {
         values.colourBlindSafe = false;
         values.topScanlines = false;
         values.bottomTheme = TouchSettings().bottom_theme;
+        values.reduceMotion = TouchSettings().reduce_motion;
         values.saveCompatibility = EnhancementSettings().save_compatibility;
         values.suspendSave = true;
         values.interfaceSize = TouchSettings().hud_scale;
@@ -392,6 +395,7 @@ namespace {
         settings.touch.dialogue_tap_skip = values.dialogueTapSkip;
         settings.touch.barter_confirm = values.barterConfirm;
         settings.touch.bottom_theme = values.bottomTheme;
+        settings.touch.reduce_motion = values.reduceMotion;
         settings.touch.perf_mode = values.perfMode ? "saver" : "balanced";
         settings.touch.bottom_dim_seconds = values.bottomDimSeconds;
         settings.touch.bottom_text_size = values.bottomTextSize;
@@ -815,13 +819,17 @@ namespace {
         }
         {
             Row row { Section::Display, RowKind::Choice, kTextBottomTheme, "Bottom screen theme", Origin::Port };
-            row.options = { 961, 962 };
+            row.options = { 961, 962, 963 };
             row.optionsFromCe = true;
             row.get = [](const Values& values) { return static_cast<float>(values.bottomTheme); };
             row.set = [](Values& values, float value) { values.bottomTheme = static_cast<int>(value); };
             rows.push_back(row);
         }
         {
+            Row motion { Section::Display, RowKind::Toggle, 964, "Reduce motion", Origin::Port };
+            motion.get = [](const Values& v) { return v.reduceMotion ? 1.0f : 0.0f; };
+            motion.set = [](Values& v, float x) { v.reduceMotion = x != 0; };
+            rows.push_back(motion);
             Row row { Section::Display, RowKind::Toggle, 1040, "Tap maps to walk or travel", Origin::Port };
             row.get = [](const Values& values) { return values.mapTapMove ? 1.0f : 0.0f; };
             row.set = [](Values& values, float value) { values.mapTapMove = value != 0.0f; };
@@ -943,7 +951,7 @@ namespace {
             static const char* const kDialogueFallbacks[] = { "Top", "Split", "Split, mirrored" };
             static const char* const kSizeFallbacks[] = { "Normal", "Large" };
             static const char* const kBarterFallbacks[] = { "Top", "Bottom" };
-            static const char* const kThemeFallbacks[] = { "Fallout", "Classic" };
+            static const char* const kThemeFallbacks[] = { "Fallout", "Classic", "Pip-Boy 2000" };
             const char* fallback = row.textId == 1080   ? (index == 0 ? "Balanced (60)" : "Saver (30)")
                 : row.textId == kTextDashboardLayout    ? kDashboardFallbacks[index]
                 : row.textId == kTextScreenNav          ? kNavFallbacks[index]
@@ -985,6 +993,7 @@ namespace {
         settings.touch.screen_nav = edited.screenNav;
         settings.touch.dialogue_layout = edited.dialogueLayout;
         settings.touch.bottom_theme = edited.bottomTheme;
+        settings.touch.reduce_motion = edited.reduceMotion;
         settings.touch.perf_mode = edited.perfMode ? "saver" : "balanced";
         settings.touch.bottom_dim_seconds = edited.bottomDimSeconds;
         settings.touch.bottom_text_size = edited.bottomTextSize;
@@ -1391,6 +1400,7 @@ namespace {
             MuiRect info = { map.right() + ui.dp(4), thumb.y, thumb.right() - map.right() - ui.dp(4), thumb.h };
             std::u32string label = edited.dashboardLayout == 1 ? U"MAP FIRST" : edited.dashboardLayout == 2 ? U"TWO COLUMNS"
                                                                                                             : U"CLASSIC";
+            if (edited.bottomTheme == 2) label = U"PIP-BOY 2000";
             muiDrawText(label, info.x, info.y, ui.dp(10), theme.accent);
             muiDrawText(U"HP 42/60", info.x, info.y + ui.dp(18), ui.dp(10), theme.text);
             std::u32string talk = edited.dialogueLayout == 0 ? U"DIALOGUE: TOP" : edited.dialogueLayout == 1 ? U"DIALOGUE: SPLIT"

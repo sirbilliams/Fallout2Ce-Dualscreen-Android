@@ -274,6 +274,7 @@ namespace {
 
     float glyphAdvance(const TextGlyph& glyph, const GameFont& font)
     {
+        if (muiSkinPipboy()) return font.width['M'] + font.letterSpacing;
         return glyph.fittedDollar ? (font.width['0'] > 0 ? font.width['0'] : digitInk(font).w) + font.letterSpacing : advanceOf(glyph.ch, *glyph.font);
     }
 
@@ -289,6 +290,7 @@ namespace {
     Pick pickForSize(float size)
     {
         float height = size * 1.05f;
+        if (muiSkinPipboy()) return { 1, std::max(1.0f, std::round(height / 9.0f * 4.0f) / 4.0f) };
         if (size < 26.0f) {
             return { 1, std::clamp(floorf(height / 9.0f + 0.3f), 2.0f, 3.0f) };
         }
@@ -736,9 +738,14 @@ namespace {
 
 } // namespace
 
+bool muiSkinPipboy()
+{
+    return muiBottomActive() && muiCurrentSurface() == MuiSurface::Bottom && settings.touch.bottom_theme == 2;
+}
+
 bool muiSkinFallout()
 {
-    return muiBottomActive() && muiCurrentSurface() == MuiSurface::Bottom && settings.touch.bottom_theme == 0;
+    return muiBottomActive() && muiCurrentSurface() == MuiSurface::Bottom && (settings.touch.bottom_theme == 0 || settings.touch.bottom_theme == 2);
 }
 
 float muiGameTextWidth(const std::u32string& text, float size)
@@ -760,7 +767,11 @@ void muiGameDrawText(const std::u32string& text, float x, float y, float size, M
 {
     Pick pick = pickForSize(size);
     pick.scale *= bottomTextScale();
-    drawText(text, x, y, pick.font, pick.scale, color, true);
+    if (muiSkinPipboy()) {
+        for (auto d : { SDL_FPoint{-1, 0}, SDL_FPoint{1, 0}, SDL_FPoint{0, -1}, SDL_FPoint{0, 1} })
+            drawText(text, x + d.x, y + d.y, pick.font, pick.scale, color.withAlpha(color.a / 8), false);
+    }
+    drawText(text, x, y, pick.font, pick.scale, color, !muiSkinPipboy());
 }
 
 float muiGameRoleWidth(const std::u32string& text, MuiFontRole role, float scale)
@@ -930,6 +941,7 @@ bool muiGameDrawIcon(MuiIcon icon, float x, float y, float size, MuiColor color)
         float width = size * 1.5f;
         float height = width * 117.0f / 140.0f;
         MuiRect rect = { roundf(x - width / 2.0f), roundf(y - height / 2.0f), roundf(width), roundf(height) };
+        if (muiSkinPipboy()) return muiGameDrawInk(MuiArtGroup::Skilldex, spec.name, rect, muiTheme().text.withAlpha(color.a));
         bool drawn = muiGameDrawArt(MuiArtGroup::Skilldex, spec.name, rect, iconTint(color));
         if (drawn) {
             muiSkinBevel(rect, 2.0f, muiRgb(0x000000, 140), muiRgb(0x000000, 140), false);
@@ -981,6 +993,12 @@ void muiGameBackdrop(MuiContext& ui, const MuiRect& rect)
 {
     const MuiTheme& theme = muiTheme();
     muiFillRect(rect, theme.background);
+    if (muiSkinPipboy()) {
+        // The player's original Pip-Boy housing, behind the responsive console.
+        muiGameDrawArt(MuiArtGroup::Interface, "pip", rect);
+        muiFillRect(rect.inset(ui.dp(9)), muiRgb(0x101B13, 225));
+        return;
+    }
     fillMetal(rect, muiRgb(0xE6DFD0), artScale(ui));
 
     float seam = 2.0f * artScale(ui);
@@ -1002,6 +1020,12 @@ void muiGameBackdrop(MuiContext& ui, const MuiRect& rect)
 void muiGamePlate(MuiContext& ui, const MuiRect& rect, bool rivets)
 {
     float pixel = artScale(ui);
+    if (muiSkinPipboy()) {
+        muiGameDrawNineSlice("pip", rect, 16, pixel, muiRgb(0xA4B29A));
+        muiFillRect(rect.inset(pixel * 3), muiRgb(0x102619, 240));
+        pixelBevel(rect, pixel, muiRgb(0x7D8F69), muiRgb(0x030A05), false);
+        return;
+    }
     fillMetal(rect, muiRgb(0xFFF8E8), pixel);
     // The game's plates: a black outline, a lit edge top and left, a dark
     // one at the bottom and right.
@@ -1051,6 +1075,14 @@ void muiGameWell(MuiContext& ui, const MuiRect& rect)
 
 void muiGameButton(MuiContext& ui, const MuiRect& rect, bool pressed, bool primary)
 {
+    if (muiSkinPipboy()) {
+        muiGameDrawNineSlice(pressed ? "alarmin" : "alarmout", rect, 3, artScale(ui), muiRgb(0xA0BA9B));
+        muiFillRect(rect.inset(ui.dp(3)), pressed ? muiRgb(0x082817, 225) : muiRgb(0x14331F, 210));
+        pixelBevel(rect, ui.dp(2), muiRgb(0x809174), muiRgb(0x020904), pressed);
+        float lamp = std::min(ui.dp(9), rect.h * 0.22f);
+        muiGameDrawArt(MuiArtGroup::Interface, pressed ? "lilreddn" : "lilredup", {rect.x + ui.dp(3), rect.y + ui.dp(3), lamp, lamp});
+        return;
+    }
     MuiColor tint = primary ? muiRgb(0xFF9A86) : muiRgb(0xFFFFFF);
     if (!muiGameDrawNineSlice(pressed ? "skldxon" : "skldxoff", rect, 5, artScale(ui), tint)) {
         muiFillRect(rect, primary ? muiTheme().buttonPrimary : muiTheme().button);
@@ -1075,6 +1107,11 @@ void muiGameNamePlate(MuiContext& ui, float x, float y, const std::u32string& te
 
 void muiGameButtonLabel(MuiContext& ui, const MuiRect& rect, const std::u32string& label, MuiColor color)
 {
+    if (muiSkinPipboy()) {
+        float size = muiFitTextSize(label, rect.w - ui.dp(14), ui.dp(14), ui.dp(7));
+        muiDrawTextAligned(label, rect, size, muiTheme().text, MuiAlign::Center, MuiAlign::Center);
+        return;
+    }
     float room = rect.w - ui.dp(14.0f);
     float maxScale = std::clamp(floorf((rect.h * 0.55f) / 16.0f * 4.0f) / 4.0f, 1.0f, 2.5f);
     float scale = muiGameFitScale(label, MuiFontRole::Heading, room, maxScale);
@@ -1104,6 +1141,28 @@ void muiGameKnob(MuiContext& ui, float x, float y, bool pressed)
     }
     MuiRect knob = { roundf(x - width), roundf(y - height), width * 2.0f, height * 2.0f };
     muiGameDrawArt(MuiArtGroup::Interface, "slider", knob, pressed ? muiRgb(0xFFE0A0) : muiRgb(0xFFFFFF));
+}
+
+void muiPipboyOverlay(MuiContext& ui)
+{
+    if (!muiSkinPipboy()) return;
+    const MuiRect r = ui.screenRect();
+    for (float y = r.y; y < r.bottom(); y += 4)
+        muiFillRect({r.x, y, r.w, 1}, muiRgb(0, 18));
+    const auto dark = muiRgb(0x000904, 110);
+    const auto clear = dark.withAlpha(0);
+    float edge = ui.dp(24);
+    muiFillGradient({r.x, r.y, edge, r.h}, dark, clear, clear, dark);
+    muiFillGradient({r.right()-edge, r.y, edge, r.h}, clear, dark, dark, clear);
+    muiFillGradient({r.x, r.y, r.w, edge}, dark, dark, clear, clear);
+    muiFillGradient({r.x, r.bottom()-edge, r.w, edge}, clear, clear, dark, dark);
+    // Nonblocking power-on pulse. Any touch skips it; reduced motion disables it.
+    static unsigned int opened = 0;
+    static bool skipped = false;
+    if (ui.current != nullptr && opened != ui.current->openTime) { opened = ui.current->openTime; skipped = false; }
+    if (ui.pointerDown()) skipped = true;
+    if (!settings.touch.reduce_motion && !skipped && ui.now - opened < 180)
+        muiFillRect(r, muiRgb(0x65FF85, static_cast<Uint8>((180 - (ui.now - opened)) / 12)));
 }
 
 void muiGameSkinReset()

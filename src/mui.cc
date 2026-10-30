@@ -385,6 +385,21 @@ const MuiTheme& muiTheme()
         theme.warning = muiRgb(0xFFB000);
         return theme;
     }();
+    static const MuiTheme pipboy = [] {
+        MuiTheme t = kTheme;
+        t.background = muiRgb(0x141B16);
+        t.panel = t.well = muiRgb(0x031109);
+        t.text = t.buttonText = t.buttonPrimaryText = muiRgb(0x8EFF91);
+        t.textDim = muiRgb(0x55B76A);
+        t.accent = muiRgb(0xB1FF9B);
+        t.panelBorder = t.buttonBorder = muiRgb(0x42664A);
+        t.button = muiRgb(0x243B2D);
+        t.buttonPressed = t.buttonPrimary = muiRgb(0x124B29);
+        t.selected = muiRgb(0x194529);
+        t.metal = muiRgb(0x53604A);
+        return t;
+    }();
+    if (muiSkinPipboy()) return pipboy;
     return settings.touch.colour_blind_safe ? safe : kTheme;
 }
 
@@ -1274,6 +1289,8 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
         for (float y = 0; y < context.screen.h; y += 4.0f)
             muiFillRect({ 0, y, context.screen.w, 1 }, muiRgb(0, 55));
     }
+    context.current = top;
+    muiPipboyOverlay(context);
     muiDrawEnd();
 
     if (logicalWidth != 0 && logicalHeight != 0) {

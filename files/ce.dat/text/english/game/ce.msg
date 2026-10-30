@@ -316,6 +316,7 @@
 {960}{}{Bottom screen theme}
 {961}{}{Fallout}
 {962}{}{Classic}
+{963}{}{Pip-Boy 2000}
 
 // Short derived-stat labels for the bottom screen.
 {928}{}{AC}

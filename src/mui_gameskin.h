@@ -20,6 +20,8 @@ namespace fallout {
 // The theme is on for the surface being drawn (the bottom screen, `bottom_theme`
 // is 0).
 bool muiSkinFallout();
+bool muiSkinPipboy();
+void muiPipboyOverlay(MuiContext& ui);
 
 // Fonts of the game by role.
 enum class MuiFontRole {
