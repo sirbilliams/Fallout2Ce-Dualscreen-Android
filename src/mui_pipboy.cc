@@ -32,6 +32,17 @@ namespace fallout {
 
 namespace {
 
+    // The text at the size that fits, cut with ".." when even the smallest size cannot hold it.
+    std::u32string fitLine(std::u32string text, float width, float size)
+    {
+        if (muiTextWidth(text, size) <= width) return text;
+        // Keep the tail: "Level 1" / "Level 2" must stay tellable apart.
+        std::u32string tail = text.size() > 10 ? text.substr(text.size() - 7) : std::u32string();
+        std::u32string head = text.substr(0, text.size() - tail.size());
+        while (head.size() > 1 && muiTextWidth(head + U".." + tail, size) > width) head.pop_back();
+        return head + U".." + tail;
+    }
+
     const MuiColor kBackground = muiRgb(0x070A06);
     const MuiColor kListBackground = muiRgb(0x0C0F09);
     const MuiColor kSelected = muiRgb(0x24401E);
@@ -443,7 +454,7 @@ namespace {
             const std::u32string& detail = index < static_cast<int>(details.size()) ? details[index] : std::u32string();
             float detailWidth = detail.empty() ? 0.0f : muiTextWidth(detail, size) + padding;
             float textSize = muiFitTextSize(names[index], rowRect.w - padding * 2.0f - detailWidth, size, ui.dp(10.0f));
-            muiDrawTextAligned(names[index], { rowRect.x + padding, rowRect.y, rowRect.w, rowRect.h }, textSize, index == *selected ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
+            muiDrawTextAligned(fitLine(names[index], rowRect.w - padding * 2.0f - detailWidth, textSize), { rowRect.x + padding, rowRect.y, rowRect.w, rowRect.h }, textSize, index == *selected ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
             if (!detail.empty()) {
                 muiDrawTextAligned(detail, { rowRect.x, rowRect.y, rowRect.w - padding, rowRect.h }, size, theme.textDim, MuiAlign::End, MuiAlign::Center);
             }
@@ -684,7 +695,7 @@ namespace {
 
             std::u32string name = gameText(locations[index].name);
             float textX = ax + a + ui.dp(8.0f);
-            muiDrawTextAligned(name, { textX, rowRect.y, rowRect.right() - textX - padding, rowRect.h }, muiFitTextSize(name, rowRect.right() - textX - padding, size, ui.dp(10.0f)), open ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
+            muiDrawTextAligned(fitLine(name, rowRect.right() - textX - padding, muiFitTextSize(name, rowRect.right() - textX - padding, size, ui.dp(10.0f))), { textX, rowRect.y, rowRect.right() - textX - padding, rowRect.h }, muiFitTextSize(name, rowRect.right() - textX - padding, size, ui.dp(10.0f)), open ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
 
             if (!open) {
                 continue;
@@ -700,7 +711,7 @@ namespace {
 
                 std::u32string mapName = gameText(locations[index].maps[entry].name);
                 float mapSize = muiFitTextSize(mapName, subRect.w - padding * 2.0f, ui.dp(13.5f), ui.dp(10.0f));
-                muiDrawTextAligned(mapName, { subRect.x + padding, subRect.y, subRect.w, subRect.h }, mapSize, entry == mapEntry ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
+                muiDrawTextAligned(fitLine(mapName, subRect.w - padding * 2.0f, mapSize), { subRect.x + padding, subRect.y, subRect.w, subRect.h }, mapSize, entry == mapEntry ? theme.accent : theme.text, MuiAlign::Start, MuiAlign::Center);
             }
         }
         muiPopClip();
