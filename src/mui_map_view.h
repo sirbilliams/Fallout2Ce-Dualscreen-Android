@@ -1,8 +1,8 @@
 #ifndef FALLOUT_MUI_MAP_VIEW_H_
 #define FALLOUT_MUI_MAP_VIEW_H_
 
-#include <string>
 #include <map>
+#include <string>
 #include <vector>
 
 #include "mui.h"

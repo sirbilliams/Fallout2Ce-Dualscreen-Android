@@ -425,9 +425,9 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
         switch (marker.shape) {
         case MuiMapMarkerShape::Arrow: {
             float angle = gDude != nullptr ? static_cast<int>(gDude->rotation) * float(M_PI) / 3 : 0;
-            auto p = [&](float a, float b) { return SDL_FPoint{x + a * std::cos(angle) - b * std::sin(angle), y + a * std::sin(angle) + b * std::cos(angle)}; };
+            auto p = [&](float a, float b) { return SDL_FPoint { x + a * std::cos(angle) - b * std::sin(angle), y + a * std::sin(angle) + b * std::cos(angle) }; };
             auto a = p(0, -radius * 1.8f), b = p(radius, radius), c = p(-radius, radius);
-            muiFillConvex({a, b, c}, muiTheme().text);
+            muiFillConvex({ a, b, c }, muiTheme().text);
             break;
         }
         case MuiMapMarkerShape::Dot:
@@ -470,14 +470,15 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
     bool compact = rect.h < ui.dp(150);
     float h = ui.dp(compact ? 24 : 30), w = ui.dp(compact ? 66 : 72);
     float right = rect.right() - (compact ? reservedRight : 0.0f);
-    MuiRect center = {right - w - ui.dp(6), compact ? rect.bottom() - h - ui.dp(4) : rect.y + ui.dp(48), w, h};
+    MuiRect center = { right - w - ui.dp(6), compact ? rect.bottom() - h - ui.dp(4) : rect.y + ui.dp(48), w, h };
     if (ui.button(id + ".center", center, U"CENTER")) {
         if (id != "pipboy.map" && gDude != nullptr)
             centerOn(width - 1 - gDude->tile % width + 0.5f, gDude->tile / width + 0.5f);
-        else fit();
+        else
+            fit();
         lastTouch = ui.now;
     }
-    MuiRect legend = {compact ? center.x - w - ui.dp(4) : center.x, compact ? center.y : center.bottom() + ui.dp(4), w, h};
+    MuiRect legend = { compact ? center.x - w - ui.dp(4) : center.x, compact ? center.y : center.bottom() + ui.dp(4), w, h };
     if (ui.button(id + ".legend", legend, U"LEGEND")) showLegend = !showLegend;
     if (showLegend) muiAutomapLegend(ui, rect);
 }

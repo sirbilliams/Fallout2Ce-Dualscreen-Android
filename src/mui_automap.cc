@@ -5,8 +5,8 @@
 #include "mui_screens.h"
 #include "mui_skin.h"
 
-#include <string>
 #include <algorithm>
+#include <string>
 #include <vector>
 
 #include "animation.h"
@@ -20,10 +20,10 @@
 #include "kb.h"
 #include "map.h"
 #include "object.h"
-#include "player_commands.h"
-#include "svga.h"
-#include "scripts.h"
 #include "pipboy.h"
+#include "player_commands.h"
+#include "scripts.h"
+#include "svga.h"
 
 namespace fallout {
 
@@ -189,7 +189,7 @@ namespace {
         MuiRect body = { content.x, header.bottom() + ui.dp(8.0f), content.w, content.bottom() - header.bottom() - ui.dp(8.0f) };
         ui.panel(body);
 
-        MuiRect controls = {body.x + ui.dp(6), body.y + ui.dp(5), ui.dp(100), ui.dp(32)};
+        MuiRect controls = { body.x + ui.dp(6), body.y + ui.dp(5), ui.dp(100), ui.dp(32) };
         if (ui.button("automap.elevation", controls, U"LEVEL " + muiDecodeUtf8(std::to_string(elevation + 1).c_str()))) {
             // Only elevations actually saved by the engine are browsable.
             std::vector<int> available { gElevation };
@@ -204,7 +204,8 @@ namespace {
         muiDrawText(muiDecodeGameText(gameTimeGetTimeString()), controls.right() + ui.dp(10), controls.y + ui.dp(8), ui.dp(12), theme.text);
         if (viewDirty) {
             viewDirty = false;
-            if (elevation == gElevation) automapGetView(gElevation, &view);
+            if (elevation == gElevation)
+                automapGetView(gElevation, &view);
             else {
                 view = {};
                 view.dudeX = -1;
@@ -235,7 +236,6 @@ namespace {
             gameCommandPost(GameCommandType::Hud, 10000 + mapView.tappedTile);
             finished = true;
         }
-
     }
 
 } // namespace

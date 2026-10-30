@@ -20,8 +20,8 @@
 #include "game_sound.h"
 #include "input.h"
 #include "kb.h"
-#include "movie.h"
 #include "map.h"
+#include "movie.h"
 #include "object.h"
 #include "pipboy.h"
 #include "scripts.h"
@@ -39,7 +39,8 @@ namespace {
         // Keep the tail: "Level 1" / "Level 2" must stay tellable apart.
         std::u32string tail = text.size() > 10 ? text.substr(text.size() - 7) : std::u32string();
         std::u32string head = text.substr(0, text.size() - tail.size());
-        while (head.size() > 1 && muiTextWidth(head + U".." + tail, size) > width) head.pop_back();
+        while (head.size() > 1 && muiTextWidth(head + U".." + tail, size) > width)
+            head.pop_back();
         return head + U".." + tail;
     }
 
@@ -735,7 +736,7 @@ namespace {
             AutomapView live;
             automapGetView(gElevation, &live);
             muiAutomapDetail(live, true, &markers, &labels);
-            if (live.dudeX >= 0) markers.push_back({float(live.dudeX), float(live.dudeY), muiTheme().text, 5, MuiMapMarkerShape::Arrow});
+            if (live.dudeX >= 0) markers.push_back({ float(live.dudeX), float(live.dudeY), muiTheme().text, 5, MuiMapMarkerShape::Arrow });
         }
         mapView.build(ui, "pipboy.map", detail.inset(ui.dp(4.0f)), markers, &labels);
     }
@@ -897,7 +898,8 @@ namespace {
         ui.panel(left);
         MuiRect inner = left.inset(ui.dp(12.0f));
         float clockSize = std::min(ui.dp(48.0f), inner.w / 4.0f);
-        while (clockSize > ui.dp(16.0f) && muiTextWidth(clockText(time), clockSize) > inner.w) clockSize -= ui.dp(1.0f);
+        while (clockSize > ui.dp(16.0f) && muiTextWidth(clockText(time), clockSize) > inner.w)
+            clockSize -= ui.dp(1.0f);
         float y = inner.y + ui.dp(12.0f);
 
         // The Pip-Boy's own alarm clock (rings while resting).
@@ -920,7 +922,8 @@ namespace {
 
         std::u32string hp = gameText(pipboyGetText(kPipboyHitPoints)) + U" " + number(critterGetHitPoints(gDude)) + U"/" + number(critterGetStat(gDude, STAT_MAXIMUM_HIT_POINTS));
         float hpSize = ui.dp(15.0f);
-        while (hpSize > ui.dp(8.0f) && muiTextWidth(hp, hpSize) > inner.w) hpSize -= ui.dp(0.5f);
+        while (hpSize > ui.dp(8.0f) && muiTextWidth(hp, hpSize) > inner.w)
+            hpSize -= ui.dp(0.5f);
         muiDrawTextAligned(hp, { inner.x, y, inner.w, ui.dp(22.0f) }, hpSize, theme.text, MuiAlign::Center, MuiAlign::Start);
 
         if (resting) {

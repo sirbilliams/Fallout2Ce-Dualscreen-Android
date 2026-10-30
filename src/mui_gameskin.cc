@@ -769,7 +769,7 @@ void muiGameDrawText(const std::u32string& text, float x, float y, float size, M
     Pick pick = pickForSize(size);
     pick.scale *= bottomTextScale();
     if (muiSkinPipboy()) {
-        for (auto d : { SDL_FPoint{-1, 0}, SDL_FPoint{1, 0}, SDL_FPoint{0, -1}, SDL_FPoint{0, 1} })
+        for (auto d : { SDL_FPoint { -1, 0 }, SDL_FPoint { 1, 0 }, SDL_FPoint { 0, -1 }, SDL_FPoint { 0, 1 } })
             drawText(text, x + d.x, y + d.y, pick.font, pick.scale, color.withAlpha(color.a / 8), false);
     }
     drawText(text, x, y, pick.font, pick.scale, color, !muiSkinPipboy());
@@ -1082,7 +1082,7 @@ void muiGameButton(MuiContext& ui, const MuiRect& rect, bool pressed, bool prima
         muiFillRect(rect.inset(ui.dp(3)), pressed ? muiRgb(0x082817, 225) : muiRgb(0x14331F, 210));
         pixelBevel(rect, ui.dp(2), muiRgb(0x809174), muiRgb(0x020904), pressed);
         float lamp = std::min(ui.dp(9), rect.h * 0.22f);
-        muiGameDrawArt(MuiArtGroup::Interface, pressed ? "lilreddn" : "lilredup", {rect.x + ui.dp(3), rect.y + ui.dp(3), lamp, lamp});
+        muiGameDrawArt(MuiArtGroup::Interface, pressed ? "lilreddn" : "lilredup", { rect.x + ui.dp(3), rect.y + ui.dp(3), lamp, lamp });
         return;
     }
     MuiColor tint = primary ? muiRgb(0xFF9A86) : muiRgb(0xFFFFFF);
@@ -1155,18 +1155,21 @@ void muiPipboyOverlay(MuiContext& ui)
     if (!muiSkinPipboy()) return;
     const MuiRect r = ui.screenRect();
     for (float y = r.y; y < r.bottom(); y += 4)
-        muiFillRect({r.x, y, r.w, 1}, muiRgb(0, 18));
+        muiFillRect({ r.x, y, r.w, 1 }, muiRgb(0, 18));
     const auto dark = muiRgb(0x000904, 110);
     const auto clear = dark.withAlpha(0);
     float edge = ui.dp(24);
-    muiFillGradient({r.x, r.y, edge, r.h}, dark, clear, clear, dark);
-    muiFillGradient({r.right()-edge, r.y, edge, r.h}, clear, dark, dark, clear);
-    muiFillGradient({r.x, r.y, r.w, edge}, dark, dark, clear, clear);
-    muiFillGradient({r.x, r.bottom()-edge, r.w, edge}, clear, clear, dark, dark);
+    muiFillGradient({ r.x, r.y, edge, r.h }, dark, clear, clear, dark);
+    muiFillGradient({ r.right() - edge, r.y, edge, r.h }, clear, dark, dark, clear);
+    muiFillGradient({ r.x, r.y, r.w, edge }, dark, dark, clear, clear);
+    muiFillGradient({ r.x, r.bottom() - edge, r.w, edge }, clear, clear, dark, dark);
     // Nonblocking power-on pulse. Any touch skips it; reduced motion disables it.
     static unsigned int opened = 0;
     static bool skipped = false;
-    if (ui.current != nullptr && opened != ui.current->openTime) { opened = ui.current->openTime; skipped = false; }
+    if (ui.current != nullptr && opened != ui.current->openTime) {
+        opened = ui.current->openTime;
+        skipped = false;
+    }
     if (ui.pointerDown()) skipped = true;
     if (!settings.touch.reduce_motion && !skipped && ui.now - opened < 180)
         muiFillRect(r, muiRgb(0x65FF85, static_cast<Uint8>((180 - (ui.now - opened)) / 12)));
