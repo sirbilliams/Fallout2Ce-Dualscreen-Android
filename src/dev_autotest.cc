@@ -44,6 +44,7 @@
 #include "mui_display_settings.h"
 #include "mui_map_view.h"
 #include "mui_notify.h"
+#include "mui_pad.h"
 #include "object.h"
 #include "party_member.h"
 #include "perf_monitor.h"
@@ -357,6 +358,14 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_CHECK_BARTER_COUNT,
     DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE,
     DEV_AUTOTEST_ACTION_DISPLAY_CHECK,
+    // Mouse controls: the cursor goes onto dude ([a] 0) or the nearest critter
+    // (1); a button held ([a] its number, [b] 1 down / 0 up); two fingers
+    // tapped on widget `widget` for [c] frames; a finger on the top screen at
+    // pixel ([a], [b]) for [c] frames.
+    DEV_AUTOTEST_ACTION_MOUSE_CURSOR_AT,
+    DEV_AUTOTEST_ACTION_PAD_HOLD,
+    DEV_AUTOTEST_ACTION_TWO_TAP,
+    DEV_AUTOTEST_ACTION_TOUCH_AT,
 };
 
 struct DevAutotestStep {
@@ -853,6 +862,36 @@ static const DevAutotestStep kDevAutotestPadMapSteps[] = {
     { DEV_AUTOTEST_ACTION_PAD, 5, 0, 0, 10, "m21b_unused" },
 };
 
+// Mouse controls (docs/mouse-controls.md): the touchpad page (bottom), the
+// right stick's cursor, R3 short / long, B, the cursor at a finger.
+static const DevAutotestStep kDevAutotestMouseSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "mo00_start" },
+    { DEV_AUTOTEST_ACTION_LOAD_GAME, 0, 0, 0, 120, "mo00_map" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "mo01_pad_open", "hud.20" },
+    { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, 0.12f, 0.08f, 0, 30, "mo02_pad_drag", "touchpad.pad" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "mo02b_wait" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 120, "mo03_pad_tap_click", "touchpad.pad" },
+    { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, -0.2f, -0.1f, 30, 52, "mo04_pad_hold_drag", "touchpad.pad" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "mo04b_wait" },
+    { DEV_AUTOTEST_ACTION_TOUCH_AT, 480, 330, 70, 50, "mo04c_holding" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 60, "mo04d_wait" },
+    { DEV_AUTOTEST_ACTION_MOUSE_CURSOR_AT, 1, 0, 0, 5, "mo05a_cursor_on_critter" },
+    { DEV_AUTOTEST_ACTION_TWO_TAP, 0, 0, 4, 40, "mo05_two_finger_right_click", "touchpad.pad" },
+    { DEV_AUTOTEST_ACTION_TOUCH_TAP_SCREEN, 60, 60, 0, 20, "mo05b_menu_closed" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "mo06_pad_closed", "touchpad.back" },
+    { DEV_AUTOTEST_ACTION_PAD_STICK, 0.8f, 0.3f, 25, 30, "mo07_stick_cursor" },
+    { DEV_AUTOTEST_ACTION_PAD, 8, 0, 0, 90, "mo08_r3_short_click_walk" },
+    { DEV_AUTOTEST_ACTION_MOUSE_CURSOR_AT, 1, 0, 0, 5, "mo09a_cursor_on_critter" },
+    { DEV_AUTOTEST_ACTION_PAD_HOLD, 8, 1, 0, 40, "mo09_r3_long_right_click" },
+    { DEV_AUTOTEST_ACTION_PAD_HOLD, 8, 0, 0, 20, "mo10_r3_released_no_extra_click" },
+    { DEV_AUTOTEST_ACTION_TOUCH_TAP_SCREEN, 60, 60, 0, 20, "mo10b_menu_closed" },
+    { DEV_AUTOTEST_ACTION_MOUSE_CURSOR_AT, 0, 0, 0, 5, "mo11a_cursor_on_dude" },
+    { DEV_AUTOTEST_ACTION_PAD, 1, 0, 0, 30, "mo11_B_right_click" },
+    { DEV_AUTOTEST_ACTION_TOUCH_TAP_SCREEN, 60, 60, 0, 20, "mo11b_menu_closed" },
+    { DEV_AUTOTEST_ACTION_TOUCH_AT, 560, 330, 22, 8, "mo12_finger_cursor" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "mo13_done" },
+};
+
 static const DevAutotestStep kDevAutotestDualMoreProofSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 10, "m00_center" },
     { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "m01_real_talk" },
@@ -1097,6 +1136,12 @@ static int gDevAutotestPinchFrame = -1;
 
 // The touch being sent goes to the bottom screen (widgets found there).
 static bool gDevAutotestBottomTouch = false;
+
+// Two fingers tapped together (their ends come after the frames).
+static int gDevAutotestTwoTapFrames = 0;
+static float gDevAutotestTwoTapX = 0.0f;
+static float gDevAutotestTwoTapY = 0.0f;
+static bool gDevAutotestTwoTapBottom = false;
 
 static void devAutotestPushFinger(Uint32 type, SDL_FingerID finger, float x, float y)
 {
@@ -2895,6 +2940,12 @@ void devAutotestSetScenario(const char* name)
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif
+    } else if (strcmp(name, "mouse") == 0) {
+        gDevAutotestSteps = kDevAutotestMouseSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestMouseSteps) / sizeof(kDevAutotestMouseSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "padmap") == 0) {
         gDevAutotestSteps = kDevAutotestPadMapSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestPadMapSteps) / sizeof(kDevAutotestPadMapSteps[0]);
@@ -3639,7 +3690,7 @@ void devAutotestTick()
                 float width = static_cast<float>(screenGetWidth());
                 float height = static_cast<float>(screenGetHeight());
                 devAutotestLog("  mui drag %s by (%.2f, %.2f)\n", step->widget, step->a, step->b);
-                devAutotestStartTouch(x * width, y * height, (x + step->a) * width, (y + step->b) * height, 0, 25);
+                devAutotestStartTouch(x * width, y * height, (x + step->a) * width, (y + step->b) * height, static_cast<int>(step->c), 25);
             } else {
                 devAutotestLog("FAIL: mui %s NOT FOUND\n", step->widget != nullptr ? step->widget : "?");
             }
@@ -4598,6 +4649,44 @@ void devAutotestTick()
             gamepadDevPress(static_cast<int>(step->a), true);
             gamepadDevPress(static_cast<int>(step->a), false);
             break;
+        case DEV_AUTOTEST_ACTION_PAD_HOLD:
+            devAutotestLog("  pad button %d %s\n", static_cast<int>(step->a), step->b != 0 ? "down" : "up");
+            gamepadDevPress(static_cast<int>(step->a), step->b != 0);
+            break;
+        case DEV_AUTOTEST_ACTION_MOUSE_CURSOR_AT: {
+            Object* target = step->a == 1 ? devAutotestFindNearestCritter() : nullptr;
+            if (target == nullptr) {
+                target = gDude;
+            }
+            float x;
+            float y;
+            devAutotestGetObjectScreenPosition(target, &x, &y);
+            float cx;
+            float cy;
+            muiPadCursorGet(&cx, &cy);
+            muiPadCursorMove(x / screenGetWidth() - cx, y / screenGetHeight() - cy);
+            devAutotestLog("  cursor at (%.0f, %.0f)\n", x, y);
+            break;
+        }
+        case DEV_AUTOTEST_ACTION_TWO_TAP: {
+            float x;
+            float y;
+            if (step->widget != nullptr && muiGetWidgetCenter(step->widget, &x, &y, &gDevAutotestBottomTouch)) {
+                gDevAutotestTwoTapX = x;
+                gDevAutotestTwoTapY = y;
+                gDevAutotestTwoTapBottom = gDevAutotestBottomTouch;
+                gDevAutotestTwoTapFrames = static_cast<int>(step->c) > 0 ? static_cast<int>(step->c) : 4;
+                devAutotestPushFinger(SDL_FINGERDOWN, 11, x - 0.02f, y);
+                devAutotestPushFinger(SDL_FINGERDOWN, 12, x + 0.02f, y);
+                devAutotestLog("  two finger tap on %s\n", step->widget);
+            } else {
+                devAutotestLog("FAIL: %s NOT FOUND\n", step->widget != nullptr ? step->widget : "?");
+            }
+            break;
+        }
+        case DEV_AUTOTEST_ACTION_TOUCH_AT:
+            devAutotestStartTouch(step->a, step->b, step->a, step->b, static_cast<int>(step->c), 0);
+            break;
         case DEV_AUTOTEST_ACTION_PAD_STICK:
             devAutotestLog("  pad stick %.2f %.2f for %d frames\n", step->a, step->b, static_cast<int>(step->c));
             gamepadDevStick(step->a, step->b, static_cast<int>(step->c));
@@ -4812,6 +4901,14 @@ void devAutotestPump()
 {
     if (gDevAutotestEnabled) {
         gDevAutotestFrameClock += 16;
+    }
+
+    if (gDevAutotestEnabled && gDevAutotestTwoTapFrames > 0 && --gDevAutotestTwoTapFrames == 0) {
+        bool bottom = gDevAutotestBottomTouch;
+        gDevAutotestBottomTouch = gDevAutotestTwoTapBottom;
+        devAutotestPushFinger(SDL_FINGERUP, 12, gDevAutotestTwoTapX + 0.02f, gDevAutotestTwoTapY);
+        devAutotestPushFinger(SDL_FINGERUP, 11, gDevAutotestTwoTapX - 0.02f, gDevAutotestTwoTapY);
+        gDevAutotestBottomTouch = bottom;
     }
 
     if (!gDevAutotestEnabled || gDevAutotestTouchFrame == -1) {

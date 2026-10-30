@@ -92,6 +92,9 @@ void muiPadSetTouchpadOpen(bool open);
 // A finger of the player is at a place of the top screen (the cursor follows
 // it, and stays a moment after it lifts).
 void muiPadFingerCursor(bool down, float x, float y);
+// The finger the pad (or the touchpad) holds down on the top screen, its number:
+// SDL doesn't know it, so the check for lost fingers must not let it go.
+bool muiPadFingerDown(SDL_FingerID* fingerId);
 // Some pad input happened (the ring shows).
 void muiPadTouch();
 

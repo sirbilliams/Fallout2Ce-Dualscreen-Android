@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdio.h>
 #include <string>
 
 #include "dev_autotest.h"
@@ -262,19 +263,20 @@ namespace {
         float centerY = padRect.centerY();
         if (!tracking) {
             float bodySize = ui.dp(theme.bodySize);
-            // The middle dot if the font has it.
+            // The middle dot if the font has it; two lines, each kept whole.
             const char* dot = muiFontHasGlyph(0xB7) ? " \xC2\xB7 " : " - ";
-            std::string hintText = std::string("drag = move cursor") + dot + "tap = click" + dot + "hold then drag = carry" + dot + "two-finger tap = right click";
-            std::u32string hint = muiDecodeUtf8(muiText(1123, hintText.c_str()));
-            std::vector<std::u32string> lines = muiWrapText(hint, padRect.w - ui.dp(48.0f), bodySize);
-            float lineHeight = muiLineHeight(bodySize);
-            float y = centerY - lineHeight * lines.size() / 2.0f;
+            std::string first = std::string("drag = move cursor") + dot + "tap = click";
+            std::string second = std::string("hold then drag = carry") + dot + "two-finger tap = right click";
+            std::u32string lines[2] = { muiDecodeUtf8(muiText(1123, first.c_str())), muiDecodeUtf8(muiText(1124, second.c_str())) };
+            float size = std::min(muiFitTextSize(lines[0], padRect.w - ui.dp(48.0f), bodySize, ui.dp(10.0f)), muiFitTextSize(lines[1], padRect.w - ui.dp(48.0f), bodySize, ui.dp(10.0f)));
+            float lineHeight = muiLineHeight(size) * 1.2f;
+            float y = centerY - lineHeight;
             for (const std::u32string& line : lines) {
-                muiDrawTextAligned(line, { padRect.x, y, padRect.w, lineHeight }, bodySize, theme.textDim, MuiAlign::Center, MuiAlign::Center);
+                muiDrawTextAligned(line, { padRect.x, y, padRect.w, lineHeight }, size, theme.textDim, MuiAlign::Center, MuiAlign::Center);
                 y += lineHeight;
             }
         } else if (held) {
-            muiDrawTextAligned(muiDecodeGameText(muiText(1124, "HOLDING")), { padRect.x, padRect.bottom() - ui.dp(56.0f), padRect.w, ui.dp(40.0f) }, ui.dp(theme.titleSize), theme.accent, MuiAlign::Center, MuiAlign::Center);
+            muiDrawTextAligned(muiDecodeGameText(muiText(1132, "HOLDING")), { padRect.x, padRect.bottom() - ui.dp(56.0f), padRect.w, ui.dp(40.0f) }, ui.dp(theme.titleSize), theme.accent, MuiAlign::Center, MuiAlign::Center);
         }
 
         ui.mark("touchpad.pad", padRect);

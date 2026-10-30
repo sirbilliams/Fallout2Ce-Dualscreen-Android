@@ -545,6 +545,15 @@ void muiPadTopHold(bool down)
     }
 }
 
+bool muiPadFingerDown(SDL_FingerID* fingerId)
+{
+    if (!gTouchActive || gTouchSurface != MuiSurface::Top) {
+        return false;
+    }
+    *fingerId = kPadFingerId;
+    return true;
+}
+
 void muiPadSetTouchpadOpen(bool open)
 {
     gTouchpadOpen = open;
@@ -613,8 +622,8 @@ void muiPadFrame(MuiContext& ui, MuiSurface surface, bool hasScreen)
         // The cursor: a thin amber cross with a dark edge, as the game's own cursors.
         float cx = cursorX * ui.screenRect().w;
         float cy = cursorY * ui.screenRect().h;
-        float arm = ui.dp(14.0f);
-        float gap = ui.dp(4.0f);
+        float arm = ui.dp(18.0f);
+        float gap = ui.dp(5.0f);
         MuiColor dark = muiRgb(0x000000, 220);
         MuiColor amber = muiRgb(0xFFD84A);
         for (int pass = 0; pass < 2; pass++) {

@@ -1469,6 +1469,9 @@ bool muiHandleFingerEvent(const SDL_Event* event)
     }
     float x = finger.x * surface.outputWidth;
     float y = finger.y * surface.outputHeight;
+    // Automated tests run on a frame clock (`uiTicks`), their fingers' own
+    // times are SDL's: a touch & hold would be measured against the wrong clock.
+    unsigned int fingerTime = devAutotestIsEnabled() ? uiTicks() : finger.timestamp;
 
     // A screen of the game is open on the bottom screen: the world on top is
     // frozen, its touches go nowhere (as under a modal screen).
@@ -1503,7 +1506,7 @@ bool muiHandleFingerEvent(const SDL_Event* event)
 
         surface.fingerCaptured = true;
         surface.capturedFinger = finger.fingerId;
-        surface.events.push_back({ PointerEventType::Down, x, y, finger.timestamp });
+        surface.events.push_back({ PointerEventType::Down, x, y, fingerTime });
         return true;
     }
 
@@ -1522,9 +1525,9 @@ bool muiHandleFingerEvent(const SDL_Event* event)
     }
 
     if (event->type == SDL_FINGERMOTION) {
-        surface.events.push_back({ PointerEventType::Move, x, y, finger.timestamp });
+        surface.events.push_back({ PointerEventType::Move, x, y, fingerTime });
     } else if (event->type == SDL_FINGERUP) {
-        surface.events.push_back({ PointerEventType::Up, x, y, finger.timestamp });
+        surface.events.push_back({ PointerEventType::Up, x, y, fingerTime });
         surface.fingerCaptured = false;
     }
 

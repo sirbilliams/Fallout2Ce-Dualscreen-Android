@@ -1086,7 +1086,7 @@ static void inputForgetLiftedFingers(bool excludeNew, SDL_FingerID fingerId)
         }
     }
 
-    SDL_FingerID down[kMaxFingers * 2];
+    SDL_FingerID down[kMaxFingers * 2 + 1];
     int count = 0;
     for (int index = 0; index < nowCount; index++) {
         if (!(excludeNew && now[index] == fingerId)) {
@@ -1097,6 +1097,12 @@ static void inputForgetLiftedFingers(bool excludeNew, SDL_FingerID fingerId)
         if (!(excludeNew && previous[index] == fingerId)) {
             down[count++] = previous[index];
         }
+    }
+
+    // The pad's finger on the top screen isn't SDL's.
+    SDL_FingerID padFinger;
+    if (muiPadFingerDown(&padFinger) && !(excludeNew && padFinger == fingerId)) {
+        down[count++] = padFinger;
     }
 
     if (!excludeNew) {

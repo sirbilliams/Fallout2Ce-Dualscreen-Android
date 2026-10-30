@@ -136,6 +136,13 @@ static int touch_get_span(int* indexes, int length, bool current)
     return static_cast<int>(hypot(a.x - b.x, a.y - b.y));
 }
 
+// Automated tests run on a frame clock (`uiTicks`), SDL stamps their fingers
+// with its own: the long press would be measured against the wrong clock.
+static Uint32 touchEventTime(const SDL_TouchFingerEvent* event)
+{
+    return devAutotestIsEnabled() ? uiTicks() : event->timestamp;
+}
+
 void touch_handle_start(SDL_TouchFingerEvent* event)
 {
     // On iOS `fingerId` is an address of underlying `UITouch` object. When
@@ -150,7 +157,7 @@ void touch_handle_start(SDL_TouchFingerEvent* event)
         Touch* touch = &(touches[index]);
         touch->used = true;
         touch->fingerId = event->fingerId;
-        touch->startTimestamp = event->timestamp;
+        touch->startTimestamp = touchEventTime(event);
         touch->startLocation.x = static_cast<int>(event->x * screenGetWidth());
         touch->startLocation.y = static_cast<int>(event->y * screenGetHeight());
         touch->currentTimestamp = touch->startTimestamp;
@@ -164,7 +171,7 @@ void touch_handle_move(SDL_TouchFingerEvent* event)
     int index = find_touch(event->fingerId);
     if (index != -1) {
         Touch* touch = &(touches[index]);
-        touch->currentTimestamp = event->timestamp;
+        touch->currentTimestamp = touchEventTime(event);
         touch->currentLocation.x = static_cast<int>(event->x * screenGetWidth());
         touch->currentLocation.y = static_cast<int>(event->y * screenGetHeight());
         touch->phase = TOUCH_PHASE_MOVED;
@@ -176,7 +183,7 @@ void touch_handle_end(SDL_TouchFingerEvent* event)
     int index = find_touch(event->fingerId);
     if (index != -1) {
         Touch* touch = &(touches[index]);
-        touch->currentTimestamp = event->timestamp;
+        touch->currentTimestamp = touchEventTime(event);
         touch->currentLocation.x = static_cast<int>(event->x * screenGetWidth());
         touch->currentLocation.y = static_cast<int>(event->y * screenGetHeight());
         touch->phase = TOUCH_PHASE_ENDED;
