@@ -6,23 +6,30 @@ A fork of [Fallout 2: Community Engine](https://github.com/fallout2-ce/fallout2-
 
 This is an **unofficial, fan-made, modified version** of Fallout 2 CE. It is not affiliated with or endorsed by Bethesda Softworks, ZeniMax Media or Interplay. Fallout is a trademark of its owners. The app contains **no game data**: you need your own copy of Fallout 2 ([GOG](https://www.gog.com/game/fallout_2), [Steam](https://store.steampowered.com/app/38410), [Epic Games](https://store.epicgames.com/p/fallout-2)).
 
+## Status
+
+**Status: beta, playable.**
+- Full game playable via Fallout 2 CE engine.
+- Touch UI supports dialogue, barter, inventory, and combat.
+- Bottom-screen console displays live map with multiple layouts.
+
 ## Screenshots
 
-<p><img src="docs/screenshots/combat.jpg" alt="Combat: an enemy picked, its hit chance" width="49%"> <img src="docs/screenshots/dialogue.jpg" alt="Dialogue: the drill sergeant at Navarro" width="49%"></p>
+<p><img src="docs/screenshots/thor-exploration.jpg" alt="Exploring Klamath on both screens" width="49%"> <img src="docs/screenshots/thor-dialogue.jpg" alt="Arroyo Elder dialogue on both screens" width="49%"></p>
 
-<p><img src="docs/screenshots/inventory.jpg" alt="Inventory: an item's action menu" width="49%"> <img src="docs/screenshots/character.jpg" alt="Character" width="49%"></p>
+<p><img src="docs/screenshots/thor-combat.jpg" alt="Temple combat and bottom console" width="49%"> <img src="docs/screenshots/thor-barter.jpg" alt="Barter on both screens" width="49%"></p>
+
+<p><img src="docs/screenshots/inventory-items.jpg" alt="Inventory and equipment" width="49%"> <img src="docs/screenshots/character-stats.jpg" alt="Character stats" width="49%"></p>
+
+<p><img src="docs/screenshots/pipboy-quests.jpg" alt="Pip-Boy quests" width="49%"> <img src="docs/screenshots/live-map-columns.jpg" alt="Live map in columns" width="49%"></p>
+
+<p><img src="docs/screenshots/live-map-map-first.jpg" alt="Map first layout" width="49%"> <img src="docs/screenshots/live-map-slim.jpg" alt="Live map with slim navigation" width="49%"></p>
+
+<p><img src="docs/screenshots/inventory-slim-actions.jpg" alt="Slim inventory item actions" width="49%"> <img src="docs/screenshots/fallout-theme.jpg" alt="Fallout theme dashboard" width="49%"></p>
 
 ## Dual screen (AYN Thor)
 
 On a two-screen device the world gets the whole top screen and the bottom screen becomes a live console: the HUD, a live map that follows you, and the game's screens (inventory, character, Pip-Boy, map) open there while the world waits on top. Settings → Display has the **bottom screen layout** (Classic, Map first, Two columns) and **screen navigation** (Rail, Slim rail, Top bar).
-
-<p><img src="docs/screenshots/thor-both-screens.jpg" alt="Both screens as on the AYN Thor: the world on top, the console with the live map and attack modes below" width="70%"></p>
-
-<p><img src="docs/screenshots/thor-bottom-dashboard.jpg" alt="Bottom screen: the dashboard with the live map" width="49%"> <img src="docs/screenshots/thor-bottom-combat.jpg" alt="Bottom screen in combat: your turn, AP, end turn" width="49%"></p>
-
-<p><img src="docs/screenshots/thor-bottom-columns.jpg" alt="Bottom screen: the two-columns layout" width="49%"> <img src="docs/screenshots/thor-bottom-character.jpg" alt="Bottom screen: the character screen with the top bar" width="49%"></p>
-
-<p><img src="docs/screenshots/thor-bottom-mapfirst.jpg" alt="Bottom screen: the Map first layout" width="49%"> <img src="docs/screenshots/thor-bottom-slim-inventory.jpg" alt="Bottom screen: inventory with the slim rail" width="49%"></p>
 
 Details: [docs/dualscreen.md](docs/dualscreen.md).
 
@@ -111,30 +118,6 @@ For detailed instructions on how to play on Mac, Linux, iOS, or Android, see the
 * You can cancel elevator floor selection using ESC
 * Spiffy ammo meter with burst-mode segmentation
 * Item/Corpse/Container/Critter highlighting (configure using [mods/sfall-mods.ini](https://github.com/sfall-team/sfall/blob/master/artifacts/config_files/sfall-mods.ini))
-
-<table>
-  <tr>
-    <td align="center">
-    <img src="docs/images/two-column-inventory.jpg" alt="Expanded 2-column inventory" width="360"><br>
-    <sub>Expanded 2-column inventory</sub>
-    </td>
-    <td align="center">
-      <img src="docs/images/companion-equip.gif" alt="Companion equip screen" width="360"><br>
-      <sub>Companion equip screen</sub>
-    </td>
-
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="docs/images/party-member-loot.gif" alt="Party member loot" width="360"><br>
-      <sub>Party member loot</sub>
-    </td>
-    <td align="center">
-      <img src="docs/images/help-menu.gif" alt="Integrated HELP menu" width="360"><br>
-      <sub>Integrated HELP menu</sub>
-    </td>
-  </tr>
-</table>
 
 There are also dozens of small things that just work a little better than they did in the original.  Better pathfinding, fewer graphics glitches, less finicky weapon stacking, and much more.
 

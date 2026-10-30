@@ -8,9 +8,9 @@
 
 ## Скриншоты
 
-<p><img src="docs/screenshots/combat.jpg" alt="Бой: выбран враг, шанс попадания" width="49%"> <img src="docs/screenshots/dialogue.jpg" alt="Диалог: разводящий сержант в Наварро" width="49%"></p>
+<p><img src="docs/screenshots/thor-combat.jpg" alt="Бой и консоль на нижнем экране" width="49%"> <img src="docs/screenshots/thor-dialogue.jpg" alt="Диалог со старейшиной Арройо" width="49%"></p>
 
-<p><img src="docs/screenshots/inventory.jpg" alt="Инвентарь: меню действий предмета" width="49%"> <img src="docs/screenshots/character.jpg" alt="Персонаж" width="49%"></p>
+<p><img src="docs/screenshots/inventory-items.jpg" alt="Инвентарь и снаряжение" width="49%"> <img src="docs/screenshots/character-stats.jpg" alt="Персонаж" width="49%"></p>
 
 ## Что изменено (уведомление об изменении ПО)
 
