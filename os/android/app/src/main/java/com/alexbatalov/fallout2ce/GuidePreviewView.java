@@ -8,8 +8,9 @@ import android.view.View;
 
 // A miniature of the bottom screen for the setup guide: one of the three
 // dashboard layouts (stage 1: classic, map first, two columns) in one of the
-// two themes (Fallout: brass plates, dark green wells, amber; classic:
-// green). Drawn schematically: the Fallout theme's art is the player's own
+// three themes (Fallout: brass plates, dark green wells, amber; Pip-Boy 2000:
+// phosphor green on dark glass; classic: green). Drawn schematically: the
+// Fallout theme's art is the player's own
 // game data and isn't shipped, so the guide never shows it.
 public class GuidePreviewView extends View {
     static final int THEME_FALLOUT = 0;
@@ -46,18 +47,30 @@ public class GuidePreviewView extends View {
     }
 
     private int plate() {
+        if (theme == THEME_PIPBOY) {
+            return 0xFF1A2A1A;
+        }
         return theme == THEME_FALLOUT ? 0xFF8B7B52 : getContext().getColor(R.color.import_button);
     }
 
     private int well() {
+        if (theme == THEME_PIPBOY) {
+            return 0xFF0A150A;
+        }
         return theme == THEME_FALLOUT ? 0xFF0C1A0C : 0xFF0B120D;
     }
 
     private int edge() {
+        if (theme == THEME_PIPBOY) {
+            return 0xFF1F8C0D;
+        }
         return theme == THEME_FALLOUT ? 0xFF2A2214 : getContext().getColor(R.color.import_button_border);
     }
 
     private int accent() {
+        if (theme == THEME_PIPBOY) {
+            return 0xFF39FF14;
+        }
         return theme == THEME_FALLOUT ? 0xFFFFC832 : getContext().getColor(R.color.import_accent);
     }
 
@@ -127,7 +140,7 @@ public class GuidePreviewView extends View {
         float height = getHeight();
         float pad = 3 * density;
 
-        fill.setColor(theme == THEME_FALLOUT ? 0xFF3A3326 : 0xFF050A06);
+        fill.setColor(theme == THEME_PIPBOY ? 0xFF0A150A : theme == THEME_FALLOUT ? 0xFF3A3326 : 0xFF050A06);
         rect.set(0, 0, width, height);
         canvas.drawRoundRect(rect, 4 * density, 4 * density, fill);
 
