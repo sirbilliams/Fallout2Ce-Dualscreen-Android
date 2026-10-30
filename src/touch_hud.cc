@@ -550,7 +550,8 @@ namespace {
         // finger moved the map a moment ago.
         bool dudeShown = gLiveMapView.dudeX != -1;
         unsigned int touched = gLiveMap.lastTouchTime();
-        bool follow = dudeShown && (touched == 0 || ui.now - touched >= kLiveMapHoldMs);
+        // Freeze on finger-down, before panZoom records its first touch.
+        bool follow = dudeShown && !ui.pointerDown() && (touched == 0 || ui.now - touched >= kLiveMapHoldMs);
         if (follow) {
             float targetX = gLiveMapView.dudeX + 0.5f;
             float targetY = gLiveMapView.dudeY + 0.5f;
@@ -1975,7 +1976,7 @@ bool touchHudHandleEvent(int eventCode)
 
     if (eventCode >= 10000 && eventCode < 50000) {
         int tile = eventCode - 10000;
-        if (interfaceBarEnabled() && (!isInCombat() || _combat_whose_turn() == gDude) && gDude != nullptr && tile != gDude->tile && _make_path(gDude, gDude->tile, tile, nullptr, 1) > 0) {
+        if (interfaceBarEnabled() && (!isInCombat() || _combat_whose_turn() == gDude) && gDude != nullptr && tile != gDude->tile && playerCanMoveToExactTile(tile)) {
             if (playerMoveTo(tile, false) == 0) mapHintsSetDestination(tile);
         }
         return true;

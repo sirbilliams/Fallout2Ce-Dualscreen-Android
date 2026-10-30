@@ -33,6 +33,9 @@ void playerPrimaryAction(Object* target);
 // uses the action points dude has.
 int playerMoveTo(int tile, bool alternate);
 
+// Exact local-map destination: reject walls, blockers and partial paths.
+bool playerCanMoveToExactTile(int tile);
+
 // Attacks [target] with the active weapon and attack mode (combat starts if
 // needed).
 void playerAttack(Object* target);

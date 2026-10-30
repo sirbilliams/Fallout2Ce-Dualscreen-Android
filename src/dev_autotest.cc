@@ -1909,6 +1909,7 @@ static const DevAutotestStep kDevAutotestMapPartySteps[] = {
     { DEV_AUTOTEST_ACTION_COMMAND, static_cast<int>(GameCommandType::Automap), 0, 0, 30, "mp03b_full_map" },
     { DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP, 2, 0, 1, 100, "mp03c_full_map_walk" },
     { DEV_AUTOTEST_ACTION_CHECK_TOUCH_MOVED, 0, 0, 0, 1, "mp03d_full_map_proof" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 90, "mp03e_map_settled" },
     { DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP, 0, 1, 0, 60, "mp04_wall_ignored" },
     { DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP, 0, 2, 0, 1, "mp05_wall_proof" },
     { DEV_AUTOTEST_ACTION_ADD_PARTY_MEMBER, 62, 2, ROTATION_SE, 30, "mp06_vic", "DCVic.int" },
@@ -2830,8 +2831,8 @@ void devAutotestSetScenario(const char* name)
 #endif
     } else if (strcmp(name, "dualpartyproof") == 0) {
         // The equipment, panel and control portion, also useful with bottom_theme=1.
-        gDevAutotestSteps = kDevAutotestMapPartySteps + 9;
-        gDevAutotestStepCount = sizeof(kDevAutotestMapPartySteps) / sizeof(kDevAutotestMapPartySteps[0]) - 9;
+        gDevAutotestSteps = kDevAutotestMapPartySteps + 10;
+        gDevAutotestStepCount = sizeof(kDevAutotestMapPartySteps) / sizeof(kDevAutotestMapPartySteps[0]) - 10;
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif
@@ -3968,7 +3969,7 @@ void devAutotestTick()
         case DEV_AUTOTEST_ACTION_BOTTOM_MAP_TAP: {
             if (step->b == 2) {
                 if (gDude->tile != gDevAutotestTouchStartTile) {
-                    devAutotestLog("autotest failed: wall tap moved dude\n");
+                    devAutotestLog("autotest failed: wall tap moved dude (from %d to %d)\n", gDevAutotestTouchStartTile, gDude->tile);
                     exit(EXIT_FAILURE);
                 }
                 devAutotestLog("  wall tap ignored: ok\n");
@@ -3979,16 +3980,18 @@ void devAutotestTick()
             if (step->b == 1) {
                 for (Object* obj = objectFindFirstAtElevation(gElevation); obj; obj = objectFindNextAtElevation()) {
                     float wallX, wallY;
-                    if (FrmId(obj).objectType() == OBJ_TYPE_WALL && tileDistanceBetween(gDude->tile, obj->tile) < 12
-                        && touchHudGetMapTileCenter(obj->tile, &wallX, &wallY)) {
+                    if (FrmId(obj).objectType() == OBJ_TYPE_WALL && obj->tile >= 0
+                        && touchHudGetMapTileCenter(obj->tile, &wallX, &wallY)
+                        && (target < 0 || tileDistanceBetween(gDude->tile, obj->tile) < tileDistanceBetween(gDude->tile, target))) {
                         target = obj->tile;
-                        break;
                     }
                 }
             } else {
                 for (int direction = 0; direction < 6; ++direction) {
                     int tile = tileGetTileInDirection(gDude->tile, static_cast<Rotation>(direction), static_cast<int>(step->a));
-                    if (_make_path(gDude, gDude->tile, tile, nullptr, 1) > 0) {
+                    float targetX, targetY;
+                    bool visible = step->c == 1 ? muiAutomapTileCenter(tile, &targetX, &targetY) : touchHudGetMapTileCenter(tile, &targetX, &targetY);
+                    if (visible && playerCanMoveToExactTile(tile)) {
                         target = tile;
                         break;
                     }

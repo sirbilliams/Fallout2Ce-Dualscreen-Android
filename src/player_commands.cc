@@ -120,6 +120,25 @@ void playerPrimaryAction(Object* target)
     }
 }
 
+bool playerCanMoveToExactTile(int tile)
+{
+    if (gDude == nullptr || tile < 0 || tile >= HEX_GRID_SIZE) return false;
+    for (Object* object = objectFindFirstAtLocation(gDude->elevation, tile); object != nullptr; object = objectFindNextAtLocation()) {
+        if (FrmId(object).objectType() == OBJ_TYPE_WALL) return false;
+    }
+    if (_obj_blocking_at(gDude, tile, gDude->elevation) != nullptr) return false;
+    if (tile == gDude->tile) return true;
+    unsigned char rotations[800];
+    int length = _make_path(gDude, gDude->tile, tile, rotations, 1);
+    int endpoint = gDude->tile;
+    for (int index = 0; index < length; ++index) {
+        endpoint = tileGetTileInDirection(endpoint, static_cast<Rotation>(rotations[index]), 1);
+    }
+    // The engine may return a partial path when its search is exhausted,
+    // or substitute an adjacent destination for a multihex obstacle.
+    return length > 0 && endpoint == tile;
+}
+
 int playerMoveTo(int tile, bool alternate)
 {
     int actionPoints = isInCombat()

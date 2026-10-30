@@ -19,6 +19,7 @@
 #include "kb.h"
 #include "map.h"
 #include "object.h"
+#include "player_commands.h"
 #include "svga.h"
 
 namespace fallout {
@@ -204,7 +205,7 @@ namespace {
 
         MuiRect mapRect = body.inset(ui.dp(4.0f));
         mapView.build(ui, "automap.map", mapRect, markers, &labels);
-        if (mapView.tappedTile >= 0 && gDude != nullptr && _make_path(gDude, gDude->tile, mapView.tappedTile, nullptr, 1) > 0) {
+        if (mapView.tappedTile >= 0 && gDude != nullptr && playerCanMoveToExactTile(mapView.tappedTile)) {
             gameCommandPost(GameCommandType::Hud, 10000 + mapView.tappedTile);
             finished = true;
         }

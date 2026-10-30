@@ -4,7 +4,9 @@
 #include <cmath>
 
 #include "map_hints.h"
+#include "mui_notify.h"
 #include "object.h"
+#include "player_commands.h"
 #include "settings.h"
 
 namespace fallout {
@@ -335,10 +337,19 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
     bool tapped = false;
     bool touched = ui.panZoom(id, rect, &view, &tapped);
     if (tapped && settings.touch.map_tap_move && (id == "hud.livemap" || id == "automap.map")) {
-        int x = static_cast<int>(std::floor(view.centerX + (ui.pointerX() - rect.centerX()) / view.zoom));
-        int y = static_cast<int>(std::floor(view.centerY + (ui.pointerY() - rect.centerY()) / view.zoom));
-        if (x >= 0 && y >= 0 && x < width && y < height && tileAt(x, y) != MUI_MAP_TILE_WALL)
-            tappedTile = y * width + (width - 1 - x);
+        // Pick against the image the finger saw, before follow/clamping changes it.
+        const MuiPanZoom& pickView = lastRect.w > 0 ? lastView : view;
+        const MuiRect& pickRect = lastRect.w > 0 ? lastRect : rect;
+        int x = static_cast<int>(std::floor(pickView.centerX + (ui.pointerX() - pickRect.centerX()) / pickView.zoom));
+        int y = static_cast<int>(std::floor(pickView.centerY + (ui.pointerY() - pickRect.centerY()) / pickView.zoom));
+        if (rect.contains(ui.pointerX(), ui.pointerY()) && x >= 0 && y >= 0 && x < width && y < height) {
+            int tile = y * width + (width - 1 - x);
+            if (tileAt(x, y) != MUI_MAP_TILE_WALL && playerCanMoveToExactTile(tile)) {
+                tappedTile = tile;
+            } else {
+                muiNotify("Cannot walk there.", MuiNoticeKind::Warning);
+            }
+        }
     }
     if (touched) {
         lastTouch = ui.now != 0 ? ui.now : 1;
@@ -363,6 +374,7 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
     }
 
     lastRect = rect;
+    lastView = view;
     muiPushClip(rect);
 
     if (texture != nullptr && textureValid) {

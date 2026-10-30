@@ -4,7 +4,7 @@
 map and automap, and tap travel on the world map. Display preferences exposes
 this switch. Panning and pinching do not issue movement commands. Local taps
 use the player movement command and engine pathfinder; blocked destinations
-are ignored. The amber ring marks the current walking destination. Tapping
+are rejected with a warning. The amber ring marks the current walking destination. Tapping
 an automap destination closes that paused screen so the walk can run.
 
 In dual-screen mode, the world map and town entrance map use the bottom
@@ -38,3 +38,25 @@ Screenshots are under `.rig/shots/<run>/`; every capture has a top PNG and
 `mp03b_full_map_bottom.png`, `mp09_party_bottom.png`,
 `mp12_controls_bottom.png`, and `w13_travelling_bottom.png`.
 No game assets or generated runtime files belong in the commit.
+
+## Tap destination validation
+
+Map columns are mirrored: map cell `(x, y)` selects engine tile
+`y * HEX_GRID_WIDTH + (HEX_GRID_WIDTH - 1 - x)`. Picking and the test's
+`tileToScreen` helper use the last rendered viewport, center and zoom, after
+MAP/PARTY navigation, bezel, HP and quick-use strip layout. Follow pauses on
+finger-down so the map cannot slide into a different tile during a tap.
+Previously a wall tap at tile 16689 was observed selecting walkable tile
+16489 while the live camera eased after leaving the full automap.
+
+Displayed wall codes alone are insufficient: unexplored walls may be absent
+from the automap. Both local maps now check live wall objects and engine
+blockers (including blocking scenery), and reconstruct the path endpoint.
+A positive path length is insufficient because the engine can substitute an
+adjacent multihex destination or return an 800-step truncated path. Local-map
+taps accept only a path ending at the requested tile; they do not search for
+a nearby reachable tile. The HUD command checks again before movement.
+
+The proof waits for the previous walk's camera motion to settle before
+choosing a visible wall. Reachable test targets must also be inside the
+current viewport, which can shrink when the quick-use strip is present.

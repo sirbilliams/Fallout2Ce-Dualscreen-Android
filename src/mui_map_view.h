@@ -91,8 +91,8 @@ public:
         if (lastRect.w <= 0.0f) {
             return false;
         }
-        *screenX = lastRect.centerX() + (x + 0.5f - view.centerX) * view.zoom;
-        *screenY = lastRect.centerY() + (y + 0.5f - view.centerY) * view.zoom;
+        *screenX = lastRect.centerX() + (x + 0.5f - lastView.centerX) * lastView.zoom;
+        *screenY = lastRect.centerY() + (y + 0.5f - lastView.centerY) * lastView.zoom;
         return lastRect.contains(*screenX, *screenY);
     }
 
@@ -125,6 +125,7 @@ private:
     float pendingZoomDp = 0.0f;
     unsigned int lastTouch = 0;
     MuiRect lastRect;
+    MuiPanZoom lastView;
     bool hasCenter = false;
     float centerX = 0.0f;
     float centerY = 0.0f;
