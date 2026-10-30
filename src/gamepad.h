@@ -2,6 +2,8 @@
 #define FALLOUT_GAMEPAD_H_
 
 #include <SDL.h>
+#include <string>
+#include <vector>
 
 namespace fallout {
 
@@ -15,6 +17,15 @@ namespace fallout {
 // scrolls lists and pans maps. On the map the right stick moves a cursor
 // (A click / walk, X long press = context menu), the left stick pans the
 // view. The map buttons are the `[touch] gamepad_bindings` setting.
+
+// Map binding editor indices are stable across these helpers.
+int gamepadButtonCount();
+const char* gamepadButtonLabel(int button);
+int gamepadActionCount();
+const char* gamepadActionLabel(int action);
+std::vector<int> gamepadBindings(const std::string& overrides);
+std::vector<int> gamepadCurrentBindings();
+std::string gamepadBindingOverrides(const std::vector<int>& actions);
 
 // Starts the game controller subsystem (after SDL_Init).
 void gamepadInit();

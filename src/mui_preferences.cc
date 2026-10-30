@@ -17,6 +17,7 @@
 #include "fps_limiter.h"
 #include "game.h"
 #include "game_sound.h"
+#include "gamepad.h"
 #include "input.h"
 #include "kb.h"
 #include "loadsave.h"
@@ -228,6 +229,7 @@ namespace {
         int bottomTextSize;
         bool colourBlindSafe;
         bool topScanlines;
+        std::vector<int> bindings;
         bool padCursor;
         int padR3HoldMs;
         bool touchCursor;
@@ -273,6 +275,7 @@ namespace {
         values.bottomTextSize = settings.touch.bottom_text_size;
         values.colourBlindSafe = settings.touch.colour_blind_safe;
         values.topScanlines = settings.touch.top_scanlines;
+        values.bindings = gamepadCurrentBindings();
         values.padCursor = settings.touch.pad_cursor;
         values.padR3HoldMs = settings.touch.pad_r3_hold_ms;
         values.touchCursor = settings.touch.touch_cursor;
@@ -320,6 +323,7 @@ namespace {
         values.bottomTextSize = 100;
         values.colourBlindSafe = false;
         values.topScanlines = false;
+        values.bindings = gamepadBindings("");
         values.padCursor = TouchSettings().pad_cursor;
         values.padR3HoldMs = TouchSettings().pad_r3_hold_ms;
         values.touchCursor = TouchSettings().touch_cursor;
@@ -419,6 +423,7 @@ namespace {
         settings.touch.bottom_text_size = values.bottomTextSize;
         settings.touch.colour_blind_safe = values.colourBlindSafe;
         settings.touch.top_scanlines = values.topScanlines;
+        settings.touch.gamepad_bindings = gamepadBindingOverrides(values.bindings);
         settings.touch.pad_cursor = values.padCursor;
         settings.touch.pad_r3_hold_ms = values.padR3HoldMs;
         settings.touch.touch_cursor = values.touchCursor;
@@ -451,6 +456,7 @@ namespace {
         Combat,
         Sound,
         Display,
+        Controls,
         // The game's files and saves (Android: the app's import screen):
         // actions, not settings - no apply or reset there.
         Files,
@@ -535,6 +541,8 @@ namespace {
 
     enum class RowKind {
         Header,
+        Binding,
+        ResetControls,
         Choice,
         Toggle,
         Slider,
@@ -681,12 +689,29 @@ namespace {
             row.set = [](Values& values, float value) { values.karmaChanges = value != 0.0f; };
             rows.push_back(row);
         }
-        header(Section::Game, 1125, "Mouse controls");
-        toggle(Section::Game, 1126, "Right-stick cursor (R3 / A click, B right click)", Origin::Port, &Values::padCursor);
-        toggle(Section::Game, 1127, "Cursor at the finger", Origin::Port, &Values::touchCursor);
-        toggle(Section::Game, 1128, "Two-finger tap right clicks", Origin::Port, &Values::twoFingerClick);
+        header(Section::Controls, 1141, "Map button bindings");
+        for (int button = 0; button < gamepadButtonCount(); ++button) {
+            Row row { Section::Controls, RowKind::Binding, 1142 + button, gamepadButtonLabel(button), Origin::Port };
+            row.get = [button](const Values& v) { return float(v.bindings[button]); };
+            row.set = [button](Values& v, float value) { v.bindings[button] = int(value); };
+            if (button == 0 || button == 1 || button == 9) {
+                row.noteId = 1158;
+                row.noteFallback = "Right-stick mode overrides A / B / R3";
+            }
+            rows.push_back(row);
+        }
         {
-            Row row { Section::Game, RowKind::Slider, 1129, "Cursor speed (%)", Origin::Port };
+            Row row { Section::Controls, RowKind::ResetControls, 1159, "Reset controls to defaults", Origin::Port };
+            row.get = [](const Values&) { return 0.0f; };
+            rows.push_back(row);
+        }
+
+        header(Section::Controls, 1125, "Mouse controls");
+        toggle(Section::Controls, 1126, "Right-stick cursor (R3 / A click, B right click)", Origin::Port, &Values::padCursor);
+        toggle(Section::Controls, 1127, "Cursor at the finger", Origin::Port, &Values::touchCursor);
+        toggle(Section::Controls, 1128, "Two-finger tap right clicks", Origin::Port, &Values::twoFingerClick);
+        {
+            Row row { Section::Controls, RowKind::Slider, 1129, "Cursor speed (%)", Origin::Port };
             row.minValue = 25;
             row.maxValue = 300;
             row.get = [](const Values& v) { return float(v.cursorSpeed); };
@@ -695,7 +720,7 @@ namespace {
             rows.push_back(row);
         }
         {
-            Row row { Section::Game, RowKind::Slider, 1130, "Touch & hold right clicks after (ms, 0: system)", Origin::Port };
+            Row row { Section::Controls, RowKind::Slider, 1130, "Touch & hold right clicks after (ms, 0: system)", Origin::Port };
             row.minValue = 0;
             row.maxValue = 1000;
             row.get = [](const Values& v) { return float(v.touchHoldMs); };
@@ -704,7 +729,7 @@ namespace {
             rows.push_back(row);
         }
         {
-            Row row { Section::Game, RowKind::Slider, 1131, "Hold R3 to right click after (ms)", Origin::Port };
+            Row row { Section::Controls, RowKind::Slider, 1131, "Hold R3 to right click after (ms)", Origin::Port };
             row.minValue = 200;
             row.maxValue = 1000;
             row.get = [](const Values& v) { return float(v.padR3HoldMs); };
@@ -917,6 +942,7 @@ namespace {
         explicit PreferencesScreen(bool inGame);
         ~PreferencesScreen() override;
 
+        MuiSurface surface() override { return inGame ? muiGameScreenSurface() : MuiSurface::Top; }
         bool coversScreen() override { return true; }
         void build(MuiContext& ui) override;
         void back() override;
@@ -1110,6 +1136,7 @@ namespace {
             { kTextSectionCombat, "Combat" },
             { kTextSectionSound, "Sound" },
             { kTextSectionDisplay, "Display" },
+            { 1140, "Controls" },
         };
         std::vector<std::u32string> labels;
         std::vector<Section> shown;
@@ -1162,7 +1189,7 @@ namespace {
         float buttonGap = ui.dp(8.0f);
         MuiRect reset = { buttons.x, buttons.y, (buttons.w - buttonGap) / 2.0f, buttons.h };
         MuiRect apply = { reset.right() + buttonGap, buttons.y, reset.w, buttons.h };
-        if (ui.button("prefs.reset", reset, muiDecodeGameText(muiText(kTextResetAll, "Reset all")))) {
+        if (ui.button("prefs.reset", reset, muiDecodeGameText((section == Section::Controls ? muiText(1159, "Reset controls to defaults") : muiText(kTextResetAll, "Reset all"))))) {
             pendingReset = true;
         }
 
@@ -1497,16 +1524,30 @@ namespace {
             return;
         }
 
+        if (row.kind == RowKind::ResetControls) {
+            if (ui.button("prefs.rows." + std::to_string(row.textId), rect.inset(ui.dp(4.0f)), label)) {
+                Values defaults = defaultValues();
+                for (const Row& controlRow : rows) {
+                    if (controlRow.section == Section::Controls && controlRow.set)
+                        controlRow.set(edited, controlRow.get(defaults));
+                }
+            }
+            return;
+        }
+
         muiFillRect({ rect.x, rect.bottom() - ui.dp(1.0f), rect.w, ui.dp(1.0f) }, kRowLine);
 
         // Label: a dot when changed, the origin badge, a note under it.
         // Choices get more room (several labels side by side).
-        float controlWidth = row.kind == RowKind::Choice ? std::min(rect.w * 0.6f, ui.dp(400.0f)) : std::min(rect.w * 0.48f, ui.dp(300.0f));
+        float controlWidth = (row.kind == RowKind::Choice || row.kind == RowKind::Binding) ? std::min(rect.w * 0.6f, ui.dp(400.0f)) : std::min(rect.w * 0.48f, ui.dp(300.0f));
         MuiRect control = { rect.right() - controlWidth, rect.y + ui.dp(8.0f), controlWidth, rect.h - ui.dp(16.0f) };
         float x = rect.x + ui.dp(4.0f);
         float labelWidth = control.x - x - ui.dp(12.0f);
 
         bool hasNote = row.noteId != -1;
+        if (hasNote && row.kind == RowKind::Binding) {
+            control.h = ui.dp(24.0f);
+        }
         float labelTop = rect.y + ui.dp(4.0f);
         float labelHeight = hasNote ? ui.dp(24.0f) : rect.h - ui.dp(8.0f);
         if (changed(row)) {
@@ -1519,7 +1560,7 @@ namespace {
         MuiRect labelRect = { x, labelTop, labelWidth, labelHeight };
         std::u32string badge;
         MuiColor badgeColor = theme.textDim;
-        if (row.origin == Origin::Port) {
+        if (row.origin == Origin::Port && row.section != Section::Controls) {
             badge = muiDecodeGameText(muiText(kTextPortBadge, "port"));
             badgeColor = kPortBadge;
         } else if (row.origin == Origin::Ce) {
@@ -1529,7 +1570,17 @@ namespace {
         float badgeSize = ui.dp(10.0f);
         float badgeWidth = badge.empty() ? 0.0f : muiTextWidth(badge, badgeSize) + ui.dp(10.0f);
         float labelSize = muiFitTextSize(label, labelRect.w - (badge.empty() ? 0.0f : badgeWidth + ui.dp(6.0f)), ui.dp(14.0f), ui.dp(11.0f));
-        muiDrawTextAligned(label, labelRect, labelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
+        if (row.section == Section::Controls && row.kind != RowKind::Binding) {
+            auto lines = muiWrapText(label, labelRect.w, ui.dp(11.0f));
+            float lineHeight = ui.dp(12.0f);
+            float lineY = labelRect.centerY() - lines.size() * lineHeight / 2.0f;
+            for (const auto& line : lines) {
+                muiDrawTextAligned(line, { labelRect.x, lineY, labelRect.w, lineHeight }, ui.dp(11.0f), theme.text, MuiAlign::Start, MuiAlign::Center);
+                lineY += lineHeight;
+            }
+        } else {
+            muiDrawTextAligned(label, labelRect, labelSize, theme.text, MuiAlign::Start, MuiAlign::Center);
+        }
 
         if (!badge.empty()) {
             float textWidth = muiTextWidth(label, labelSize);
@@ -1541,6 +1592,9 @@ namespace {
         if (hasNote) {
             std::u32string note = muiDecodeGameText(muiText(row.noteId, row.noteFallback));
             MuiRect noteRect = { x, labelRect.bottom(), labelWidth, rect.bottom() - labelRect.bottom() - ui.dp(4.0f) };
+            if (row.kind == RowKind::Binding) {
+                noteRect.w = rect.right() - x - ui.dp(4.0f);
+            }
             muiDrawTextAligned(note, noteRect, muiFitTextSize(note, noteRect.w, ui.dp(11.0f), ui.dp(9.0f)), theme.textDim, MuiAlign::Start, MuiAlign::Center);
         }
 
@@ -1550,6 +1604,17 @@ namespace {
         float value = row.get(edited);
 
         switch (row.kind) {
+        case RowKind::Binding: {
+            int selected = static_cast<int>(value);
+            auto action = muiDecodeGameText(muiText(1160 + selected, gamepadActionLabel(selected)));
+            if (ui.button(id, control, action)) {
+                row.set(edited, float((selected + 1) % gamepadActionCount()));
+                _gsound_red_butt_press(-1, 0);
+            }
+            break;
+        }
+        case RowKind::ResetControls:
+            break;
         case RowKind::Choice: {
             std::vector<std::u32string> options;
             for (size_t option = 0; option < row.options.size(); option++) {
@@ -1614,10 +1679,18 @@ namespace {
 
         if (pendingReset) {
             pendingReset = false;
-            const char* body[] = { muiText(kTextResetBody, "Every setting goes back to its default.") };
-            if (showDialogBox(muiText(kTextResetTitle, "Reset all settings?"), body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) != 0) {
+            const char* body[] = { section == Section::Controls ? muiText(1179, "Controls go back to their defaults. Apply to save.") : muiText(kTextResetBody, "Every setting goes back to its default.") };
+            if (showDialogBox(section == Section::Controls ? muiText(1159, "Reset controls to defaults") : muiText(kTextResetTitle, "Reset all settings?"), body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) != 0) {
                 Values before = edited;
-                edited = defaultValues();
+                Values defaults = defaultValues();
+                if (section == Section::Controls) {
+                    for (const Row& row : rows) {
+                        if (row.section == Section::Controls && row.set)
+                            row.set(edited, row.get(defaults));
+                    }
+                } else {
+                    edited = defaults;
+                }
                 previewChanges(before);
             }
         }

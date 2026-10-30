@@ -37,3 +37,17 @@ RB switch surface (when two screens).
 Dev hook: autotest actions `DEV_AUTOTEST_ACTION_PAD` (SDL button number) and `..._PAD_STICK`
 (`gamepadDevPress`, `gamepadDevStick`). Scenarios: `padtalk`, `padbarter` (`--dev-new-game`), `padmap`.
 Shots in `.rig/shots/padtalk|padbarter|padmap`.
+
+## Remap UI
+Settings → Controls lists all sixteen map buttons. Tap an action (or focus it with the
+pad and press A) to cycle through the eighteen actions, including None. The list scrolls
+with touch or pad navigation in Classic and Pip-Boy 2000 themes. Apply saves only changes
+from the defaults to `gamepad_bindings`; leaving without applying discards edits.
+Reset controls to defaults resets the bindings and mouse controls in the editor; Apply
+persists the reset and clears the override string. Controls also contains the mouse options
+previously under Game.
+
+With right-stick cursor mode enabled, A clicks, B opens context menus, and R3 clicks
+(or right-clicks when held), overriding their map bindings. Screen focus buttons remain fixed.
+The `controls` (Pip-Boy 2000) and `controlsclassic` autotests capture the remap UI,
+exercise touch and pad focus, and check minimal override round-trips.

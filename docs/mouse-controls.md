@@ -1,6 +1,6 @@
 # Mouse-style controls (SpongeBob EOTM feel)
 
-Settings (`[touch]`, Settings > Game > Mouse controls): `pad_cursor` (1), `pad_r3_hold_ms` (400), `touch_cursor` (1),
+Settings (`[touch]`, Settings > Controls > Mouse controls): `pad_cursor` (1), `pad_r3_hold_ms` (400), `touch_cursor` (1),
 `two_finger_click` (1), `touch_hold_ms` (0 = the system's touch & hold delay), `cursor_speed` (100 %).
 The Android setup guide's Controls page has the right-stick switch.
 

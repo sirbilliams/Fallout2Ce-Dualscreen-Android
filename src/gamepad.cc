@@ -114,7 +114,7 @@ namespace {
     Action gBindings[PAD_COUNT];
     std::string gBindingsSource = "\x01";
 
-    void parseBindings(const char* text)
+    void parseBindings(const char* text, Action* bindings = gBindings)
     {
         std::string list = text;
         // Pairs "button=action", separated by commas or spaces.
@@ -144,7 +144,7 @@ namespace {
                 }
                 for (const ActionName& entry : kActionNames) {
                     if (action == entry.name) {
-                        gBindings[index] = entry.action;
+                        bindings[index] = entry.action;
                     }
                 }
             }
@@ -527,6 +527,51 @@ namespace {
     }
 
 } // namespace
+
+int gamepadButtonCount() { return PAD_COUNT; }
+
+const char* gamepadButtonLabel(int button)
+{
+    static const char* labels[] = { "A", "B", "X", "Y", "Start", "Select", "LB", "RB", "L3", "R3", "D-pad up", "D-pad down", "D-pad left", "D-pad right", "L2", "R2" };
+    return button >= 0 && button < PAD_COUNT ? labels[button] : "?";
+}
+
+int gamepadActionCount() { return sizeof(kActionNames) / sizeof(kActionNames[0]); }
+
+const char* gamepadActionLabel(int action)
+{
+    static const char* labels[] = { "None", "Click / walk", "Context menu", "Back", "Game menu", "Inventory", "Skilldex", "Character", "Pip-Boy", "Automap", "Sneak", "Swap hands", "Use active item", "Combat (end turn)", "Focus (map/HUD)", "Quick use", "Zoom in", "Zoom out" };
+    return action >= 0 && action < gamepadActionCount() ? labels[action] : "?";
+}
+
+std::vector<int> gamepadBindings(const std::string& overrides)
+{
+    Action bindings[PAD_COUNT] = {};
+    parseBindings(kDefaultBindings, bindings);
+    parseBindings(overrides.c_str(), bindings);
+    std::vector<int> result;
+    for (Action action : bindings)
+        result.push_back(static_cast<int>(action));
+    return result;
+}
+
+std::vector<int> gamepadCurrentBindings()
+{
+    return gamepadBindings(settings.touch.gamepad_bindings);
+}
+
+std::string gamepadBindingOverrides(const std::vector<int>& actions)
+{
+    const auto defaults = gamepadBindings("");
+    std::string result;
+    for (int button = 0; button < PAD_COUNT && button < static_cast<int>(actions.size()); ++button) {
+        int action = actions[button];
+        if (action == defaults[button] || action < 0 || action >= gamepadActionCount()) continue;
+        if (!result.empty()) result += ",";
+        result += std::string(kButtonNames[button]) + "=" + kActionNames[action].name;
+    }
+    return result;
+}
 
 void gamepadInit()
 {

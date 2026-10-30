@@ -1600,7 +1600,7 @@ static const DevAutotestStep kDevAutotestGameFilesSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "g00_start" },
     { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 40, "g01_menu" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "g02_settings", "menu.settings" },
-    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "g03_files", "prefs.sections.4" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "g03_files", "prefs.sections.5" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "g04_export_asks", "prefs.files.export" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "g05_no", "dialog.secondary" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "g06_delete_asks", "prefs.files.delete" },
@@ -1680,6 +1680,21 @@ static const DevAutotestStep kDevAutotestDisplaySteps[] = {
     { DEV_AUTOTEST_ACTION_DISPLAY_CHECK, 0, 1, 0, 1, "d20_restored" },
 };
 
+static int gDevAutotestControlsTheme = 2;
+static const DevAutotestStep kDevAutotestControlsSteps[] = {
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 10, 2, 0, 30, "c00_bindings_roundtrip" },
+    { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 40, "c01_menu" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "c02_settings", "menu.settings" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "c03_controls_pipboy", "prefs.sections.4" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "c04_button_assert", "prefs.rows.1142" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "c05_cycle_a", "prefs.rows.1142" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 12, "c05_pad_focus" },
+    { DEV_AUTOTEST_ACTION_PAD, 12, 0, 0, 12, "c05_pad_next" },
+    { DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE, 9, 760, 0, 30, "c06_controls_scrolled" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "c07_reset_assert", "prefs.rows.1159" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "c08_reset", "prefs.rows.1159" },
+};
+
 static const DevAutotestStep kDevAutotestPreferencesSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "p00_start" },
     { DEV_AUTOTEST_ACTION_LOG_PREFERENCES, 0, 0, 0, 1, "p01_before" },
@@ -1737,7 +1752,7 @@ static const DevAutotestStep kDevAutotestAboutSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "a00_start" },
     { DEV_AUTOTEST_ACTION_BACK, 0, 0, 0, 40, "a01_menu" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "a02_settings", "menu.settings" },
-    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "a03_about", "prefs.sections.5" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "a03_about", "prefs.sections.6" },
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "a04_source_button", "prefs.about.source" },
     { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, 0, -0.5f, 0, 40, "a05_scrolled", "prefs.about" },
     { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, 0, -0.5f, 0, 40, "a06_scrolled", "prefs.about" },
@@ -2648,6 +2663,13 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "displayproof") == 0) {
         gDevAutotestSteps = kDevAutotestDisplaySteps;
         gDevAutotestStepCount = sizeof(kDevAutotestDisplaySteps) / sizeof(kDevAutotestDisplaySteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "controls") == 0 || strcmp(name, "controlsclassic") == 0) {
+        gDevAutotestControlsTheme = strcmp(name, "controlsclassic") == 0 ? 1 : 2;
+        gDevAutotestSteps = kDevAutotestControlsSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestControlsSteps) / sizeof(kDevAutotestControlsSteps[0]);
 #ifndef __ANDROID__
         bottomScreenSetTest(1240, 1080, 2.6f);
 #endif
@@ -3698,7 +3720,17 @@ void devAutotestTick()
         }
         case DEV_AUTOTEST_ACTION_DISPLAY_FIXTURE: {
             int fixture = int(step->a);
-            if (fixture == 0) {
+            if (fixture == 10) {
+                auto defaults = gamepadBindings("");
+                auto changed = defaults;
+                changed[7] = 8; // RB -> Pip-Boy.
+                bool ok = gamepadBindingOverrides(defaults).empty()
+                    && gamepadBindingOverrides(changed) == "rb=pipboy"
+                    && gamepadBindings(gamepadBindingOverrides(changed)) == changed;
+                devAutotestLog("  bindings round-trip: %s\n", ok ? "PASS" : "FAIL");
+                if (!ok) exit(EXIT_FAILURE);
+                settings.touch.bottom_theme = gDevAutotestControlsTheme;
+            } else if (fixture == 0) {
                 settings.touch.perf_mode = "balanced";
                 settings.touch.bottom_dim_seconds = 0;
                 settings.touch.bottom_text_size = 100;
@@ -3721,8 +3753,12 @@ void devAutotestTick()
             } else if (fixture == 9) {
                 // Position the list without fling timing depending on GPU speed.
                 // All preference changes still go through the real widgets.
-                MuiContext ui;
-                ui.setScroll("prefs.rows", step->b * hudGetScreenDensity());
+                MuiSurface surface = muiGameScreenSurface();
+                int width, height;
+                muiPadOutputSize(surface, &width, &height);
+                float density = muiSurfaceMetrics(surface).pixelsPerDp * width / screenGetWidth();
+                muiPadScrollBy(surface, "prefs.rows", -1000000.0f);
+                muiPadScrollBy(surface, "prefs.rows", step->b * density);
             } else if (fixture == 8) {
                 // Synthetic reaction fixture, with the perk the engine requires.
                 perkAddForce(gDude, PERK_EMPATHY);
