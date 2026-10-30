@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "map_hints.h"
+#include "mui_gameskin.h"
 #include "mui_notify.h"
 #include "object.h"
 #include "player_commands.h"
@@ -98,6 +99,7 @@ void MuiMapView::setTiles(const std::string& newKey, const std::vector<unsigned 
         return;
     }
 
+    if (anotherMap && !key.empty() && !needsFit) remembered[key] = view;
     key = newKey;
     tiles = newTiles;
     width = newWidth;
@@ -111,8 +113,19 @@ void MuiMapView::setTiles(const std::string& newKey, const std::vector<unsigned 
     updateBounds();
 
     if (anotherMap) {
-        needsFit = true;
+        auto saved = remembered.find(key);
+        needsFit = saved == remembered.end();
+        if (!needsFit) view = saved->second;
+        lastRect = {};
+        hasCenter = false;
     }
+}
+
+void MuiMapView::centerOn(float x, float y)
+{
+    centerX = view.centerX = x;
+    centerY = view.centerY = y;
+    hasCenter = true;
 }
 
 void MuiMapView::setFloors(const std::vector<unsigned int>& colors, int floorWidth, int floorHeight)
@@ -219,6 +232,10 @@ void MuiMapView::render(MuiContext& ui, float scale)
                 static_cast<Uint8>((color & 0xFF) * kFloorShade),
                 255,
             };
+            if (muiSkinPipboy()) {
+                Uint8 level = static_cast<Uint8>((fill.r + fill.g + fill.b) / 3);
+                fill = { static_cast<Uint8>(level / 5), static_cast<Uint8>(level / 2), static_cast<Uint8>(level / 4), 255 };
+            }
             float x1 = (x * 2 - left) * scale;
             float y1 = (y * 2 - top) * scale;
             float x2 = x1 + 2.0f * scale;
@@ -299,6 +316,10 @@ void MuiMapView::render(MuiContext& ui, float scale)
 void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers, const std::vector<MuiMapLabel>* labels)
 {
     tappedTile = -1;
+    if (renderedTheme != settings.touch.bottom_theme) {
+        renderedTheme = settings.touch.bottom_theme;
+        textureValid = false;
+    }
     if (isEmpty()) {
         return;
     }
@@ -336,7 +357,7 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
 
     bool tapped = false;
     bool touched = ui.panZoom(id, rect, &view, &tapped);
-    if (tapped && settings.touch.map_tap_move && (id == "hud.livemap" || id == "automap.map")) {
+    if (tapped && allowWalk && settings.touch.map_tap_move && (id == "hud.livemap" || id == "automap.map")) {
         // Pick against the image the finger saw, before follow/clamping changes it.
         const MuiPanZoom& pickView = lastRect.w > 0 ? lastView : view;
         const MuiRect& pickRect = lastRect.w > 0 ? lastRect : rect;
@@ -350,6 +371,11 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
                 muiNotify("Cannot walk there.", MuiNoticeKind::Warning);
             }
         }
+    }
+    if (tapped && (!allowWalk || !settings.touch.map_tap_move || id == "pipboy.map")) {
+        const MuiPanZoom& pick = lastRect.w > 0 ? lastView : view;
+        view.centerX = pick.centerX + (ui.pointerX() - rect.centerX()) / pick.zoom;
+        view.centerY = pick.centerY + (ui.pointerY() - rect.centerY()) / pick.zoom;
     }
     if (touched) {
         lastTouch = ui.now != 0 ? ui.now : 1;
@@ -397,6 +423,13 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
         float radius = ui.dp(marker.radius);
         MuiColor outline = muiRgb(0x000000, 170);
         switch (marker.shape) {
+        case MuiMapMarkerShape::Arrow: {
+            float angle = gDude != nullptr ? static_cast<int>(gDude->rotation) * float(M_PI) / 3 : 0;
+            auto p = [&](float a, float b) { return SDL_FPoint{x + a * std::cos(angle) - b * std::sin(angle), y + a * std::sin(angle) + b * std::cos(angle)}; };
+            auto a = p(0, -radius * 1.8f), b = p(radius, radius), c = p(-radius, radius);
+            muiFillConvex({a, b, c}, muiTheme().text);
+            break;
+        }
         case MuiMapMarkerShape::Dot:
             muiFillCircle(x, y, radius * 2.0f, marker.color.withAlpha(50));
             muiFillCircle(x, y, radius, marker.color);
@@ -434,6 +467,17 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
     }
 
     muiPopClip();
+    float h = ui.dp(30), w = ui.dp(72);
+    MuiRect center = {rect.right() - w - ui.dp(6), rect.y + ui.dp(48), w, h};
+    if (ui.button(id + ".center", center, U"CENTER")) {
+        if (id != "pipboy.map" && gDude != nullptr)
+            centerOn(width - 1 - gDude->tile % width + 0.5f, gDude->tile / width + 0.5f);
+        else fit();
+        lastTouch = ui.now;
+    }
+    MuiRect legend = {center.x, center.bottom() + ui.dp(4), w, h};
+    if (ui.button(id + ".legend", legend, U"LEGEND")) showLegend = !showLegend;
+    if (showLegend) muiAutomapLegend(ui, rect);
 }
 
 } // namespace fallout

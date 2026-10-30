@@ -2,6 +2,7 @@
 #define FALLOUT_MUI_MAP_VIEW_H_
 
 #include <string>
+#include <map>
 #include <vector>
 
 #include "mui.h"
@@ -26,6 +27,7 @@ enum class MuiMapMarkerShape {
     Diamond,
     Ring,
     Triangle,
+    Arrow,
 };
 
 // Marker in tile coordinates (tile centers are at x + 0.5, y + 0.5).
@@ -76,6 +78,7 @@ public:
     // The zoom to use once, at [tileDp] dp per tile (within the map's
     // limits).
     void zoomTo(float tileDp) { pendingZoomDp = tileDp; }
+    bool hasRememberedView() const { return remembered.find(key) != remembered.end(); }
 
     // When a finger last moved or pinched the map (SDL ticks, 0 - never).
     unsigned int lastTouchTime() const { return lastTouch; }
@@ -98,6 +101,7 @@ public:
 
     // Engine hex tile selected by the last build, or -1 (pan/pinch/no tap).
     int tappedTile = -1;
+    bool allowWalk = true;
 
     void build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers, const std::vector<MuiMapLabel>* labels = nullptr);
 
@@ -118,6 +122,9 @@ private:
     int bottom = -1;
 
     MuiPanZoom view;
+    std::map<std::string, MuiPanZoom> remembered;
+    bool showLegend = false;
+    int renderedTheme = -1;
     bool needsFit = true;
     bool following = false;
     float followX = 0.0f;

@@ -649,6 +649,7 @@ namespace {
 
     private:
         MuiTownMapView view;
+        bool listOpen = false;
     };
 
     void TownMapScreen::build(MuiContext& ui)
@@ -682,6 +683,25 @@ namespace {
         muiStrokeRoundRect(title, ui.dp(theme.radius), ui.dp(theme.borderWidth), theme.accent);
         muiDrawTextAligned(name, title, nameSize, theme.text, MuiAlign::Center, MuiAlign::Center);
 
+        MuiRect listButton = {content.right() - ui.dp(110), content.y, ui.dp(110), ui.dp(44)};
+        if (ui.button("townmap.list", listButton, listOpen ? U"MAP" : U"AREAS")) listOpen = !listOpen;
+        if (listOpen) {
+            MuiRect panel = {content.x, title.bottom() + ui.dp(8), content.w, content.bottom() - title.bottom() - ui.dp(8)};
+            ui.panel(panel);
+            float rowHeight = ui.dp(48);
+            float scroll = ui.scroll("townmap.areas", panel, view.entrances.size() * rowHeight);
+            muiPushClip(panel);
+            for (size_t i = 0; i < view.entrances.size(); ++i) {
+                const auto& entry = view.entrances[i];
+                MuiRect row = {panel.x + ui.dp(6), panel.y + i * rowHeight - scroll, panel.w - ui.dp(12), rowHeight - ui.dp(4)};
+                if (ui.button("townmap.area." + std::to_string(entry.index), row, gameText(entry.name)) && !ui.isScrolling("townmap.areas")) {
+                    result = entry.index;
+                    finished = true;
+                }
+            }
+            muiPopClip();
+            return;
+        }
         // Entrances: a mark with its name under it; both enter.
         for (const MuiTownMapEntrance& entrance : view.entrances) {
             float x = picture.x + entrance.x * scale;

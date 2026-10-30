@@ -21,6 +21,7 @@
 #include "input.h"
 #include "kb.h"
 #include "movie.h"
+#include "map.h"
 #include "object.h"
 #include "pipboy.h"
 #include "scripts.h"
@@ -717,7 +718,15 @@ namespace {
         }
 
         ui.panel(detail);
-        mapView.build(ui, "pipboy.map", detail.inset(ui.dp(4.0f)), {});
+        std::vector<MuiMapMarker> markers;
+        std::vector<MuiMapLabel> labels;
+        if (automap.map == mapGetCurrentMap() && automap.elevation == gElevation) {
+            AutomapView live;
+            automapGetView(gElevation, &live);
+            muiAutomapDetail(live, true, &markers, &labels);
+            if (live.dudeX >= 0) markers.push_back({float(live.dudeX), float(live.dudeY), muiTheme().text, 5, MuiMapMarkerShape::Arrow});
+        }
+        mapView.build(ui, "pipboy.map", detail.inset(ui.dp(4.0f)), markers, &labels);
     }
 
     // Seen movies; the game plays the chosen one.

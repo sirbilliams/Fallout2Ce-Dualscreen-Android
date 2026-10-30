@@ -535,7 +535,7 @@ namespace {
             gLiveMapKey = key;
             gLiveMapFollowing = false;
             // Close enough to see the rooms around dude.
-            gLiveMap.zoomTo(5.0f);
+            if (!gLiveMap.hasRememberedView()) gLiveMap.zoomTo(5.0f);
         }
 
         gLiveMap.setFloors(gLiveMapView.floors, kAutomapFloorWidth, kAutomapFloorHeight);

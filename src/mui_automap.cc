@@ -6,6 +6,7 @@
 #include "mui_skin.h"
 
 #include <string>
+#include <algorithm>
 #include <vector>
 
 #include "animation.h"
@@ -21,6 +22,8 @@
 #include "object.h"
 #include "player_commands.h"
 #include "svga.h"
+#include "scripts.h"
+#include "pipboy.h"
 
 namespace fallout {
 
@@ -70,6 +73,7 @@ namespace {
     private:
         MuiMapView mapView;
         bool opened = false;
+        int elevation = 0;
 
         // What the automap shows, taken again when it changes (the game is
         // paused under the screen).
@@ -85,6 +89,7 @@ namespace {
     {
         finished = false;
         opened = false;
+        elevation = gElevation;
         viewDirty = true;
     }
 
@@ -184,14 +189,32 @@ namespace {
         MuiRect body = { content.x, header.bottom() + ui.dp(8.0f), content.w, content.bottom() - header.bottom() - ui.dp(8.0f) };
         ui.panel(body);
 
+        MuiRect controls = {body.x + ui.dp(6), body.y + ui.dp(5), ui.dp(100), ui.dp(32)};
+        if (ui.button("automap.elevation", controls, U"LEVEL " + muiDecodeUtf8(std::to_string(elevation + 1).c_str()))) {
+            // Only elevations actually saved by the engine are browsable.
+            std::vector<int> available { gElevation };
+            for (const auto& location : pipboyGetAutomaps())
+                for (const auto& entry : location.maps)
+                    if (entry.map == map && std::find(available.begin(), available.end(), entry.elevation) == available.end()) available.push_back(entry.elevation);
+            std::sort(available.begin(), available.end());
+            auto next = std::find(available.begin(), available.end(), elevation);
+            elevation = next == available.end() || ++next == available.end() ? available.front() : *next;
+            viewDirty = true;
+        }
+        muiDrawText(muiDecodeGameText(gameTimeGetTimeString()), controls.right() + ui.dp(10), controls.y + ui.dp(8), ui.dp(12), theme.text);
         if (viewDirty) {
             viewDirty = false;
-            automapGetView(gElevation, &view);
+            if (elevation == gElevation) automapGetView(gElevation, &view);
+            else {
+                view = {};
+                view.dudeX = -1;
+                automapGetPipboyTiles(map, elevation, view.tiles);
+            }
         }
-        mapView.setTiles("automap." + std::to_string(map) + "." + std::to_string(gElevation), view.tiles, HEX_GRID_WIDTH, HEX_GRID_HEIGHT);
+        mapView.setTiles("automap." + std::to_string(map) + "." + std::to_string(elevation), view.tiles, HEX_GRID_WIDTH, HEX_GRID_HEIGHT);
         if (!opened) {
             opened = true;
-            mapView.fit();
+            // setTiles restores the remembered view for this map/elevation.
         }
 
         mapView.setFloors(view.floors, kAutomapFloorWidth, kAutomapFloorHeight);
@@ -200,16 +223,19 @@ namespace {
         std::vector<MuiMapLabel> labels;
         muiAutomapDetail(view, true, &markers, &labels);
         if (view.dudeX != -1) {
-            markers.push_back({ static_cast<float>(view.dudeX), static_cast<float>(view.dudeY), kDude, 4.0f });
+            markers.push_back({ static_cast<float>(view.dudeX), static_cast<float>(view.dudeY), kDude, 5.0f, MuiMapMarkerShape::Arrow });
         }
 
         MuiRect mapRect = body.inset(ui.dp(4.0f));
+        mapRect.y += ui.dp(40);
+        mapRect.h -= ui.dp(40);
+        mapView.allowWalk = elevation == gElevation;
         mapView.build(ui, "automap.map", mapRect, markers, &labels);
-        if (mapView.tappedTile >= 0 && gDude != nullptr && playerCanMoveToExactTile(mapView.tappedTile)) {
+        if (elevation == gElevation && mapView.tappedTile >= 0 && gDude != nullptr && playerCanMoveToExactTile(mapView.tappedTile)) {
             gameCommandPost(GameCommandType::Hud, 10000 + mapView.tappedTile);
             finished = true;
         }
-        muiAutomapLegend(ui, mapRect);
+
     }
 
 } // namespace
@@ -279,6 +305,7 @@ void muiAutomapLegend(MuiContext& ui, const MuiRect& area)
         case MuiMapMarkerShape::Diamond:
             muiFillDiamond(cx, cy, radius, key.color);
             break;
+        case MuiMapMarkerShape::Arrow:
         case MuiMapMarkerShape::Triangle:
             muiFillConvex({ { cx, cy - radius * 1.15f }, { cx + radius, cy + radius * 0.8f }, { cx - radius, cy + radius * 0.8f } }, key.color);
             break;
