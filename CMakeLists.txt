@@ -979,6 +979,11 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
     ce_add_test(save_catalog_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(suspend_slot_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(sound_tempo_test "src/sound_tempo.cc")
+    ce_add_test(touch_gesture_test "src/touch.cc")
+    target_compile_definitions(touch_gesture_test PRIVATE FALLOUT_FORCE_TOUCH_ONLY)
+    target_include_directories(touch_gesture_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+    # SDL headers also come with the SDL target when the include variable is empty.
+    target_link_libraries(touch_gesture_test ${SDL2_LIBRARIES})
     ce_add_test(sfall_arrays_test "src/sfall_arrays.cc" "src/sfall_global_vars.cc" "src/sfall_ext.cc")
     target_include_directories(sfall_arrays_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
     target_link_libraries(sfall_arrays_test ${SDL2_LIBRARIES})

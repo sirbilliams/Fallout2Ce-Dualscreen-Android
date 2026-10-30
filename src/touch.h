@@ -65,8 +65,10 @@ void touch_handle_end(SDL_TouchFingerEvent* event);
 bool touch_handle_cancel(SDL_FingerID fingerId);
 // CE: Forgets fingers not in [down] (the [count] fingers really down now):
 // ends that never came.
+// [preserveEnded] keeps received ends until gesture recognition; explicit
+// input resets leave it false to cancel pending gestures too.
 // Returns true if any was forgotten.
-bool touch_forget_missing(const SDL_FingerID* down, int count);
+bool touch_forget_missing(const SDL_FingerID* down, int count, bool preserveEnded = false);
 void touch_process_gesture();
 // CE: A finger followed by the recognizer is on the screen.
 bool touch_any_finger_down();

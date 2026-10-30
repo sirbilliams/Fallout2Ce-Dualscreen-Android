@@ -209,11 +209,11 @@ bool touch_handle_cancel(SDL_FingerID fingerId)
     return true;
 }
 
-bool touch_forget_missing(const SDL_FingerID* down, int count)
+bool touch_forget_missing(const SDL_FingerID* down, int count, bool preserveEnded)
 {
     bool forgotten = false;
     for (const Touch& touch : touches) {
-        if (!touch.used) {
+        if (!touch.used || (preserveEnded && touch.phase == TOUCH_PHASE_ENDED)) {
             continue;
         }
 
@@ -227,6 +227,16 @@ bool touch_forget_missing(const SDL_FingerID* down, int count)
 
         if (!isDown && touch_handle_cancel(touch.fingerId)) {
             forgotten = true;
+        }
+    }
+
+    // A missing active finger interrupts its gesture. Do not reinterpret
+    // the other fingers' pending releases as a new, smaller tap.
+    if (forgotten && preserveEnded) {
+        for (const Touch& touch : touches) {
+            if (touch.used && touch.phase == TOUCH_PHASE_ENDED) {
+                touch_handle_cancel(touch.fingerId);
+            }
         }
     }
     return forgotten;

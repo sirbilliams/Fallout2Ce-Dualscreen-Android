@@ -37,7 +37,7 @@
 
 namespace fallout {
 
-static void inputForgetLiftedFingers(bool excludeNew, SDL_FingerID fingerId);
+static void inputForgetLiftedFingers(bool excludeNew, SDL_FingerID fingerId, bool preserveEnded = false);
 static void inputResetTouchGestures();
 
 typedef struct InputEvent {
@@ -1060,7 +1060,7 @@ int _GNW95_input_init()
 // (taps dead, the map "clicked" where they were). [excludeNew] - a new
 // finger [fingerId] goes down: ours with its number are stale too.
 // Synthetic touches of automated tests aren't SDL's.
-static void inputForgetLiftedFingers(bool excludeNew, SDL_FingerID fingerId)
+static void inputForgetLiftedFingers(bool excludeNew, SDL_FingerID fingerId, bool preserveEnded)
 {
     if (devAutotestIsEnabled()) {
         return;
@@ -1113,7 +1113,7 @@ static void inputForgetLiftedFingers(bool excludeNew, SDL_FingerID fingerId)
     if (muiForgetMissingFingers(down, count)) {
         touchLogLostFingers("ui");
     }
-    if (touch_forget_missing(down, count)) {
+    if (touch_forget_missing(down, count, preserveEnded)) {
         touchLogLostFingers("map");
         inputResetTouchGestures();
     }
@@ -1312,8 +1312,9 @@ void _GNW95_process_message()
         }
     }
 
-    // CE: All events are in: fingers of ours not down any more lost their end.
-    inputForgetLiftedFingers(false, 0);
+    // Received ends still need gesture recognition, including the pad's
+    // synthetic finger, which is no longer down in SDL or mui_pad.
+    inputForgetLiftedFingers(false, 0, true);
 
     // CE: Sticks and held buttons of game controllers.
     gamepadTick();

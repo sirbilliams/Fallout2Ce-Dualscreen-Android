@@ -21,3 +21,14 @@ In this port there is no mouse; a "right click" is the long press: the action me
 
 The left stick / d-pad UI focus is unchanged. With `pad_cursor=0` the right stick does nothing on the map and R3 /
 A / B keep their `gamepad_bindings`. Test: `--dev-autotest-scenario=mouse` (shots of both themes).
+
+## Controller taps on the map (fix by Ocherk, 2026-10-30)
+A and R3 click on the map through a synthetic finger (`mui_pad.cc`). That finger isn't SDL's, so the end-of-poll
+"lost finger" check used to cancel its received release before `touch_process_gesture()` read the tap: A / R3 did
+nothing in the world on a real Thor (autotests skip that check, so they never saw it). Now
+`touch_forget_missing(..., preserveEnded)` keeps ended touches until gesture recognition on that one check only;
+explicit resets, focus / background loss and a new finger still cancel, and a held finger that goes missing also
+drops the other fingers' pending releases (no stray single tap from a broken two-finger gesture). Bottom-screen
+fingers (BottomScreen.java, always delivered with their ends) are unaffected. Unit test: `tests/touch_gesture_test.cc`
+(9 scenarios, runs in the UI regression workflow). Patch, analysis and test by Ocherk
+([r/decomps](https://www.reddit.com/r/decomps/comments/1xiefpz/)), confirmed on an AYN Thor.
