@@ -886,6 +886,7 @@ namespace {
         ui.panel(left);
         MuiRect inner = left.inset(ui.dp(12.0f));
         float clockSize = std::min(ui.dp(48.0f), inner.w / 4.0f);
+        while (clockSize > ui.dp(16.0f) && muiTextWidth(clockText(time), clockSize) > inner.w) clockSize -= ui.dp(1.0f);
         float y = inner.y + ui.dp(12.0f);
 
         // The Pip-Boy's own alarm clock (rings while resting).
@@ -907,7 +908,9 @@ namespace {
         y += ui.dp(30.0f);
 
         std::u32string hp = gameText(pipboyGetText(kPipboyHitPoints)) + U" " + number(critterGetHitPoints(gDude)) + U"/" + number(critterGetStat(gDude, STAT_MAXIMUM_HIT_POINTS));
-        muiDrawTextAligned(hp, { inner.x, y, inner.w, ui.dp(22.0f) }, ui.dp(15.0f), theme.text, MuiAlign::Center, MuiAlign::Start);
+        float hpSize = ui.dp(15.0f);
+        while (hpSize > ui.dp(8.0f) && muiTextWidth(hp, hpSize) > inner.w) hpSize -= ui.dp(0.5f);
+        muiDrawTextAligned(hp, { inner.x, y, inner.w, ui.dp(22.0f) }, hpSize, theme.text, MuiAlign::Center, MuiAlign::Start);
 
         if (resting) {
             // The only touchable thing while resting: stops it like Esc.

@@ -101,6 +101,8 @@ public:
 
     // Engine hex tile selected by the last build, or -1 (pan/pinch/no tap).
     int tappedTile = -1;
+    // Width at the right edge another control occupies; CENTER/LEGEND stay clear of it.
+    float reservedRight = 0.0f;
     bool allowWalk = true;
 
     void build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers, const std::vector<MuiMapLabel>* labels = nullptr);

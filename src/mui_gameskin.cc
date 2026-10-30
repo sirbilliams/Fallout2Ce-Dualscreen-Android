@@ -274,7 +274,8 @@ namespace {
 
     float glyphAdvance(const TextGlyph& glyph, const GameFont& font)
     {
-        if (muiSkinPipboy()) return font.width['M'] + font.letterSpacing;
+        // CRT face: natural proportional spacing, tabular digits so clocks and counters do not jitter.
+        if (muiSkinPipboy() && glyph.ch >= '0' && glyph.ch <= '9') return font.width['0'] + font.letterSpacing;
         return glyph.fittedDollar ? (font.width['0'] > 0 ? font.width['0'] : digitInk(font).w) + font.letterSpacing : advanceOf(glyph.ch, *glyph.font);
     }
 
@@ -787,6 +788,7 @@ float muiGameRoleHeight(MuiFontRole role, float scale)
 
 void muiGameDrawRole(const std::u32string& text, float x, float y, MuiFontRole role, float scale, MuiColor color)
 {
+    if (muiSkinPipboy()) color = muiTheme().text.withAlpha(color.a);
     drawText(text, x, y, fontIndexOf(role), scale * bottomTextScale(), color, true);
 }
 
@@ -1095,6 +1097,11 @@ void muiGameButton(MuiContext& ui, const MuiRect& rect, bool pressed, bool prima
 
 void muiGameNamePlate(MuiContext& ui, float x, float y, const std::u32string& text)
 {
+    if (muiSkinPipboy()) {
+        float size = ui.dp(10);
+        muiDrawText(text, x - muiTextWidth(text, size) / 2, y - muiLineHeight(size) / 2, size, muiTheme().textDim);
+        return;
+    }
     float scale = 1.0f;
     float pixel = artScale(ui);
     float textW = muiGameRoleWidth(text, MuiFontRole::Label, 2.0f);

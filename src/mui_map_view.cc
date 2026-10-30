@@ -467,15 +467,17 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
     }
 
     muiPopClip();
-    float h = ui.dp(30), w = ui.dp(72);
-    MuiRect center = {rect.right() - w - ui.dp(6), rect.y + ui.dp(48), w, h};
+    bool compact = rect.h < ui.dp(150);
+    float h = ui.dp(compact ? 24 : 30), w = ui.dp(compact ? 66 : 72);
+    float right = rect.right() - (compact ? reservedRight : 0.0f);
+    MuiRect center = {right - w - ui.dp(6), compact ? rect.bottom() - h - ui.dp(4) : rect.y + ui.dp(48), w, h};
     if (ui.button(id + ".center", center, U"CENTER")) {
         if (id != "pipboy.map" && gDude != nullptr)
             centerOn(width - 1 - gDude->tile % width + 0.5f, gDude->tile / width + 0.5f);
         else fit();
         lastTouch = ui.now;
     }
-    MuiRect legend = {center.x, center.bottom() + ui.dp(4), w, h};
+    MuiRect legend = {compact ? center.x - w - ui.dp(4) : center.x, compact ? center.y : center.bottom() + ui.dp(4), w, h};
     if (ui.button(id + ".legend", legend, U"LEGEND")) showLegend = !showLegend;
     if (showLegend) muiAutomapLegend(ui, rect);
 }

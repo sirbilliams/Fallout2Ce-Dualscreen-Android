@@ -466,8 +466,12 @@ void muiDualBottomOverlay(MuiContext& ui, MuiScreen* top)
     if (inGame() && fraction > 0.0f && fraction <= kLowHitPoints) {
         float phase = fmodf(static_cast<float>(ui.now), kPulseMs) / kPulseMs;
         float strength = 0.5f + 0.5f * sinf(phase * 6.2831853f);
-        MuiColor edgeColor = (settings.touch.colour_blind_safe ? muiRgb(0xFFB000) : kWarningRed).withAlpha(static_cast<Uint8>(40.0f + 110.0f * strength));
-        MuiColor clear = (settings.touch.colour_blind_safe ? muiRgb(0xFFB000) : kWarningRed).withAlpha(0);
+        MuiColor warn = settings.touch.colour_blind_safe ? muiRgb(0xFFB000) : kWarningRed;
+        bool crt = muiSkinPipboy();
+        // The Pip-Boy keeps its phosphor: a soft green pulse, never red.
+        if (crt) warn = muiTheme().text;
+        MuiColor edgeColor = warn.withAlpha(static_cast<Uint8>(crt ? 14.0f + 40.0f * strength : 40.0f + 110.0f * strength));
+        MuiColor clear = warn.withAlpha(0);
         float edge = ui.dp(28.0f);
         muiFillGradient({ screen.x, screen.y, edge, screen.h }, edgeColor, clear, clear, edgeColor);
         muiFillGradient({ screen.right() - edge, screen.y, edge, screen.h }, clear, edgeColor, edgeColor, clear);

@@ -575,6 +575,7 @@ namespace {
         gLiveMapCameraTime = ui.now;
 
         muiPushClip(inner);
+        gLiveMap.reservedRight = ui.dp(48.0f);
         gLiveMap.build(ui, "hud.livemap", inner, markers, &labels);
         if (gLiveMap.tappedTile >= 0) gameCommandPost(GameCommandType::Hud, 10000 + gLiveMap.tappedTile);
         float dudeX;
