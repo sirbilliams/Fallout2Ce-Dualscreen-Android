@@ -1528,11 +1528,11 @@ namespace {
             std::u32string label = edited.dashboardLayout == 1 ? U"MAP FIRST" : edited.dashboardLayout == 2 ? U"TWO COLUMNS"
                                                                                                             : U"CLASSIC";
             if (edited.bottomTheme == 2) label = U"PIP-BOY 2000";
-            muiDrawText(label, info.x, info.y, ui.dp(10), theme.accent);
-            muiDrawText(U"HP 42/60", info.x, info.y + ui.dp(18), ui.dp(10), theme.text);
+            muiDrawText(label, info.x, info.y, muiFitTextSize(label, info.w, ui.dp(10), ui.dp(6)), theme.accent);
+            muiDrawText(U"HP 42/60", info.x, info.y + ui.dp(18), muiFitTextSize(U"HP 42/60", info.w, ui.dp(10), ui.dp(6)), theme.text);
             std::u32string talk = edited.dialogueLayout == 0 ? U"DIALOGUE: TOP" : edited.dialogueLayout == 1 ? U"DIALOGUE: SPLIT"
                                                                                                              : U"DIALOGUE: MIRROR";
-            muiDrawText(talk, info.x, info.y + ui.dp(36), ui.dp(9), theme.text);
+            muiDrawText(talk, info.x, info.y + ui.dp(36), muiFitTextSize(talk, info.w, ui.dp(9), ui.dp(6)), theme.text);
             y += previewSpace;
         }
         y -= offset;
