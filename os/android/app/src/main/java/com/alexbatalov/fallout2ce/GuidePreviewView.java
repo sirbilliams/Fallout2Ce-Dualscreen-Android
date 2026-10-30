@@ -14,6 +14,7 @@ import android.view.View;
 public class GuidePreviewView extends View {
     static final int THEME_FALLOUT = 0;
     static final int THEME_CLASSIC = 1;
+    static final int THEME_PIPBOY = 2;
 
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);

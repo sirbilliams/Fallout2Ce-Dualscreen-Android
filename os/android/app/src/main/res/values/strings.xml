@@ -88,9 +88,10 @@
     <string name="guide_layout_map">Map first</string>
     <string name="guide_layout_columns">Two columns</string>
     <string name="guide_theme_title">Theme</string>
-    <string name="guide_theme_text">The Fallout theme draws the bottom screen with the game\'s own interface art and fonts, read from your copy. Classic is plain green.</string>
+    <string name="guide_theme_text">The Fallout theme draws the bottom screen with the game\'s own interface art and fonts, read from your copy. Classic is plain green. Pip-Boy 2000 is a green CRT console (the default).</string>
     <string name="guide_theme_fallout">Fallout</string>
     <string name="guide_theme_classic">Classic</string>
+    <string name="guide_theme_pipboy">Pip-Boy 2000</string>
     <string name="guide_controls_title">Controls</string>
     <string name="guide_controls_touch_title">Touch</string>
     <string name="guide_controls_touch">The top screen is the world: tap to walk, tap a person or a thing to act on it, touch and hold for the action menu, two fingers to move and zoom the view. The bottom screen holds the buttons: screens (inventory, character, Pip-Boy, map), tools, weapon and the game menu.</string>

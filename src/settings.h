@@ -374,7 +374,7 @@ struct TouchSettings {
     // "button=action" pairs over the defaults (docs/gamepad-stage3.md).
     std::string gamepad_bindings;
     // Bottom-screen look: 0 - Fallout (the game's own art and fonts), 1 - classic (drawn from code), 2 - Pip-Boy 2000.
-    int bottom_theme = 0;
+    int bottom_theme = 2;
     bool reduce_motion = false;
     std::string perf_mode = "balanced"; // balanced: 60 Hz; saver: 30 Hz.
     int bottom_dim_seconds = 60; // 0 disables idle dimming.

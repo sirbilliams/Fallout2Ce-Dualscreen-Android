@@ -8,7 +8,7 @@ the same style (pixel art, scratched metal, brass, amber / green CRT). Code: `sr
 
 ## Setting
 
-`[touch] bottom_theme`: 0 = Fallout (default), 1 = classic (the old drawn-from-code look, unchanged).
+`[touch] bottom_theme`: 0 = Fallout, 1 = classic (the old drawn-from-code look, unchanged), 2 = Pip-Boy 2000 (default on a fresh install).
 Settings -> Display -> "Bottom screen theme" (ce.msg 960..962). The theme applies only while drawing the
 bottom surface (`muiSkinFallout()` = bottom active, current surface Bottom, setting 0); the top screen
 and phones keep the classic look. All stage 1 layout settings (`dashboard_layout`, `screen_nav`) work

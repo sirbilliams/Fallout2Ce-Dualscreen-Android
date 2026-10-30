@@ -32,8 +32,8 @@ public class SetupGuideActivity extends Activity {
 
     // Dashboard layouts (touch.dashboard_layout 0..2).
     private static final int[] LAYOUT_NAMES = { R.string.guide_layout_classic, R.string.guide_layout_map, R.string.guide_layout_columns };
-    // Themes (touch.bottom_theme: 0 Fallout, 1 classic).
-    private static final int[] THEME_NAMES = { R.string.guide_theme_fallout, R.string.guide_theme_classic };
+    // Themes (touch.bottom_theme: 0 Fallout, 1 classic, 2 Pip-Boy 2000).
+    private static final int[] THEME_NAMES = { R.string.guide_theme_fallout, R.string.guide_theme_classic, R.string.guide_theme_pipboy };
 
     private File game;
     private int page;
@@ -53,7 +53,7 @@ public class SetupGuideActivity extends Activity {
         super.onCreate(savedInstanceState);
         game = getExternalFilesDir(null);
         layout = GuideSettings.getInt(game, "dashboard_layout", 0);
-        theme = GuideSettings.getInt(game, "bottom_theme", 0);
+        theme = GuideSettings.getInt(game, "bottom_theme", 2);
         page = savedInstanceState != null ? savedInstanceState.getInt(STATE_PAGE) : PAGE_FILES;
 
         try {
