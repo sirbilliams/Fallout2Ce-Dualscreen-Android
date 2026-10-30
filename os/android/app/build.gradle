@@ -117,6 +117,11 @@ android {
         def mobileVersionCode = ceVersion[0] * 1000000 + ceVersion[1] * 10000 + ceVersion[2] * 100 + mobileBuild
         versionCode mobileVersionCode * 1000 + dualBuild % 1000
         def appVersion = "${ceVersion.join('.')}-mobile.${mobileBuild}-dual.${dualBuild}"
+        // A version tag (v2.0.0) names the build after itself.
+        def refName = System.getenv('GITHUB_REF_NAME') ?: ''
+        if (System.getenv('GITHUB_REF_TYPE') == 'tag' && refName ==~ /v\d+(\.\d+)*/) {
+            appVersion = "${refName.substring(1)}-dual.${dualBuild}"
+        }
         versionName appVersion
 
         externalNativeBuild {

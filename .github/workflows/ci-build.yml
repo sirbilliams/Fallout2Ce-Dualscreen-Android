@@ -146,6 +146,8 @@ jobs:
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" out/Fallout2-Dualscreen.apk out/Fallout2-Dualscreen.apk.sha256 --clobber
           else
-            gh release create "$TAG" out/Fallout2-Dualscreen.apk out/Fallout2-Dualscreen.apk.sha256 --verify-tag \
-              --title "Fallout 2 Dualscreen $TAG" --generate-notes
+            # Hand-written notes in docs/release-notes/<tag>.md when there are any.
+            if [ -f "docs/release-notes/$TAG.md" ]; then notes=(--notes-file "docs/release-notes/$TAG.md"); else notes=(--generate-notes); fi
+            gh release create "$TAG" out/Fallout2-Dualscreen.apk out/Fallout2-Dualscreen.apk.sha256 --verify-tag --latest \
+              --title "Fallout 2 Dualscreen $TAG" "${notes[@]}"
           fi
