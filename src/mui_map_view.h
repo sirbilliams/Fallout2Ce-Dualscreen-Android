@@ -103,6 +103,8 @@ public:
     int tappedTile = -1;
     // Width at the right edge another control occupies; CENTER/LEGEND stay clear of it.
     float reservedRight = 0.0f;
+    // CENTER and LEGEND buttons of the last build (the legend keeps clear of them).
+    MuiRect overlayButtons = {};
     bool allowWalk = true;
 
     void build(MuiContext& ui, const std::string& id, const MuiRect& rect, const std::vector<MuiMapMarker>& markers, const std::vector<MuiMapLabel>* labels = nullptr);
@@ -170,7 +172,8 @@ void muiAutomapDetail(const AutomapView& view, bool critters, std::vector<MuiMap
 bool muiAutomapTileCenter(int tile, float* x, float* y);
 
 // What the markers are: a row of keys along the bottom of [area].
-void muiAutomapLegend(MuiContext& ui, const MuiRect& area);
+// Chips stay clear of [avoid] (the map's overlay buttons) and wrap to rows above.
+void muiAutomapLegend(MuiContext& ui, const MuiRect& area, const MuiRect& avoid = {});
 
 } // namespace fallout
 

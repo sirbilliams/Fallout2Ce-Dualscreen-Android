@@ -264,7 +264,7 @@ void muiAutomapDetail(const AutomapView& view, bool critters, std::vector<MuiMap
     }
 }
 
-void muiAutomapLegend(MuiContext& ui, const MuiRect& area)
+void muiAutomapLegend(MuiContext& ui, const MuiRect& area, const MuiRect& avoid)
 {
     struct Key {
         MuiMapMarkerShape shape;
@@ -283,12 +283,27 @@ void muiAutomapLegend(MuiContext& ui, const MuiRect& area)
     float size = ui.dp(11.0f);
     float height = ui.dp(22.0f);
     float gap = ui.dp(6.0f);
-    float x = area.x + ui.dp(6.0f);
+    float left = area.x + ui.dp(6.0f);
+    float x = left;
     float y = area.bottom() - height - ui.dp(6.0f);
+    // The room of a row: up to the map's edge, or up to the overlay buttons
+    // when the row is level with them.
+    auto rowRight = [&](float rowY) {
+        float right = area.right() - ui.dp(6.0f);
+        if (avoid.w > 0.0f && rowY < avoid.bottom() && rowY + height > avoid.y) {
+            right = std::min(right, avoid.x - ui.dp(6.0f));
+        }
+        return right;
+    };
     for (const Key& key : keys) {
         std::u32string name = muiDecodeGameText(muiText(key.text, key.fallback));
         float width = height + muiTextWidth(name, size) + ui.dp(8.0f);
-        if (x + width > area.right() - ui.dp(6.0f)) {
+        if (x + width > rowRight(y) && x > left) {
+            // Wrap: the next row goes above.
+            x = left;
+            y -= height + ui.dp(4.0f);
+        }
+        if (x + width > rowRight(y) || y < area.y) {
             break;
         }
         MuiRect pill = { x, y, width, height };

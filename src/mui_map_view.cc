@@ -480,7 +480,10 @@ void MuiMapView::build(MuiContext& ui, const std::string& id, const MuiRect& rec
     }
     MuiRect legend = { compact ? center.x - w - ui.dp(4) : center.x, compact ? center.y : center.bottom() + ui.dp(4), w, h };
     if (ui.button(id + ".legend", legend, U"LEGEND")) showLegend = !showLegend;
-    if (showLegend) muiAutomapLegend(ui, rect);
+    float buttonsLeft = std::min(center.x, legend.x);
+    float buttonsTop = std::min(center.y, legend.y);
+    overlayButtons = { buttonsLeft, buttonsTop, std::max(center.right(), legend.right()) - buttonsLeft, std::max(center.bottom(), legend.bottom()) - buttonsTop };
+    if (showLegend) muiAutomapLegend(ui, rect, overlayButtons);
 }
 
 } // namespace fallout

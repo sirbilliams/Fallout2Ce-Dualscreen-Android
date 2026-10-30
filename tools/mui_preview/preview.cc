@@ -150,7 +150,7 @@ int main(int argc, char** argv)
         };
         std::vector<MuiMapLabel> labels = { { 125.0f, 103.0f, U"Klamath", muiRgb(0xFFB000) } };
         view.build(ui, "preview.map", inner, markers, &labels);
-        muiAutomapLegend(ui, inner);
+        muiAutomapLegend(ui, inner, view.overlayButtons);
 
         muiDrawEnd();
         save(renderer, surface, argc > 1 ? argv[1] : "bottom.bmp");
