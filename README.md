@@ -12,6 +12,7 @@ This is an **unofficial, fan-made, modified version** of Fallout 2 CE. It is not
 - Full game playable via Fallout 2 CE engine.
 - Touch UI supports dialogue, barter, inventory, and combat.
 - Bottom-screen console displays live map with multiple layouts.
+- Pip-Boy 2000 theme (default on first launch; Classic in Settings) with an upgraded map: pinch/drag zoom and pan, recenter, legend, elevation, remembered zoom and a town area list.
 
 ## Screenshots
 
@@ -26,6 +27,18 @@ This is an **unofficial, fan-made, modified version** of Fallout 2 CE. It is not
 <p><img src="docs/screenshots/live-map-map-first.jpg" alt="Map first layout" width="49%"> <img src="docs/screenshots/live-map-slim.jpg" alt="Live map with slim navigation" width="49%"></p>
 
 <p><img src="docs/screenshots/inventory-slim-actions.jpg" alt="Slim inventory item actions" width="49%"> <img src="docs/screenshots/fallout-theme.jpg" alt="Fallout theme dashboard" width="49%"></p>
+
+## Pip-Boy 2000 theme
+
+The bottom screen uses the Pip-Boy 2000 theme by default on first launch; switch back to Classic in Settings. It has a phosphor CRT look drawn from the game's own art.
+
+The map got an upgrade too:
+- Pinch and drag to zoom and pan, with a recenter button.
+- A legend, and elevation switching.
+- Your zoom level is remembered.
+- A town area list to jump between a town's maps.
+
+<p><img src="docs/screenshots/pipboy2000-quests.jpg" alt="Pip-Boy 2000 quests" width="32%"> <img src="docs/screenshots/pipboy2000-map.jpg" alt="Pip-Boy 2000 map with area list" width="32%"> <img src="docs/screenshots/pipboy2000-data.jpg" alt="Pip-Boy 2000 holodisk data" width="32%"></p>
 
 ## Dual screen (AYN Thor)
 
