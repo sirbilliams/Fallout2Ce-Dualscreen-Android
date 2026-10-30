@@ -45,6 +45,14 @@ static ColorTransitionCallback* gColorPaletteTransitionCallback = nullptr;
 // 0x51DF30 colorNameMangler
 static ColorFileNameManger* gColorFileNameMangler = nullptr;
 
+// CE: set once color.pal is read into _cmap (the standard game palette).
+static bool gColorPaletteLoaded = false;
+
+bool colorPaletteIsLoaded()
+{
+    return gColorPaletteLoaded;
+}
+
 // 0x51DF34 cmap
 unsigned char _cmap[COLOR_MAP_SIZE] = {
     0x3F, 0x3F, 0x3F
@@ -326,6 +334,8 @@ bool colorPaletteLoad(const char* path)
         _cmap[index * 3 + 1] = g;
         _cmap[index * 3 + 2] = b;
     }
+
+    gColorPaletteLoaded = true;
 
     // NOTE: Uninline.
     fileRead(_colorTable, COLOR_PALETTE_SIZE_15BIT, 1, stream);

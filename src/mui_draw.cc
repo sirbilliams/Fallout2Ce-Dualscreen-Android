@@ -99,6 +99,7 @@ namespace {
     std::map<std::string, IndexedTexture> gIndexedTextures;
     unsigned char gPalette[768];
     unsigned int gPaletteVersion = 0;
+    bool gPaletteReady = false;
     unsigned int gPaletteCheckFrame = 0;
     unsigned int gFrame = 0;
 
@@ -754,10 +755,19 @@ static void checkPalette()
 {
     if (gPaletteCheckFrame != gFrame) {
         gPaletteCheckFrame = gFrame;
-        unsigned char* palette = directDrawGetPalette();
-        if (memcmp(palette, gPalette, sizeof(gPalette)) != 0) {
-            memcpy(gPalette, palette, sizeof(gPalette));
-            gPaletteVersion++;
+        // UI art always uses the game's standard palette (color.pal, with
+        // the brightness setting), never the hardware palette, which movies
+        // replace and fades darken.
+        gPaletteReady = colorPaletteIsLoaded();
+        if (gPaletteReady) {
+            unsigned char palette[768];
+            for (int index = 0; index < 768; index++) {
+                palette[index] = _currentGammaTable[_cmap[index] & 63];
+            }
+            if (memcmp(palette, gPalette, sizeof(gPalette)) != 0) {
+                memcpy(gPalette, palette, sizeof(gPalette));
+                gPaletteVersion++;
+            }
         }
     }
 }
@@ -807,6 +817,9 @@ SDL_Texture* muiIndexedTexture(const std::string& key, const unsigned char* data
     }
 
     checkPalette();
+    if (!gPaletteReady) {
+        return nullptr;
+    }
 
     IndexedTexture& entry = gIndexedTextures[key];
     if (entry.base.texture != nullptr && entry.version == version && entry.base.paletteVersion == gPaletteVersion
@@ -860,6 +873,9 @@ SDL_Texture* muiArtTexture(const FrmId& frmId, int frame, int* width, int* heigh
     }
 
     checkPalette();
+    if (!gPaletteReady) {
+        return nullptr;
+    }
 
     auto key = std::make_pair(frmId.fid(), frame * 8 + rotation);
     ArtTexture& entry = gArtTextures[key];

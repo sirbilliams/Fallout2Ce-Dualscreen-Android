@@ -18,6 +18,7 @@
 #include "art.h"
 #include "bottom_screen.h"
 #include "character_editor.h"
+#include "color.h"
 #include "combat.h"
 #include "critter.h"
 #include "db.h"
@@ -271,6 +272,8 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_PLAY_MOVIE,
     // Requires a decoded movie frame during the full-screen playback loop.
     DEV_AUTOTEST_ACTION_CHECK_MOVIE,
+    // a=1: put a garbage hardware palette (what a movie or a fade leaves); a=0: restore the game's.
+    DEV_AUTOTEST_ACTION_HARDWARE_PALETTE,
     // Puts dude [a] hexes from the nearest critter (out of combat).
     DEV_AUTOTEST_ACTION_MOVE_NEAR_CRITTER,
     // Sets dude's action points to [a] (combat).
@@ -1996,6 +1999,14 @@ static const DevAutotestStep kDevAutotestMovieSteps[] = {
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "v04_skipped", "movie.screen" },
 };
 
+// The bottom backdrop on the title screen with a foreign hardware palette
+// (movies replace it, fades darken it): UI art must keep the game's colours.
+static const DevAutotestStep kDevAutotestBackdropSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "bd00_title" },
+    { DEV_AUTOTEST_ACTION_HARDWARE_PALETTE, 1, 0, 0, 20, "bd01_foreign_palette" },
+    { DEV_AUTOTEST_ACTION_HARDWARE_PALETTE, 0, 0, 0, 20, "bd02_restored" },
+};
+
 // Real title-menu paths, including the premade-character selector.
 static const DevAutotestStep kDevAutotestTitleIntroSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "vi00_title" },
@@ -2685,6 +2696,12 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "movie") == 0) {
         gDevAutotestSteps = kDevAutotestMovieSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestMovieSteps) / sizeof(kDevAutotestMovieSteps[0]);
+    } else if (strcmp(name, "backdrop") == 0) {
+        gDevAutotestSteps = kDevAutotestBackdropSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestBackdropSteps) / sizeof(kDevAutotestBackdropSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "titleintro") == 0) {
         gDevAutotestSteps = kDevAutotestTitleIntroSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestTitleIntroSteps) / sizeof(kDevAutotestTitleIntroSteps[0]);
@@ -3879,6 +3896,14 @@ void devAutotestTick()
             gameMoviePlay(static_cast<int>(step->a), GAME_MOVIE_FADE_IN | GAME_MOVIE_FADE_OUT | GAME_MOVIE_PAUSE_MUSIC);
             devAutotestLog("  movie closed\n");
             return;
+        case DEV_AUTOTEST_ACTION_HARDWARE_PALETTE: {
+            unsigned char palette[768];
+            for (int index = 0; index < 768; index++) {
+                palette[index] = step->a != 0 ? static_cast<unsigned char>((index * 37 + (index / 3) * 11) & 63) : _cmap[index];
+            }
+            _setSystemPalette(palette);
+            break;
+        }
         case DEV_AUTOTEST_ACTION_CHECK_MOVIE: {
             int width = 0;
             int height = 0;

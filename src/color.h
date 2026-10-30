@@ -91,6 +91,8 @@ void _setSystemPalette(unsigned char* palette);
 unsigned char* _getSystemPalette();
 void _setSystemPaletteEntries(unsigned char* palette, int start, int end);
 bool colorPaletteLoad(const char* path);
+// True once the standard game palette (_cmap) has been loaded.
+bool colorPaletteIsLoaded();
 char* _colorError();
 Color* _getColorBlendTable(Color ch);
 void _freeColorBlendTable(Color color);
