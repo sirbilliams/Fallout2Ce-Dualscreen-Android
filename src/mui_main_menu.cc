@@ -1,3 +1,4 @@
+#include "dev_autotest.h"
 #include "mui.h"
 #include "mui_screens.h"
 
@@ -233,7 +234,7 @@ void muiMainMenuShow()
 void muiMainMenuReady()
 {
     if (gMainMenuScreen != nullptr) {
-        gMainMenuScreen->openTime = SDL_GetTicks();
+        gMainMenuScreen->openTime = uiTicks();
     }
 }
 

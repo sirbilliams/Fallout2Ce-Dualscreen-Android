@@ -30,6 +30,11 @@ void devAutotestCapture(SDL_Renderer* renderer);
 // Capture a specific transition frame from inside a synchronous UI action.
 void devAutotestCaptureNextFrame(const char* name);
 
+// Clock for UI animation and timing. Real SDL_GetTicks() in normal play; under
+// --dev-autotest it advances a fixed 16 ms per presented frame so identical
+// runs render identical frames.
+Uint32 uiTicks();
+
 // A line in the script's log (nothing without a script).
 void devAutotestNote(const char* format, ...);
 

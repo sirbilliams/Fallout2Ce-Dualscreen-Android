@@ -1,4 +1,5 @@
 #include "action_log.h"
+#include "dev_autotest.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -534,7 +535,7 @@ void actionLogState(const char* title)
     checkDudeMismatch(GameMode::getCurrentGameMode());
     gPartyLooks.clear();
     gLastPartyTime = 0;
-    watchParty(SDL_GetTicks());
+    watchParty(uiTicks());
 }
 
 void actionLogFrame()
@@ -543,7 +544,7 @@ void actionLogFrame()
         return;
     }
 
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = uiTicks();
 
     int modes = GameMode::getCurrentGameMode();
     bool modesChanged = modes != gLastModes;

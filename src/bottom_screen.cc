@@ -1,4 +1,5 @@
 #include "bottom_screen.h"
+#include "dev_autotest.h"
 
 #include <stdint.h>
 #include <string.h>
@@ -152,6 +153,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_alexbatalov_fallout2ce_BottomScreen_n
     event.tfinger.x = x < 0.0f ? 0.0f : (x > 1.0f ? 1.0f : x);
     event.tfinger.y = y < 0.0f ? 0.0f : (y > 1.0f ? 1.0f : y);
     event.tfinger.pressure = action == 2 ? 0.0f : 1.0f;
-    event.tfinger.timestamp = SDL_GetTicks();
+    event.tfinger.timestamp = uiTicks();
     SDL_PushEvent(&event);
 }

@@ -1,4 +1,5 @@
 #include "mui_pad.h"
+#include "dev_autotest.h"
 
 #include <algorithm>
 #include <cmath>
@@ -57,7 +58,7 @@ namespace {
         event.tfinger.x = x;
         event.tfinger.y = y;
         event.tfinger.pressure = 1.0f;
-        event.tfinger.timestamp = SDL_GetTicks();
+        event.tfinger.timestamp = uiTicks();
         SDL_PushEvent(&event);
     }
 
@@ -71,7 +72,7 @@ namespace {
         gTouchSurface = surface;
         gTouchX = x;
         gTouchY = y;
-        gTouchUpAt = SDL_GetTicks() + holdMs;
+        gTouchUpAt = uiTicks() + holdMs;
         pushFinger(SDL_FINGERDOWN, surface, x, y);
     }
 
@@ -335,7 +336,7 @@ namespace {
 
 void muiPadTouch()
 {
-    gLastPadInput = SDL_GetTicks();
+    gLastPadInput = uiTicks();
     if (gLastPadInput == 0) {
         gLastPadInput = 1;
     }
@@ -388,7 +389,7 @@ bool muiPadSwitchFocus()
 void muiPadMove(MuiSurface surface, MuiPadDir direction)
 {
     // The first press shows the ring where it stands.
-    bool shown = gLastPadInput != 0 && SDL_GetTicks() - gLastPadInput < kRingShowMs;
+    bool shown = gLastPadInput != 0 && uiTicks() - gLastPadInput < kRingShowMs;
     muiPadTouch();
     if (shown) {
         move(surface, direction, false);
@@ -487,7 +488,7 @@ void muiPadSetCursor(bool visible, float x, float y)
 
 void muiPadTick()
 {
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = uiTicks();
     if (gTouchActive && static_cast<int>(now - gTouchUpAt) >= 0) {
         gTouchActive = false;
         pushFinger(SDL_FINGERUP, gTouchSurface, gTouchX, gTouchY);
@@ -516,7 +517,7 @@ void muiPadFrame(MuiContext& ui, MuiSurface surface, bool hasScreen)
         }
     }
 
-    bool recent = gLastPadInput != 0 && SDL_GetTicks() - gLastPadInput < kRingShowMs;
+    bool recent = gLastPadInput != 0 && uiTicks() - gLastPadInput < kRingShowMs;
 
     if (surface == MuiSurface::Top && recent && gCursorVisible && !muiHasModal()) {
         // The map cursor: a thin amber cross with a dark edge, as the game's own cursors.
@@ -556,7 +557,7 @@ void muiPadFrame(MuiContext& ui, MuiSurface surface, bool hasScreen)
     }
 
     // The ring: a dark edge, a pulsing phosphor green line, bright corners.
-    float pulse = 0.5f + 0.5f * std::sin(SDL_GetTicks() / 160.0f);
+    float pulse = 0.5f + 0.5f * std::sin(uiTicks() / 160.0f);
     MuiRect rect = widget->rect.inset(-ui.dp(2.0f));
     MuiColor green = muiRgb(0x5CFF5C, static_cast<Uint8>(190 + 65 * pulse));
     MuiColor dark = muiRgb(0x021002, 230);

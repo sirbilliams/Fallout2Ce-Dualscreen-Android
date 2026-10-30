@@ -410,7 +410,7 @@ void touchLogFinger(const SDL_TouchFingerEvent& event, Uint32 type, TouchLogRout
         return;
     }
 
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = uiTicks();
     Finger* finger = findFinger(event.fingerId);
 
     if (type == SDL_FINGERMOTION) {
@@ -470,7 +470,7 @@ void touchLogGesture(const Gesture& gesture, TouchLogGestureFate fate)
         return;
     }
 
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = uiTicks();
     if (gesture.type == kPan && gesture.state == kChanged && fate == TouchLogGestureFate::Handled) {
         if (now - gLastPanChangeTime < kPanChangeIntervalMs) {
             return;
@@ -494,7 +494,7 @@ void touchLogUiStaleDrop(int events)
         return;
     }
 
-    add(Kind::UiStale, SDL_GetTicks())->value = events;
+    add(Kind::UiStale, uiTicks())->value = events;
 }
 
 void touchLogCancel(SDL_FingerID fingerId)
@@ -503,7 +503,7 @@ void touchLogCancel(SDL_FingerID fingerId)
         return;
     }
 
-    add(Kind::Cancel, SDL_GetTicks())->value = static_cast<long long>(fingerId);
+    add(Kind::Cancel, uiTicks())->value = static_cast<long long>(fingerId);
 }
 
 void touchLogLostFingers(const char* side)
@@ -512,7 +512,7 @@ void touchLogLostFingers(const char* side)
         return;
     }
 
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = uiTicks();
     add(Kind::LostFingers, now)->text = side;
     trigger("finger ends lost", now);
 }
@@ -523,7 +523,7 @@ void touchLogBack()
         return;
     }
 
-    add(Kind::Back, SDL_GetTicks());
+    add(Kind::Back, uiTicks());
 }
 
 void touchLogFocus(bool gained)
@@ -532,7 +532,7 @@ void touchLogFocus(bool gained)
         return;
     }
 
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = uiTicks();
     add(gained ? Kind::FocusGained : Kind::FocusLost, now);
 
     if (!gained) {
@@ -559,7 +559,7 @@ void touchLogExit()
     if (gDumpPending) {
         reason += " (after: " + gDumpReason + ")";
     }
-    dump(reason.c_str(), SDL_GetTicks());
+    dump(reason.c_str(), uiTicks());
 }
 
 void touchLogFrame()
@@ -568,7 +568,7 @@ void touchLogFrame()
         return;
     }
 
-    Uint32 now = SDL_GetTicks();
+    Uint32 now = uiTicks();
     if (gLastFrameTime != 0 && now - gLastFrameTime > kStallMs) {
         add(Kind::Stall, now)->value = now - gLastFrameTime;
     }

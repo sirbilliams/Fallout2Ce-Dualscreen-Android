@@ -241,7 +241,7 @@ namespace {
 
         // Only touches not begun on screen yet: a pressed one gets its end.
         if (!gSurface->pointer.down) {
-            dropStaleTouches(SDL_GetTicks());
+            dropStaleTouches(uiTicks());
         }
 
         while (!gSurface->events.empty()) {
@@ -476,7 +476,7 @@ bool MuiContext::touchable(const std::string& id, const MuiRect& rect, bool* pre
     }
 
     if (longPressed != nullptr && gSurface->pointer.down && !gSurface->pointer.moved && !gSurface->activeLongPressed
-        && SDL_GetTicks() - gSurface->pointer.downTime >= touchLongPressMs()) {
+        && uiTicks() - gSurface->pointer.downTime >= touchLongPressMs()) {
         gSurface->activeLongPressed = true;
         *longPressed = true;
     }
@@ -953,7 +953,7 @@ void muiPush(MuiScreen* screen)
 {
     muiRemove(screen);
     screen->finished = false;
-    screen->openTime = SDL_GetTicks();
+    screen->openTime = uiTicks();
     gScreens.push_back(screen);
 
     // New screen doesn't continue a touch that started below it.
@@ -1120,7 +1120,7 @@ bool muiHoldsFrame()
         return false;
     }
 
-    unsigned int now = SDL_GetTicks();
+    unsigned int now = uiTicks();
     if (holdStart == 0) {
         holdStart = now;
     }
@@ -1203,7 +1203,7 @@ static void muiRenderSurface(SDL_Renderer* renderer, MuiSurface surface, int wid
     gSurface->outputHeight = height;
     gSurface->pixelsPerDp = density * static_cast<float>(settings.touch.hud_scale) / 100.0f;
 
-    unsigned int now = SDL_GetTicks();
+    unsigned int now = uiTicks();
     updateSafeRect(now);
     processEvents();
 
@@ -1552,7 +1552,7 @@ bool muiForgetMissingFingers(const SDL_FingerID* down, int count)
     for (Surface* surface : surfaces) {
         // Released far outside: nothing is tapped.
         if (surface->fingerCaptured && !isDown(surface->capturedFinger)) {
-            surface->events.push_back({ PointerEventType::Up, -1.0e6f, -1.0e6f, SDL_GetTicks() });
+            surface->events.push_back({ PointerEventType::Up, -1.0e6f, -1.0e6f, uiTicks() });
             surface->fingerCaptured = false;
             forgotten = true;
         }

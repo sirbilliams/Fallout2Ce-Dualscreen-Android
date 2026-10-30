@@ -2938,6 +2938,13 @@ void devAutotestInit(const char* outputPath)
         settings.world_view.filter);
 }
 
+static Uint32 gDevAutotestFrameClock = 0;
+
+Uint32 uiTicks()
+{
+    return gDevAutotestEnabled ? gDevAutotestFrameClock : SDL_GetTicks();
+}
+
 bool devAutotestIsEnabled()
 {
     return gDevAutotestEnabled;
@@ -3134,6 +3141,8 @@ void devAutotestTick()
     static bool savesPrepared = false;
     if (!savesPrepared) {
         savesPrepared = true;
+        // Frames spent loading vary with real time; start the frame clock here.
+        gDevAutotestFrameClock = 0;
         devAutotestPrepareSaves();
     }
 
@@ -3631,7 +3640,7 @@ void devAutotestTick()
                 settings.touch.perf_mode = "saver";
             } else if (fixture == 2) {
                 settings.touch.bottom_dim_seconds = 1;
-                muiLastDisplayActivity = SDL_GetTicks() - 2000;
+                muiLastDisplayActivity = uiTicks() - 2000;
             } else if (fixture == 3) {
                 SDL_Event event = {};
                 event.type = SDL_FINGERMOTION;
@@ -4776,6 +4785,10 @@ void devAutotestTick()
 
 void devAutotestPump()
 {
+    if (gDevAutotestEnabled) {
+        gDevAutotestFrameClock += 16;
+    }
+
     if (!gDevAutotestEnabled || gDevAutotestTouchFrame == -1) {
         return;
     }

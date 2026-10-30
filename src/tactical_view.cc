@@ -1,4 +1,5 @@
 #include "tactical_view.h"
+#include "dev_autotest.h"
 
 #include <SDL.h>
 
@@ -228,7 +229,7 @@ const TacticalViewReach& tacticalViewGetReach()
     }
 
     ReachKey key = { gDude->tile, gDude->elevation, gDude->data.critter.combat.ap, _combat_free_move };
-    unsigned int now = SDL_GetTicks();
+    unsigned int now = uiTicks();
     if (!(key == gReachKey) || now - gReachTime >= kReachRefreshMs) {
         gReachKey = key;
         gReachTime = now;

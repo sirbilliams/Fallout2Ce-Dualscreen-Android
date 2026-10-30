@@ -1,4 +1,5 @@
 #include "touch.h"
+#include "dev_autotest.h"
 
 #include <math.h>
 
@@ -406,7 +407,7 @@ void touch_process_gesture()
                 currentGesture.startSpan = startSpan;
                 currentGesture.time = touch_get_latest_timestamp(active, activeCount);
                 gestureEventsQueue.push(currentGesture);
-            } else if (SDL_GetTicks() - touches[active[0]].startTimestamp >= touchLongPressMs()) {
+            } else if (uiTicks() - touches[active[0]].startTimestamp >= touchLongPressMs()) {
                 currentGesture.type = kLongPress;
                 currentGesture.state = kBegan;
                 currentGesture.numberOfTouches = activeCount;
@@ -418,7 +419,7 @@ void touch_process_gesture()
                 currentGesture.startSpan = startSpan;
                 // The finger held still has no newer events: the long press
                 // is as new as its recognition (the finger is still down).
-                currentGesture.time = SDL_GetTicks();
+                currentGesture.time = uiTicks();
                 gestureEventsQueue.push(currentGesture);
             }
 

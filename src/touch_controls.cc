@@ -264,7 +264,7 @@ void touchControlsProcessGestures()
 
         // A tap or a long press made long ago isn't done now; movement of
         // the view and ends of what began are, keeping gestures whole.
-        bool stale = SDL_GetTicks() - gesture.time > kTouchStaleMs;
+        bool stale = uiTicks() - gesture.time > kTouchStaleMs;
         if (stale && (gesture.type == kTap || (gesture.type == kLongPress && gesture.state == kBegan))) {
             touchLogGesture(gesture, TouchLogGestureFate::Stale);
             continue;

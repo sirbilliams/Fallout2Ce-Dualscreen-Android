@@ -1,4 +1,5 @@
 #include "random.h"
+#include "dev_autotest.h"
 
 #include <limits.h>
 #include <stdlib.h>
@@ -214,6 +215,11 @@ static void randomSeedPrerandomInternal(int seed)
 // 0x4A3258 timer_read
 static unsigned int randomGetSeed()
 {
+    // Autotest runs must be reproducible.
+    if (devAutotestIsEnabled()) {
+        return 0x46324345;
+    }
+
     return compat_timeGetTime();
 }
 

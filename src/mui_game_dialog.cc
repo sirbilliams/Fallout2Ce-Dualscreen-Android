@@ -1,3 +1,4 @@
+#include "dev_autotest.h"
 #include "mui.h"
 #include "mui_icons.h"
 #include "mui_screens.h"
@@ -174,7 +175,7 @@ namespace {
     bool consumePartyRequest()
     {
         if (gRequestedPartySpeaker == nullptr) return false;
-        if (SDL_GetTicks() - gPartyRequestTime >= 30000) {
+        if (uiTicks() - gPartyRequestTime >= 30000) {
             gRequestedPartySpeaker = nullptr;
             return false;
         }
@@ -1272,7 +1273,7 @@ void muiGameDialogOpenReview()
 void muiGameDialogRequestParty(Object* companion)
 {
     gRequestedPartySpeaker = companion;
-    gPartyRequestTime = SDL_GetTicks();
+    gPartyRequestTime = uiTicks();
 }
 
 void muiGameDialogOpenParty()
