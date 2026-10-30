@@ -373,6 +373,19 @@ struct TouchSettings {
     bool gamepad_ui = true;
     // "button=action" pairs over the defaults (docs/gamepad-stage3.md).
     std::string gamepad_bindings;
+    // Mouse-style controls (docs/mouse-controls.md). The right stick moves the
+    // map cursor, A / R3 (tap) click, B / R3 (held) right click.
+    bool pad_cursor = true;
+    // Held R3 this long (ms) is a right click.
+    int pad_r3_hold_ms = 400;
+    // A cursor shows where the finger is on the top screen.
+    bool touch_cursor = true;
+    // Two fingers tapped together are a right click (the action menu).
+    bool two_finger_click = true;
+    // Touch & hold this long (ms) is a right click; 0 - the system's delay.
+    int touch_hold_ms = 0;
+    // Cursor speed (stick and touchpad), percent.
+    int cursor_speed = 100;
     // Bottom-screen look: 0 - Fallout (the game's own art and fonts), 1 - classic (drawn from code), 2 - Pip-Boy 2000.
     int bottom_theme = 2;
     bool reduce_motion = false;

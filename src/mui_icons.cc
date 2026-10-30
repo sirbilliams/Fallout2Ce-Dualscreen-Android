@@ -251,6 +251,13 @@ namespace {
         hex(0.18f, 0.14f);
     }
 
+    // A pad with a cursor arrow on it.
+    void drawTouchpad(const Pen& pen)
+    {
+        pen.poly({ { -0.46f, -0.34f }, { 0.46f, -0.34f }, { 0.46f, 0.38f }, { -0.46f, 0.38f } }, true);
+        pen.poly({ { -0.12f, -0.18f }, { 0.2f, 0.12f }, { 0.04f, 0.12f }, { 0.12f, 0.28f }, { 0.02f, 0.3f }, { -0.06f, 0.14f }, { -0.12f, 0.2f } }, true);
+    }
+
     // Truce flag.
     void drawEndCombat(const Pen& pen)
     {
@@ -748,6 +755,9 @@ static void drawIconShapes(MuiIcon icon, float x, float y, float size, float thi
         break;
     case MuiIcon::TacticalView:
         drawTacticalView(pen);
+        break;
+    case MuiIcon::Touchpad:
+        drawTouchpad(pen);
         break;
     case MuiIcon::Holster:
         drawHolster(pen);

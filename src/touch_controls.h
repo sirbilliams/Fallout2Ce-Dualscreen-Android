@@ -64,6 +64,10 @@ void touchControlsAdjustUiTouch(int* x, int* y);
 // point of the map.
 void touchControlsMoveView(float dx, float dy, float zoomFactor, float anchorX, float anchorY);
 
+// A right click at a map point (screen pixels), what a two finger tap does:
+// the action menu of what is there. False when nothing is.
+bool touchControlsRightClick(int x, int y);
+
 // Closes radial menu and forgets combat selection.
 void touchControlsReset();
 

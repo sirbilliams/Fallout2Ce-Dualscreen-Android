@@ -23,6 +23,7 @@
 #include "mouse.h"
 #include "movie.h"
 #include "mui.h"
+#include "mui_pad.h"
 #include "settings.h"
 #include "sfall_kb_helpers.h"
 #include "sfall_script_hooks.h"
@@ -1180,6 +1181,7 @@ void _GNW95_process_message()
 
             touchLogFinger(e.tfinger, e.type, TouchLogRoute::Map);
             actionLogFinger(e.tfinger, e.type, "map");
+            muiPadFingerCursor(e.type != SDL_FINGERUP, e.tfinger.x, e.tfinger.y);
 
             if (e.type == SDL_FINGERDOWN) {
                 touch_handle_start(&(e.tfinger));

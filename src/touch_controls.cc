@@ -436,6 +436,12 @@ bool touchControlsHandleGesture(const Gesture* gesture)
         }
         return true;
     case kTap:
+        // Two fingers tapped together: a right click, the action menu of
+        // what is under them (the menu stays open; a tap chooses).
+        if (gesture->numberOfTouches == 2 && settings.touch.two_finger_click) {
+            return touchControlsRightClick(gesture->x, gesture->y);
+        }
+
         if (gesture->numberOfTouches != 1) {
             return false;
         }
@@ -484,6 +490,15 @@ bool touchControlsHandleGesture(const Gesture* gesture)
     }
 
     return false;
+}
+
+bool touchControlsRightClick(int x, int y)
+{
+    if (!touchControlsIsEnabled() || !worldViewIsWorldAt(x, y) || !gameMouseIsMapInputEnabled()) {
+        return false;
+    }
+    touchControlsSetLastPoint(x, y);
+    return radialMenuOpen(x, y);
 }
 
 static TouchControlsDragHandler* gDragHandler = nullptr;

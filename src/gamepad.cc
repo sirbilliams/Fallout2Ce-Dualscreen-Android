@@ -21,11 +21,15 @@ namespace fallout {
 namespace {
 
     // Stick travel ignored around the center (worn sticks rest off it).
-    constexpr float kDeadZone = 0.22f;
+    constexpr float kDeadZone = 0.2f;
     // The view moves this many screen widths a second at full tilt.
     constexpr float kPanScreensPerSecond = 0.9f;
-    // The map cursor crosses this many screens a second at full tilt.
-    constexpr float kCursorScreensPerSecond = 0.7f;
+    // The map cursor crosses this many screens a second at full tilt (the
+    // stick's travel is squared: slow is precise, a push crosses the screen;
+    // SpongeBob's right stick).
+    constexpr float kCursorScreensPerSecond = 0.75f;
+    // The cursor moving this far (of the screen) with R3 held isn't a right click.
+    constexpr float kR3MoveLimit = 0.02f;
     // D-pad zoom steps.
     constexpr float kZoomStep = 1.15f;
     // Select held this long ends the combat (a tap ends the turn).
@@ -171,6 +175,13 @@ namespace {
     float gCursorX = 0.5f;
     float gCursorY = 0.5f;
 
+    // R3 in stick mode: a short press clicks, held (`pad_r3_hold_ms`) it right clicks.
+    bool gR3Down = false;
+    bool gR3Fired = false;
+    Uint32 gR3DownTime = 0;
+    float gR3X = 0.0f;
+    float gR3Y = 0.0f;
+
     // Held direction in screens, for repeats.
     bool gHeld = false;
     MuiPadDir gHeldDir = MuiPadDir::Down;
@@ -290,7 +301,14 @@ namespace {
     void showCursor()
     {
         muiPadTouch();
+        muiPadCursorGet(&gCursorX, &gCursorY);
         muiPadSetCursor(true, gCursorX, gCursorY);
+    }
+
+    // Right stick moves the cursor, A / R3 click, B / held R3 right click.
+    bool stickMode()
+    {
+        return settings.touch.pad_cursor;
     }
 
     void zoomMap(float factor)
@@ -326,7 +344,7 @@ namespace {
             break;
         case Action::Context:
             showCursor();
-            muiPadTapTop(gCursorX, gCursorY, true);
+            muiPadRightClickTop(gCursorX, gCursorY);
             break;
         case Action::Back:
             muiRequestBack();
@@ -440,6 +458,31 @@ namespace {
                 muiRequestBack();
             }
             return;
+        }
+
+        if (stickMode()) {
+            if (button == PAD_RS) {
+                if (down) {
+                    muiPadCursorGet(&gR3X, &gR3Y);
+                    gR3Down = true;
+                    gR3Fired = false;
+                    gR3DownTime = SDL_GetTicks();
+                } else {
+                    if (gR3Down && !gR3Fired) {
+                        runMapAction(Action::Click, true);
+                    }
+                    gR3Down = false;
+                }
+                return;
+            }
+            if (button == PAD_B) {
+                runMapAction(Action::Context, down);
+                return;
+            }
+            if (button == PAD_A) {
+                runMapAction(Action::Click, down);
+                return;
+            }
         }
 
         runMapAction(gBindings[button], down);
@@ -567,6 +610,17 @@ void gamepadTick()
         }
     }
 
+    // R3 held: the right click, on the threshold (no left click after).
+    if (gR3Down && !gR3Fired && static_cast<int>(now - gR3DownTime) >= settings.touch.pad_r3_hold_ms) {
+        float x;
+        float y;
+        muiPadCursorGet(&x, &y);
+        if (onMap() && fabsf(x - gR3X) < kR3MoveLimit && fabsf(y - gR3Y) < kR3MoveLimit) {
+            gR3Fired = true;
+            runMapAction(Action::Context, true);
+        }
+    }
+
     float leftX = 0.0f;
     float leftY = 0.0f;
     float rightX = 0.0f;
@@ -675,10 +729,16 @@ void gamepadTick()
         worldViewPanBy(-leftX * speed, -leftY * speed);
     }
 
-    if (rightX != 0.0f || rightY != 0.0f) {
+    muiPadCursorGet(&gCursorX, &gCursorY);
+    if (stickMode() && (rightX != 0.0f || rightY != 0.0f)) {
         showCursor();
-        gCursorX = std::clamp(gCursorX + rightX * kCursorScreensPerSecond * seconds * 0.5625f, 0.0f, 1.0f);
-        gCursorY = std::clamp(gCursorY + rightY * kCursorScreensPerSecond * seconds, 0.0f, 1.0f);
+        // Squared travel (acceleration), the same distance on both axes.
+        // (screen widths a second; equal pixels a second on both axes)
+        float cursorSpeed = kCursorScreensPerSecond * seconds * settings.touch.cursor_speed / 100.0f;
+        float moveX = rightX * fabsf(rightX) * cursorSpeed;
+        float moveY = rightY * fabsf(rightY) * cursorSpeed * screenGetWidth() / std::max(screenGetHeight(), 1);
+        muiPadCursorMove(moveX, moveY);
+        muiPadCursorGet(&gCursorX, &gCursorY);
         // Pushed against an edge, the view follows.
         constexpr float kEdge = 0.04f;
         float speed = screenGetWidth() * kPanScreensPerSecond * 0.6f * seconds;

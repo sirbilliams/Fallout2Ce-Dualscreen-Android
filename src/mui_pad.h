@@ -76,6 +76,22 @@ void muiPadZoom(MuiSurface surface, float factor);
 void muiPadTapTop(float x, float y, bool longPress);
 // The map cursor: drawn on the top screen while visible.
 void muiPadSetCursor(bool visible, float x, float y);
+// The cursor's place (0..1 of the top screen), shared by the right stick and
+// the bottom screen's touchpad (mui_touchpad.cc). Moves it by (dx, dy) of the
+// screen and shows it.
+void muiPadCursorGet(float* x, float* y);
+void muiPadCursorMove(float dx, float dy);
+// A right click at the cursor: the map's action menu, or a long press over a
+// screen.
+void muiPadRightClickTop(float x, float y);
+// The touchpad holds the left button at the cursor (a finger of the top
+// screen stays down; moves of the cursor drag it), or lets go.
+void muiPadTopHold(bool down);
+// The touchpad page is open: the cursor shows whatever else is going on.
+void muiPadSetTouchpadOpen(bool open);
+// A finger of the player is at a place of the top screen (the cursor follows
+// it, and stays a moment after it lifts).
+void muiPadFingerCursor(bool down, float x, float y);
 // Some pad input happened (the ring shows).
 void muiPadTouch();
 

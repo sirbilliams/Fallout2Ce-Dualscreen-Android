@@ -1,5 +1,6 @@
 #include "touch_hud.h"
 #include "mui_pad.h"
+#include "mui_touchpad.h"
 
 #include <string.h>
 
@@ -123,6 +124,7 @@ namespace {
         { {}, MuiIcon::Count, kNoText }, // Indicators
         { {}, MuiIcon::PartyOrders, { 160, "Party orders" } }, // PartyOrders (HUD state only)
         { { GameCommandType::Hud, kEventTacticalView }, MuiIcon::TacticalView, { 373, "Tactical view" } }, // TacticalView
+        { {}, MuiIcon::Touchpad, { 1120, "TOUCHPAD" } }, // Touchpad (opens the bottom screen's page)
     };
 
     // Orders of the Party Orders mod: the button presses the mod's hotkeys
@@ -909,6 +911,12 @@ namespace {
             return;
         }
 
+        if (id == HudElementId::Touchpad) {
+            _gsound_med_butt_press(-1, 0);
+            muiTouchpadOpen();
+            return;
+        }
+
         // Skills again while choosing the skill's target: cancel it.
         if (id == HudElementId::Skills && targetingSkill() != SKILL_INVALID) {
             sendCommand({ GameCommandType::Hud, kEventCancelTarget });
@@ -1593,6 +1601,11 @@ namespace {
             return;
         }
 
+        // The touchpad page takes the back button itself.
+        if (muiTouchpadIsOpen()) {
+            return;
+        }
+
         if (gEnabled) {
             gameCommandPost(GameCommandType::Menu);
         }
@@ -1884,6 +1897,7 @@ void touchHudInit()
 
     // Bottom of the mobile UI stack, other screens go above.
     muiPush(&gHudScreen);
+    muiTouchpadInit();
 
     if (!gTickerAdded) {
         tickersAdd(ticker);
@@ -1902,6 +1916,7 @@ void touchHudFree()
         gTickerAdded = false;
     }
 
+    muiTouchpadFree();
     muiRemove(&gHudScreen);
 
     if (gMessageListLoaded) {

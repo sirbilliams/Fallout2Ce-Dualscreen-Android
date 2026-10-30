@@ -10,6 +10,7 @@
 #include "mouse.h"
 #endif
 #include "hud_layout.h"
+#include "settings.h"
 #include "svga.h"
 #include "touch_controls.h"
 
@@ -487,6 +488,9 @@ static unsigned int gLongPressMs = 0;
 
 unsigned int touchLongPressMs()
 {
+    if (settings.touch.touch_hold_ms > 0) {
+        return static_cast<unsigned int>(settings.touch.touch_hold_ms);
+    }
     if (gLongPressMs == 0) {
         touchRefreshLongPressMs();
     }

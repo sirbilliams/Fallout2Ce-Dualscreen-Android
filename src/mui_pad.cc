@@ -14,7 +14,10 @@
 #include "mui_screens.h"
 #include "mui_skin.h"
 #include "object.h"
+#include "settings.h"
+#include "svga.h"
 #include "touch.h"
+#include "touch_controls.h"
 
 namespace fallout {
 
@@ -41,6 +44,15 @@ namespace {
     bool gCursorVisible = false;
     float gCursorX = 0.5f;
     float gCursorY = 0.5f;
+    // The touchpad page is open; the left button held by it.
+    bool gTouchpadOpen = false;
+    bool gHoldActive = false;
+    // The player's finger on the top screen, and until when its cursor stays.
+    bool gFingerDown = false;
+    float gFingerX = 0.0f;
+    float gFingerY = 0.0f;
+    Uint32 gFingerUntil = 0;
+    constexpr Uint32 kFingerCursorMs = 450;
 
     // A move that found nothing scrolled the list; it is tried again once
     // the list has built the new rows.
@@ -486,10 +498,75 @@ void muiPadSetCursor(bool visible, float x, float y)
     gCursorY = y;
 }
 
+void muiPadCursorGet(float* x, float* y)
+{
+    *x = gCursorX;
+    *y = gCursorY;
+}
+
+void muiPadCursorMove(float dx, float dy)
+{
+    gCursorX = std::clamp(gCursorX + dx, 0.0f, 1.0f);
+    gCursorY = std::clamp(gCursorY + dy, 0.0f, 1.0f);
+    gCursorVisible = true;
+    muiPadTouch();
+    if (gHoldActive && gTouchActive) {
+        gTouchX = gCursorX;
+        gTouchY = gCursorY;
+        pushFinger(SDL_FINGERMOTION, MuiSurface::Top, gCursorX, gCursorY);
+    }
+}
+
+void muiPadRightClickTop(float x, float y)
+{
+    muiPadTouch();
+    if (!muiHasModal() && touchControlsRightClick(static_cast<int>(x * screenGetWidth()), static_cast<int>(y * screenGetHeight()))) {
+        return;
+    }
+    if (muiHasModalOn(MuiSurface::Top)) {
+        press(MuiSurface::Top, x, y, touchLongPressMs() + 150);
+    }
+}
+
+void muiPadTopHold(bool down)
+{
+    if (down) {
+        if (gTouchActive) {
+            return;
+        }
+        gHoldActive = true;
+        press(MuiSurface::Top, gCursorX, gCursorY, 600000);
+    } else if (gHoldActive) {
+        gHoldActive = false;
+        if (gTouchActive) {
+            gTouchActive = false;
+            pushFinger(SDL_FINGERUP, MuiSurface::Top, gTouchX, gTouchY);
+        }
+    }
+}
+
+void muiPadSetTouchpadOpen(bool open)
+{
+    gTouchpadOpen = open;
+    if (open) {
+        gCursorVisible = true;
+    } else {
+        muiPadTopHold(false);
+    }
+}
+
+void muiPadFingerCursor(bool down, float x, float y)
+{
+    gFingerDown = down;
+    gFingerX = x;
+    gFingerY = y;
+    gFingerUntil = uiTicks() + kFingerCursorMs;
+}
+
 void muiPadTick()
 {
     Uint32 now = uiTicks();
-    if (gTouchActive && static_cast<int>(now - gTouchUpAt) >= 0) {
+    if (gTouchActive && !gHoldActive && static_cast<int>(now - gTouchUpAt) >= 0) {
         gTouchActive = false;
         pushFinger(SDL_FINGERUP, gTouchSurface, gTouchX, gTouchY);
     }
@@ -519,10 +596,23 @@ void muiPadFrame(MuiContext& ui, MuiSurface surface, bool hasScreen)
 
     bool recent = gLastPadInput != 0 && uiTicks() - gLastPadInput < kRingShowMs;
 
-    if (surface == MuiSurface::Top && recent && gCursorVisible && !muiHasModal()) {
-        // The map cursor: a thin amber cross with a dark edge, as the game's own cursors.
-        float cx = gCursorX * ui.screenRect().w;
-        float cy = gCursorY * ui.screenRect().h;
+    // The cursor: of the pad (recent input, the map only), of the touchpad
+    // page (over any screen of the top), or at the player's finger.
+    float cursorX = gCursorX;
+    float cursorY = gCursorY;
+    bool drawCursor = recent && gCursorVisible && !muiHasModal();
+    if (gTouchpadOpen && gCursorVisible) {
+        drawCursor = true;
+    }
+    if (settings.touch.touch_cursor && (gFingerDown || static_cast<int>(gFingerUntil - uiTicks()) > 0) && gFingerUntil != 0) {
+        drawCursor = true;
+        cursorX = gFingerX;
+        cursorY = gFingerY;
+    }
+    if (surface == MuiSurface::Top && drawCursor) {
+        // The cursor: a thin amber cross with a dark edge, as the game's own cursors.
+        float cx = cursorX * ui.screenRect().w;
+        float cy = cursorY * ui.screenRect().h;
         float arm = ui.dp(14.0f);
         float gap = ui.dp(4.0f);
         MuiColor dark = muiRgb(0x000000, 220);

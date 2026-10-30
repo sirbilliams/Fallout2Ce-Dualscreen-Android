@@ -215,6 +215,8 @@ public:
     float pointerX() const;
     float pointerY() const;
     bool pointerDown() const;
+    // A second finger is on the surface (pinch, a two finger tap).
+    bool secondPointerDown() const;
 
     // Content under [rect] (maps): one finger drags it, two fingers pinch
     // it (zoom around them). Returns true while touched. [tapped] - the finger

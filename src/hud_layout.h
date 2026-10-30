@@ -73,6 +73,8 @@ enum class HudElementId {
     PartyOrders,
     // Combat's tactical view (tactical_view.h).
     TacticalView,
+    // The bottom screen's touchpad page (mui_touchpad.h).
+    Touchpad,
     Count,
 };
 

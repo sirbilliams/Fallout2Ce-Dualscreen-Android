@@ -781,6 +781,11 @@ bool MuiContext::pointerDown() const
     return gSurface->pointer.down;
 }
 
+bool MuiContext::secondPointerDown() const
+{
+    return gSurface->secondFinger.down;
+}
+
 float MuiContext::slider(const std::string& id, const MuiRect& rect, float value, float minValue, float maxValue, bool* dragging)
 {
     // Taller touch area than the track.

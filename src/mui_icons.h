@@ -88,6 +88,9 @@ enum class MuiIcon {
     // Combat's tactical view: three tiles.
     TacticalView,
 
+    // The bottom screen's touchpad: a pad with a cursor arrow.
+    Touchpad,
+
     Count,
 };
 

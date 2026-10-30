@@ -421,6 +421,12 @@ void initSettingsRegistry(bool isMapper)
     SETTING(reduce_motion);
     SETTING(gamepad_ui);
     SETTING(gamepad_bindings);
+    SETTING(pad_cursor);
+    SETTING_P(pad_r3_hold_ms, clamp(200, 1000));
+    SETTING(touch_cursor);
+    SETTING(two_finger_click);
+    SETTING_P(touch_hold_ms, clamp(0, 1000));
+    SETTING_P(cursor_speed, clamp(25, 300));
     SETTING_P(perf_mode, [](std::string& value, const char*, const char*) {
         if (value != "saver") value = "balanced";
     });
