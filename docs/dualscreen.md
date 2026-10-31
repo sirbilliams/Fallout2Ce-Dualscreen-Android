@@ -9,7 +9,7 @@ touch). Display choice: `BottomDisplay.java` (built-in bottom screen only, never
 
 ## Status
 
-Built (needs checking on a Thor):
+Built and in use on the AYN Thor (v2.0). Since then: mouse controls ([mouse-controls.md](mouse-controls.md)), button remapping ([gamepad-stage3.md](gamepad-stage3.md)), toasts on the top screen so they never cover bottom-screen controls.
 
 - Two surfaces in the mobile UI (`mui.cc`): each screen of the device has its own finger, widgets
   and scrolls; `MuiScreen::surface()` says where a screen goes.
