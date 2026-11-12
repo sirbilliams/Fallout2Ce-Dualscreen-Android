@@ -14,6 +14,7 @@
 #include "color.h"
 #include "font_manager.h"
 #include "game_charset.h"
+#include "mui_draw.h"
 #include "settings.h"
 #include "svga.h"
 
@@ -430,6 +431,18 @@ namespace {
         }
         *width = image->getWidth();
         *height = image->getHeight();
+#ifdef FALLOUT_HD
+        {
+            char* typeName = artGetObjectTypeName(objectTypeOf(group));
+            if (typeName != nullptr) {
+                std::string path = std::string("art\\") + typeName + "\\" + name + ".frm";
+                SDL_Texture* hd = muiHdFrameTexture("skin." + artKey(group, name), path.c_str(), image->getData(), *width, *height);
+                if (hd != nullptr) {
+                    return hd;
+                }
+            }
+        }
+#endif
         return muiIndexedTexture("skin." + artKey(group, name), image->getData(), *width, *height, 0);
     }
 
@@ -821,6 +834,16 @@ bool muiGameDrawArt(MuiArtGroup group, const char* name, const MuiRect& dest, Mu
         return false;
     }
     bool whole = dest.w == floorf(dest.w) && std::fmod(dest.w, static_cast<float>(width)) == 0.0f;
+#ifdef FALLOUT_HD
+    {
+        // HD art is bigger than the original: always filtered.
+        int textureWidth = width;
+        SDL_QueryTexture(texture, nullptr, nullptr, &textureWidth, nullptr);
+        if (textureWidth != width) {
+            whole = false;
+        }
+    }
+#endif
     SDL_SetTextureScaleMode(texture, whole ? SDL_ScaleModeNearest : SDL_ScaleModeLinear);
     muiDrawTexture(texture, dest, tint);
     return true;
@@ -912,6 +935,21 @@ bool muiGameDrawNineSlice(const char* name, const MuiRect& dest, int corner, flo
     float ys[4] = { dest.y, dest.y + edge, dest.bottom() - edge, dest.bottom() };
     int sx[4] = { 0, corner, width - corner, width };
     int sy[4] = { 0, corner, height - corner, height };
+#ifdef FALLOUT_HD
+    {
+        // HD art: source rects in texels of the bigger texture.
+        int textureWidth = width;
+        int textureHeight = height;
+        SDL_QueryTexture(texture, nullptr, nullptr, &textureWidth, &textureHeight);
+        if (textureWidth != width || textureHeight != height) {
+            for (int i = 0; i < 4; i++) {
+                sx[i] = sx[i] * textureWidth / width;
+                sy[i] = sy[i] * textureHeight / height;
+            }
+            SDL_SetTextureScaleMode(texture, SDL_ScaleModeLinear);
+        }
+    }
+#endif
     for (int row = 0; row < 3; row++) {
         for (int column = 0; column < 3; column++) {
             SDL_Rect source = { sx[column], sy[row], sx[column + 1] - sx[column], sy[row + 1] - sy[row] };

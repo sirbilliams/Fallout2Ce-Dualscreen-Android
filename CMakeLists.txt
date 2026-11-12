@@ -486,6 +486,19 @@ endif()
 
 target_compile_definitions(${EXECUTABLE_NAME} PRIVATE FALLOUT_DIAGNOSTICS=$<BOOL:${FALLOUT_DIAGNOSTICS}>)
 
+# Dustlight HD port (docs/superpowers/specs/2026-11-12-dustlight-hd-port.md).
+# Off: none of it is compiled and the game behaves as before.
+option(HD "Dustlight HD art / lighting (src/hd)" OFF)
+if(HD)
+    target_compile_definitions(${EXECUTABLE_NAME} PRIVATE FALLOUT_HD=1)
+    # hd-menus lane: CPU HD art for the mui_* screens
+    target_sources(${EXECUTABLE_NAME} PUBLIC
+        "src/hd/hd_art_cpu.cc"
+        "src/hd/hd_art_cpu.h"
+        "src/hd/hd_art_ui.cc"
+        "src/hd/hd_art_ui.h")
+endif()
+
 # The version the app shows (Android: its versionName), CE's otherwise.
 set(FALLOUT_APP_VERSION "" CACHE STRING "Version shown in the settings' About section")
 if(FALLOUT_APP_VERSION)
@@ -994,6 +1007,10 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
     target_include_directories(touch_gesture_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
     # SDL headers also come with the SDL target when the include variable is empty.
     target_link_libraries(touch_gesture_test ${SDL2_LIBRARIES})
+    if(HD)
+        ce_add_test(hd_art_cpu_test "src/hd/hd_art_cpu.cc")
+        set_tests_properties(hd_art_cpu_test PROPERTIES TIMEOUT 20)
+    endif()
     ce_add_test(sfall_arrays_test "src/sfall_arrays.cc" "src/sfall_global_vars.cc" "src/sfall_ext.cc")
     target_include_directories(sfall_arrays_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
     target_link_libraries(sfall_arrays_test ${SDL2_LIBRARIES})
