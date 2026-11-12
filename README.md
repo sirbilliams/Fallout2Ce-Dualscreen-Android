@@ -2,13 +2,13 @@
 
 [Русская версия](README.ru.md)
 
-A fork of [Fallout 2: Community Engine](https://github.com/fallout2-ce/fallout2-ce) made for Android phones: every screen of the game rebuilt for a touch screen, in landscape, plus a **bottom-screen companion for dual-screen handhelds like the AYN Thor**. **Version 2.0.1** ([download](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.0.1), [release notes](docs/release-notes/v2.0.1.md)).
+A fork of [Fallout 2: Community Engine](https://github.com/fallout2-ce/fallout2-ce) made for Android phones: every screen of the game rebuilt for a touch screen, in landscape, plus a **bottom-screen companion for dual-screen handhelds like the AYN Thor**. **Version 2.1.0** ([download](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.1.0), [release notes](docs/release-notes/v2.1.0.md)).
 
 This is an **unofficial, fan-made, modified version** of Fallout 2 CE. It is not affiliated with or endorsed by Bethesda Softworks, ZeniMax Media or Interplay. Fallout is a trademark of its owners. The app contains **no game data**: you need your own copy of Fallout 2 ([GOG](https://www.gog.com/game/fallout_2), [Steam](https://store.steampowered.com/app/38410), [Epic Games](https://store.epicgames.com/p/fallout-2)).
 
 ## Status
 
-**Status: v2.0.1, fully playable.**
+**Status: v2.1.0, fully playable.**
 - The whole game plays on the Fallout 2 CE engine, with a touch UI for every screen.
 - Bottom-screen companion on dual-screen devices: live map, HUD, inventory, character, Pip-Boy, dialogue and barter.
 - Pip-Boy 2000 theme by default (Classic in Settings → Display).
@@ -52,7 +52,7 @@ Details: [docs/dualscreen.md](docs/dualscreen.md).
 - **Touch:** tap to act, long press for the action menu, drag to move items, two fingers to zoom the map. Optionally the cursor follows your finger on the top screen (tap = click, hold = right click).
 - **Bottom-screen TOUCHPAD** (dashboard tool column): drag to move the cursor, tap to click, two-finger tap to right click, hold then drag to carry.
 - **Controller:** right stick moves a cursor (A / R3 click, B / R3 held right click), left stick and d-pad move focus on screens, and every button has a map action (inventory, Pip-Boy, sneak, quick use...).
-- **Mods (in development):** a MODS button on the main menu lists the mods in the game folder, with on/off switches and load order.
+- **Mod Organizer:** a MODS button on the main menu. Add mods from a zip, switch them on or off and drag to set the order (nothing in the game folder is overwritten). Profiles keep their own mods, saves and ini files; Vanilla is your game as before.
 - **Remapping:** Settings → Controls has a picker for each of the 16 buttons and a reset. Stored in `[touch] gamepad_bindings`.
 
 Details: [docs/mouse-controls.md](docs/mouse-controls.md), [docs/gamepad-stage3.md](docs/gamepad-stage3.md).
@@ -74,7 +74,7 @@ The full list of changes is the git history over upstream.
 
 ## Install on Android
 
-1. Download the APK ([v2.0.1](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.0.1), `Fallout2-Dualscreen.apk`; the newest development build is always at [latest](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/latest)) and install it. Updates install over it and keep your saves.
+1. Download the APK ([v2.1.0](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.1.0), `Fallout2-Dualscreen.apk`; the newest development build is always at [latest](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/latest)) and install it. Updates install over it and keep your saves.
 2. Copy your Fallout 2 folder from a computer to the phone: as is, or as one archive (cable, cloud drive, messenger). Mods installed there (for example [RPU](https://github.com/BGforgeNet/Fallout2_Restoration_Project)) and saves come along.
 3. Start the app and choose that folder or archive.
 
