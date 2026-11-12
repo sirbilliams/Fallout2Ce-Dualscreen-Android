@@ -218,6 +218,11 @@ public class MainActivity extends SDLActivity {
                 finish();
                 return;
             }
+            if ("hdpack".equals(mode)) {
+                startActivity(new Intent(this, HdPackActivity.class));
+                finish();
+                return;
+            }
             boolean rpu = RpuActivity.MODE.equals(mode);
             Intent intent = new Intent(this, rpu ? RpuActivity.class : ImportActivity.class);
             if (mode != null && !rpu) {

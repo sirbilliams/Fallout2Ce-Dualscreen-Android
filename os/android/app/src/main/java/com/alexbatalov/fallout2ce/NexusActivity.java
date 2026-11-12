@@ -22,6 +22,8 @@ import android.widget.TextView;
 // are queued in ModDownloads (system DownloadManager, with the WebView's
 // cookies); the Downloads screen lists and installs them.
 public class NexusActivity extends Activity {
+    // Optional start page (HdPackActivity: Nexus mod 193).
+    static final String EXTRA_URL = "url";
     private static final String START = "https://www.nexusmods.com/fallout2/mods/";
 
     private WebView web;
@@ -89,7 +91,7 @@ public class NexusActivity extends Activity {
         setContentView(root);
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
-        else web.loadUrl(START);
+        else web.loadUrl(startUrl());
     }
 
     @Override
@@ -134,5 +136,11 @@ public class NexusActivity extends Activity {
     private void leave() {
         startActivity(new Intent(this, MainActivity.class));
         finish();
+    }
+
+    private String startUrl() {
+        String url = getIntent().getStringExtra(EXTRA_URL);
+        // Only Nexus pages; anything else opens the mod list.
+        return url != null && url.startsWith("https://www.nexusmods.com/") ? url : START;
     }
 }

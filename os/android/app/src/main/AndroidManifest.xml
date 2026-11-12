@@ -124,6 +124,13 @@
             android:screenOrientation="landscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
 
+        <!-- HD pack screen: same process as the Nexus browser. -->
+        <activity android:name=".HdPackActivity"
+            android:process=":import"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+
         <!-- System download broadcasts (finished, notification tapped). -->
         <receiver android:name=".ModDownloadReceiver"
             android:process=":import"

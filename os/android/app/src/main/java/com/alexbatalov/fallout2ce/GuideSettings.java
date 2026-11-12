@@ -50,18 +50,31 @@ final class GuideSettings {
 
     // `[touch] key` as an int, [fallback] when there is none.
     static int getInt(File game, String key, int fallback) {
+        return getInt(game, SECTION, key, fallback);
+    }
+
+    static int getInt(File game, String section, String key, int fallback) {
+        String value = getString(game, section, key, null);
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException e) {
+            return fallback;
+        }
+    }
+
+    // `[section] key` as text, [fallback] when there is none.
+    static String getString(File game, String section, String key, String fallback) {
         List<String> lines = read(new File(game, CONFIG));
         boolean inside = false;
         for (String line : lines) {
             String trimmed = line.trim();
             if (trimmed.startsWith("[")) {
-                inside = trimmed.equalsIgnoreCase("[" + SECTION + "]");
+                inside = trimmed.equalsIgnoreCase("[" + section + "]");
             } else if (inside && trimmed.toLowerCase(Locale.ROOT).startsWith(key + "=")) {
-                try {
-                    return Integer.parseInt(trimmed.substring(key.length() + 1).trim());
-                } catch (NumberFormatException e) {
-                    return fallback;
-                }
+                return trimmed.substring(key.length() + 1).trim();
             }
         }
         return fallback;
@@ -70,6 +83,11 @@ final class GuideSettings {
     // Sets `[touch] key=value`, keeping every other line as it is (the
     // section and the key are added when missing).
     static void setInt(File game, String key, int value) throws IOException {
+        setString(game, SECTION, key, String.valueOf(value));
+    }
+
+    // Sets `[section] key=value` the same way.
+    static void setString(File game, String section, String key, String value) throws IOException {
         File config = new File(game, CONFIG);
         List<String> lines = read(config);
         String entry = key + "=" + value;
@@ -83,7 +101,7 @@ final class GuideSettings {
                     sectionEnd = index;
                     break;
                 }
-                if (trimmed.equalsIgnoreCase("[" + SECTION + "]")) {
+                if (trimmed.equalsIgnoreCase("[" + section + "]")) {
                     sectionAt = index;
                 }
             }
@@ -93,7 +111,7 @@ final class GuideSettings {
             if (!lines.isEmpty() && !lines.get(lines.size() - 1).trim().isEmpty()) {
                 lines.add("");
             }
-            lines.add("[" + SECTION + "]");
+            lines.add("[" + section + "]");
             lines.add(entry);
         } else {
             boolean replaced = false;

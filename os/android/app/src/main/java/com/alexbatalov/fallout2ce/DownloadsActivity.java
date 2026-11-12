@@ -375,21 +375,35 @@ public class DownloadsActivity extends Activity {
                 // RPU never goes into Vanilla: it gets a profile of its own.
                 ModProfile.Created profile = rpu && gameDir != null && ModProfile.isVanilla(gameDir)
                     ? ModProfile.createAndActivate(gameDir, "RPU") : null;
-                ModInstall.Result result;
-                try {
-                    result = ModInstall.install(this, Uri.fromFile(file), modName,
-                        gameDir, new ModInstall.Progress() {
+                if (!rpu && HdPackInstall.isHdPack(this, Uri.fromFile(file))) {
+                    // Dustlight HD art pack: its own installer (files/hd/<tier>).
+                    HdPackInstall.Result hd = HdPackInstall.install(this, Uri.fromFile(file), row.item.file, gameDir,
+                        new HdPackInstall.Progress() {
                             public void update(long done, long total, String path) { }
                             public boolean isCancelled() { return false; }
                         });
-                } catch (IOException | RuntimeException e) {
-                    if (profile != null) ModProfile.rollback(gameDir, profile);
-                    throw e;
+                    ok = getString(R.string.hd_done, hd.tier, hd.packs);
+                } else {
+                    ModInstall.Result result;
+                    try {
+                        result = ModInstall.install(this, Uri.fromFile(file), modName,
+                            gameDir, new ModInstall.Progress() {
+                                public void update(long done, long total, String path) { }
+                                public boolean isCancelled() { return false; }
+                            });
+                    } catch (IOException | RuntimeException e) {
+                        if (profile != null) ModProfile.rollback(gameDir, profile);
+                        throw e;
+                    }
+                    if (profile != null) ok = getString(R.string.rpu_installed_profile, result.id, profile.name);
+                    else if (rpu) ok = getString(R.string.rpu_installed, result.id);
+                    else ok = getString(R.string.mod_installed, result.id);
                 }
-                if (profile != null) ok = getString(R.string.rpu_installed_profile, result.id, profile.name);
-                else if (rpu) ok = getString(R.string.rpu_installed, result.id);
-                else ok = getString(R.string.mod_installed, result.id);
                 ModDownloads.markInstalled(this, row.item.file);
+            } catch (HdPackInstall.Problem p) {
+                problem = p.message == R.string.mod_no_space ? getString(p.message, p.neededMb) : getString(p.message);
+            } catch (HdPackInstall.Invalid e) {
+                problem = getString(R.string.hd_invalid, e.getMessage());
             } catch (ModInstall.Problem p) {
                 problem = p.message == R.string.mod_no_space ? getString(p.message, p.neededMb) : getString(p.message);
             } catch (NativeArchive.Failure f) {
