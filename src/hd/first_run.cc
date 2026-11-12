@@ -54,8 +54,8 @@ int installedArtTiers(Config* config)
 
 bool firstRunScreenSetup(Config* config)
 {
-    int autoScreen = 1;
-    configGetInt(config, "hd", "auto_screen", &autoScreen, 1);
+    int autoScreen = 0;
+    configGetInt(config, "hd", "auto_screen", &autoScreen, 0);
     if (autoScreen == 0) {
         return false;
     }

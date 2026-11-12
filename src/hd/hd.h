@@ -24,7 +24,7 @@ namespace fallout::hd {
 //   edge_fill=0               preserve the 1x tiling art mask's saw-tooth edge
 //   edge_clamp=1              keep edge cells within the original colors
 //
-//   auto_screen=1             first start: borderless at the desktop resolution,
+//   auto_screen=0 (opt-in 1)  first start: borderless at the desktop resolution,
 //                             scale from the installed art (default 1, set to 0
 //                             once done; hd/first_run.h)
 //

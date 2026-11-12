@@ -127,7 +127,9 @@ android {
         externalNativeBuild {
             cmake {
                 arguments '-DANDROID_STL=c++_static', '-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON',
-                    "-DFALLOUT_APP_VERSION=${appVersion}"
+                    "-DFALLOUT_APP_VERSION=${appVersion}",
+                    // Dustlight HD port (GLES 3); -Phd=OFF builds without it.
+                    "-DHD=${project.findProperty('hd') ?: 'ON'}"
                 // Override with -PabiFilters=arm64-v8a for faster local builds.
                 if (project.hasProperty('abiFilters')) {
                     abiFilters(*project.property('abiFilters').split(','))

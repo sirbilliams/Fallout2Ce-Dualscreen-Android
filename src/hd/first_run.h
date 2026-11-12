@@ -7,7 +7,8 @@ namespace fallout::hd {
 
 // First start of a release install (PLAN.md R3).
 //
-// With [hd] auto_screen=1 (the default) the game's screen settings are set
+// With [hd] auto_screen=1 (opt-in; default 0 in this port, whose mobile UI
+// owns the screen size) the game's screen settings are set
 // once, before the window opens: borderless fullscreen at the desktop
 // resolution of the primary display, and the scale of the largest installed
 // HD art tier that still gives the game its 640x480 minimum (e.g. 3x on
