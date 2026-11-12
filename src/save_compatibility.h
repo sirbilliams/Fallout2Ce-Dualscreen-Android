@@ -17,8 +17,8 @@ namespace fallout {
 // fingerprint of its index (names and sizes of its files) and whether it is
 // Fallout 2's own (master.dat, critter.dat, patch000.dat), holds game logic
 // (protos, scripts, maps, data) or only looks and sounds (art, sound,
-// texts). Loose files in data\ and the port's own ce.dat aren't part of
-// it.
+// texts). Profile modstore loose folders are fingerprinted by sorted relative
+// paths and sizes. Base data\ and the port's own ce.dat aren't part of it.
 //
 // A save's composition is kept in the port's records of saves
 // (save_records.h), not in the save. The first time there are records all
@@ -27,6 +27,9 @@ namespace fallout {
 
 // What the game is made of now (encoded, save_composition.h).
 const std::string& saveCompatibilityCurrent();
+
+// Invalidate the cached composition after rebuilding the mounted databases.
+void saveCompatibilityReset();
 
 // After the save of [slot] was made: the game's composition now is kept
 // for it.

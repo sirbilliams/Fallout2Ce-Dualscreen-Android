@@ -62,6 +62,7 @@ include("cmake/gitver.cmake")
 # Shared engine sources — used by both game and mapper targets.
 # Excludes main.cc/main.h (game-only entry logic).
 set(FALLOUT_ENGINE_SOURCES
+    "src/mod_profiles_mount.cc"
     "src/actions.cc"
     "src/actions.h"
     "src/animation_defs.h"

@@ -41,6 +41,7 @@
 #include "loadsave.h"
 #include "map.h"
 #include "memory.h"
+#include "mod_profiles.h"
 #include "mouse.h"
 #include "movie.h"
 #include "movie_effect.h"
@@ -56,6 +57,7 @@
 #include "proto.h"
 #include "queue.h"
 #include "random.h"
+#include "save_compatibility.h"
 #include "scripts.h"
 #include "settings.h"
 #include "sfall_arrays.h"
@@ -1393,6 +1395,7 @@ static bool tryLoadBaseCEModAtPath(const char* path, bool* found, bool* openFail
 // 0x44418C
 static int gameDbInit()
 {
+    saveCompatibilityReset();
     const char* master_dat_path = settings.system.master_dat_path.c_str();
     if (*master_dat_path == '\0') {
         master_dat_path = nullptr;
@@ -1455,7 +1458,9 @@ static int gameDbInit()
         dbOpen(filename);
     }
 
-    sfallLoadMods();
+    if (modProfileIsVanilla()) {
+        sfallLoadMods();
+    }
 
     if (critter_patches_path != nullptr) {
         dbOpen(critter_patches_path);
@@ -1463,6 +1468,10 @@ static int gameDbInit()
 
     if (master_patches_path != nullptr) {
         dbOpen(master_patches_path);
+    }
+
+    if (!modProfileIsVanilla()) {
+        modProfileMount();
     }
 
     return 0;
