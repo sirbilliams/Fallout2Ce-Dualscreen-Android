@@ -1,4 +1,5 @@
 #include "mui_pad.h"
+#include "mui_game_picker.h"
 #include "dev_autotest.h"
 
 #include <algorithm>
@@ -400,6 +401,11 @@ bool muiPadSwitchFocus()
 
 void muiPadMove(MuiSurface surface, MuiPadDir direction)
 {
+    if ((direction == MuiPadDir::Left || direction == MuiPadDir::Right)
+        && muiGamePickerMove(direction == MuiPadDir::Right ? 1 : -1)) {
+        muiPadTouch();
+        return;
+    }
     // The first press shows the ring where it stands.
     bool shown = gLastPadInput != 0 && uiTicks() - gLastPadInput < kRingShowMs;
     muiPadTouch();
@@ -410,6 +416,14 @@ void muiPadMove(MuiSurface surface, MuiPadDir direction)
 
 void muiPadActivate(MuiSurface surface, bool longPress)
 {
+    if (longPress && muiGamePickerIntro()) {
+        muiPadTouch();
+        return;
+    }
+    if (!longPress && muiGamePickerAccept(surface)) {
+        muiPadTouch();
+        return;
+    }
     muiPadTouch();
     const MuiPadWidget* widget = findWidget(surface, muiPadFocusId(surface));
     float x;

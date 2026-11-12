@@ -409,3 +409,27 @@
 {1030}{}{Unarmed}
 {1031}{}{REMOVE FROM QUICK-USE}
 {1032}{}{ITEM MENU}
+
+# Game picker.
+{398}{}{Play}
+{399}{}{Installed}
+{400}{}{Not installed}
+{401}{}{Install}
+{402}{}{Open project page}
+{403}{}{Add Fallout 1 files}
+{404}{}{Coming in the next update}
+{405}{}{Experimental}
+{406}{}{Game picker}
+{407}{}{Selection could not be saved}
+{408}{}{by}
+{409}{}{Version: unknown | Base files: %llu MiB}
+{410}{}{Version: not installed | Size: download pending}
+{411}{}{Language: }
+{412}{}{English; requires Fallout 1 files}
+{413}{}{English, Russian, Spanish}
+{414}{}{English; Polish patch available}
+{415}{}{Russian; English Fixed edition}
+{416}{}{Russian, English}
+{417}{}{English}
+{418}{}{English}
+{419}{}{Intro}

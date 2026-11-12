@@ -1,4 +1,5 @@
 #include "gamepad.h"
+#include "mui_game_picker.h"
 
 #include <math.h>
 #include <string.h>
@@ -399,6 +400,11 @@ namespace {
     // [button] pressed while a screen has the pad.
     void runUiButton(PadButton button, MuiSurface surface)
     {
+        if ((button == PAD_LB || button == PAD_RB)
+            && muiGamePickerMove(button == PAD_RB ? 1 : -1)) {
+            muiPadTouch();
+            return;
+        }
         MuiPadDir direction;
         if (toDirection(button, &direction)) {
             muiPadMove(surface, direction);

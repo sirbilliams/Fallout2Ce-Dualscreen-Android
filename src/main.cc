@@ -34,6 +34,7 @@
 #include "map.h"
 #include "mouse.h"
 #include "mui.h"
+#include "mui_game_picker.h"
 #include "object.h"
 #include "palette.h"
 #include "platform_compat.h"
@@ -136,7 +137,8 @@ int falloutMain(int argc, char** argv)
 #endif
     // SFALL: Allow to skip intro movies
     int skipOpeningMovies = settings.ui.skip_opening_movies;
-    if (skipOpeningMovies < 1) {
+    // CE: With the game picker the opening movies are its Intro button's.
+    if (skipOpeningMovies < 1 && !muiIsEnabled()) {
         gameMoviePlay(MOVIE_IPLOGO, GAME_MOVIE_FADE_IN);
         gameMoviePlay(MOVIE_INTRO, 0);
         gameMoviePlay(MOVIE_CREDITS, 0);
@@ -147,7 +149,7 @@ int falloutMain(int argc, char** argv)
     }
 
     if (mainMenuWindowInit() == 0) {
-        bool done = false;
+        bool done = muiIsEnabled() && !muiGamePickerRun();
         while (!done) {
             keyboardReset();
             if (!backgoundSoundIsPlaying()) {

@@ -1271,6 +1271,58 @@ static const DevAutotestStep kDevAutotestModsUiSteps[] = {
     { DEV_AUTOTEST_ACTION_CHECK_MODS_RESTART, 1, 0, 0, 1, "mu11_restart_asked" },
 };
 
+// Starts at the picker; exercises both surfaces, the stub, organizer and Play.
+static const DevAutotestStep kDevAutotestGamePickerSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "gp00_picker" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp01_play", "picker.play" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp02_ettu", "picker.page.1" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp03_install", "picker.install" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp04_stub", "picker.install" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp05_notice", "dialog.primary" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp06_close", "dialog.primary" },
+    { DEV_AUTOTEST_ACTION_PAD, 10, 0, 0, 30, "gp07_shoulder_sonora" },
+    { DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT, 0, 0, 0, 1, "gp08_saved", "profiles/last-game.txt", "sonora\n" },
+    { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, -0.25f, 0, 0, 50, "gp08a_top_swipe", "picker.swipe.art" },
+    { DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT, 0, 0, 0, 1, "gp08b_resurrection", "profiles/last-game.txt", "resurrection\n" },
+    { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, -0.25f, 0, 0, 50, "gp08c_bottom_swipe", "picker.swipe.controls" },
+    { DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT, 0, 0, 0, 1, "gp08d_nevada", "profiles/last-game.txt", "nevada\n" },
+    { DEV_AUTOTEST_ACTION_PAD, 14, 0, 0, 30, "gp08e_dpad", },
+    { DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT, 0, 0, 0, 1, "gp08f_olympus", "profiles/last-game.txt", "olympus2207\n" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp08g_megamod", "picker.page.6" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp08h_yesterday", "picker.page.7" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp09_fallout2", "picker.page.0" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp10_mods", "picker.mods" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp11_organizer", "mods.profile" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp12_back", "mods.back" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 40, "gp13_play" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp14_main_menu", "mainmenu.new" },
+};
+
+// Intro button: opens the movies, a tap skips each, back on the same page.
+// Needs the game's three opening movies (IPLOGO, INTRO, CREDITS).
+static const DevAutotestStep kDevAutotestGamePickerIntroSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "gi00_picker" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi01_intro_shown", "picker.intro" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi02_intro_tap", "picker.intro" },
+    { DEV_AUTOTEST_ACTION_CHECK_MOVIE, 0, 0, 0, 1, "gi03_first_movie" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi04_skip_first", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_CHECK_MOVIE, 0, 0, 0, 1, "gi05_second_movie" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi06_skip_second", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_CHECK_MOVIE, 0, 0, 0, 1, "gi06a_third_movie" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 80, "gi06b_skip_third", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi07_back_intro", "picker.intro" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi08_back_play", "picker.play" },
+    // X on a pad does the same.
+    { DEV_AUTOTEST_ACTION_PAD, 2, 0, 0, 40, "gi10_pad_x" },
+    { DEV_AUTOTEST_ACTION_CHECK_MOVIE, 0, 0, 0, 1, "gi11_pad_movie" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi12_skip_first", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi13_skip_second", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 80, "gi13b_skip_third", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi14_back_again", "picker.intro" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 40, "gi15_play" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi16_main_menu", "mainmenu.new" },
+};
+
 static const DevAutotestStep* gDevAutotestSteps = kDevAutotestSteps;
 static int gDevAutotestStepCount = sizeof(kDevAutotestSteps) / sizeof(kDevAutotestSteps[0]);
 
@@ -3006,6 +3058,18 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "mods") == 0) {
         gDevAutotestSteps = kDevAutotestModsSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestModsSteps) / sizeof(kDevAutotestModsSteps[0]);
+    } else if (strcmp(name, "gamepicker") == 0 || strcmp(name, "gamepickerphone") == 0) {
+        gDevAutotestSteps = kDevAutotestGamePickerSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestGamePickerSteps) / sizeof(kDevAutotestGamePickerSteps[0]);
+#ifndef __ANDROID__
+        if (strcmp(name, "gamepickerphone") != 0) bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "gamepickerintro") == 0) {
+        gDevAutotestSteps = kDevAutotestGamePickerIntroSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestGamePickerIntroSteps) / sizeof(kDevAutotestGamePickerIntroSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
     } else if (strcmp(name, "modsui") == 0) {
         gDevAutotestSteps = kDevAutotestModsUiSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestModsUiSteps) / sizeof(kDevAutotestModsUiSteps[0]);
