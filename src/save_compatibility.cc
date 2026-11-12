@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <filesystem>
 
 #include "dfile.h"
 #include "loadsave.h"
@@ -46,9 +47,10 @@ namespace {
     // their objects, scripts and maps.
     bool isLogicPath(const char* path)
     {
-        static const char* const kFolders[] = { "proto\\", "scripts\\", "maps\\", "data\\" };
+        std::string normalized = componentName(path);
+        static const char* const kFolders[] = { "proto/", "scripts/", "maps/", "data/" };
         for (const char* folder : kFolders) {
-            if (compat_strnicmp(path, folder, strlen(folder)) == 0) {
+            if (normalized.compare(0, strlen(folder), folder) == 0) {
                 return true;
             }
         }
@@ -66,14 +68,19 @@ namespace {
 
         std::vector<std::string> components;
         for (const XBase* base = xbaseGetFirst(); base != nullptr; base = base->next) {
-            // Folders (data\) aren't part of it.
-            if (!base->isDbase || base->dbase == nullptr) {
-                continue;
-            }
-
             std::string name = componentName(base->path);
             // The port's own (comes with the app, not the game's).
             if (name == "ce.dat") {
+                continue;
+            }
+            // Preserve Vanilla's composition: only modstore/<id>/data loose
+            // folders participate, never the base patch/save directories.
+            namespace fs = std::filesystem;
+            fs::path folder(name);
+            if (!base->isDbase && (folder.filename() != "data" || folder.parent_path().parent_path().filename() != "modstore")) {
+                continue;
+            }
+            if (base->isDbase && base->dbase == nullptr) {
                 continue;
             }
             char kind = isGameArchive(name) ? 'G' : 'C';
@@ -86,8 +93,33 @@ namespace {
                     hash = (hash ^ bytes[index]) * 1099511628211ull;
                 }
             };
+            if (!base->isDbase) {
+                std::vector<std::pair<std::string, uintmax_t>> files;
+                std::error_code ec;
+                fs::recursive_directory_iterator it(base->path, ec), end;
+                for (; !ec && it != end; it.increment(ec)) {
+                    if (it->is_regular_file(ec)) {
+                        auto size = it->file_size(ec);
+                        if (!ec) {
+                            files.emplace_back(it->path().lexically_relative(fs::path(base->path)).generic_string(), size);
+                        }
+                    }
+                }
+                std::sort(files.begin(), files.end());
+                for (const auto& file : files) {
+                    mix(file.first.c_str(), file.first.size() + 1);
+                    // Explicit byte order keeps folder hashes portable.
+                    for (int shift = 0; shift < 64; shift += 8) {
+                        unsigned char byte = (file.second >> shift) & 0xff;
+                        mix(&byte, 1);
+                    }
+                    if (isLogicPath(file.first.c_str())) {
+                        kind = 'L';
+                    }
+                }
+            }
             const DBase* dbase = base->dbase;
-            for (int index = 0; index < dbase->entriesLength; index++) {
+            for (int index = 0; dbase != nullptr && index < dbase->entriesLength; index++) {
                 const DBaseEntry& entry = dbase->entries[index];
                 mix(entry.path, strlen(entry.path) + 1);
                 mix(&entry.uncompressedSize, sizeof(entry.uncompressedSize));
@@ -135,6 +167,12 @@ const std::string& saveCompatibilityCurrent()
 {
     computeCurrent();
     return gCurrent;
+}
+
+void saveCompatibilityReset()
+{
+    gCurrent.clear();
+    gCurrentKnown = false;
 }
 
 void saveCompatibilityRecord(int slot)

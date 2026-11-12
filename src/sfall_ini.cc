@@ -10,6 +10,7 @@
 #include "config.h"
 #include "debug.h"
 #include "interpreter.h"
+#include "mod_profiles.h"
 #include "opcode_context.h"
 #include "platform_compat.h"
 #include "sfall_arrays.h"
@@ -95,10 +96,51 @@ static bool is_system_file_name(const char* fileName)
     return false;
 }
 
-// Sfall treats non-system INI file names as game-root-relative, even when the
-// script passes a leading backslash like "\mods\foo.ini".
+// Redirect profile-owned settings before the legacy base-folder fallback.
+static bool sfall_profile_ini_path(const char* iniFileName, std::string* path)
+{
+    if (modProfileIsVanilla()) {
+        return false;
+    }
+    std::string fileName = sfall_strip_ini_path_prefix(iniFileName);
+    std::replace(fileName.begin(), fileName.end(), '\\', '/');
+    if (!is_system_file_name(iniFileName) && compat_strnicmp(fileName.c_str(), "mods/", 5) != 0 && basePath[0] != '\0') {
+        std::string base = sfall_strip_ini_path_prefix(basePath);
+        std::replace(base.begin(), base.end(), '\\', '/');
+        if (compat_stricmp(base.c_str(), "mods") == 0 || compat_strnicmp(base.c_str(), "mods/", 5) == 0) {
+            fileName = base + "/" + fileName;
+        }
+    }
+    if (compat_stricmp(fileName.c_str(), "ddraw.ini") == 0) {
+        fileName = "ddraw.ini";
+    } else if (compat_strnicmp(fileName.c_str(), "mods/", 5) == 0) {
+        // Only redirect paths contained within the profile.
+        size_t start = 0;
+        while (start <= fileName.size()) {
+            size_t end = fileName.find('/', start);
+            if (fileName.substr(start, end - start) == "..") {
+                return false;
+            }
+            if (end == std::string::npos) {
+                break;
+            }
+            start = end + 1;
+        }
+        fileName.replace(0, 5, "mods/");
+    } else {
+        return false;
+    }
+    *path = modProfileSavesRoot() + "/" + fileName;
+    return true;
+}
+
 static void sfall_build_relative_ini_path(const char* iniFileName, char* path, size_t size)
 {
+    std::string profilePath;
+    if (sfall_profile_ini_path(iniFileName, &profilePath)) {
+        snprintf(path, size, "%s", profilePath.c_str());
+        return;
+    }
     if (is_system_file_name(iniFileName)) {
         snprintf(path, size, "%s", sfall_strip_ini_path_prefix(iniFileName));
         return;
@@ -111,6 +153,10 @@ static void sfall_build_relative_ini_path(const char* iniFileName, char* path, s
 
 static std::string sfall_normalize_ini_cache_key(const char* iniFileName)
 {
+    std::string profilePath;
+    if (sfall_profile_ini_path(iniFileName, &profilePath)) {
+        return profilePath;
+    }
     const char* fileName = sfall_strip_ini_path_prefix(iniFileName);
 
     if (is_system_file_name(fileName)) {
@@ -124,6 +170,10 @@ static std::string sfall_normalize_ini_cache_key(const char* iniFileName)
 // non-system files and falling back to the working directory on failure.
 static bool sfall_read_named_ini(const char* iniFileName, Config* config)
 {
+    std::string profilePath;
+    if (sfall_profile_ini_path(iniFileName, &profilePath)) {
+        return configRead(config, profilePath.c_str(), false);
+    }
     if (basePath[0] != '\0' && !is_system_file_name(iniFileName)) {
         char path[COMPAT_MAX_PATH];
         snprintf(path, sizeof(path), "%s\\%s", basePath, iniFileName);
@@ -302,7 +352,9 @@ bool sfall_ini_set_string(const char* triplet, const char* value)
     char path[COMPAT_MAX_PATH];
     bool loaded = false;
 
-    if (basePath[0] != '\0' && !is_system_file_name(fileName)) {
+    std::string profilePath;
+    bool profileIni = sfall_profile_ini_path(fileName, &profilePath);
+    if (!profileIni && basePath[0] != '\0' && !is_system_file_name(fileName)) {
         // Attempt to load requested file in base directory.
         snprintf(path, sizeof(path), "%s\\%s", basePath, fileName);
         loaded = configRead(config.get(), path, false);

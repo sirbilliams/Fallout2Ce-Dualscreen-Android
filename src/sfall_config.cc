@@ -1,5 +1,6 @@
 #include "sfall_config.h"
 
+#include "mod_profiles.h"
 #include "platform_compat.h"
 #include "scan_unimplemented.h"
 #include <stdio.h>
@@ -42,7 +43,12 @@ bool sfallConfigInit(int argc, char** argv)
         strcpy(path, SFALL_CONFIG_FILE_NAME);
     };
 
-    configRead(&gSfallConfig, path, false);
+    if (modProfileIsVanilla()) {
+        configRead(&gSfallConfig, path, false);
+    } else {
+        std::string profilePath = modProfileSavesRoot() + "/" + SFALL_CONFIG_FILE_NAME;
+        configRead(&gSfallConfig, profilePath.c_str(), false);
+    }
 
     gSfallConfigInitialized = true;
 
