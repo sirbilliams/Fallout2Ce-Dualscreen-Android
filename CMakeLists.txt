@@ -182,6 +182,8 @@ set(FALLOUT_ENGINE_SOURCES
     "src/lips.cc"
     "src/lips.h"
     "src/loadsave.cc"
+    "src/mod_list.cc"
+    "src/mod_profiles.cc"
     "src/save_catalog.cc"
     "src/save_storage.cc"
     "src/save_storage.h"
@@ -979,6 +981,9 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
     ce_add_test(save_catalog_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(suspend_slot_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(sound_tempo_test "src/sound_tempo.cc")
+    ce_add_test(mod_list_test "src/mod_list.cc" "src/mod_profiles.cc")
+    target_include_directories(mod_list_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(mod_list_test ${SDL2_LIBRARIES})
     ce_add_test(touch_gesture_test "src/touch.cc")
     target_compile_definitions(touch_gesture_test PRIVATE FALLOUT_FORCE_TOUCH_ONLY)
     target_include_directories(touch_gesture_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
