@@ -51,6 +51,11 @@ jobs:
           cmake --build build-desktop -j"$(nproc)" --target touch_gesture_test
           ctest --test-dir build-desktop -R "^touch_gesture_test$" --output-on-failure
 
+      - name: Unit test (mod list)
+        run: |
+          cmake --build build-desktop -j"$(nproc)" --target mod_list_test
+          ctest --test-dir build-desktop -R "^mod_list_test$" --output-on-failure
+
       - name: Render and compare
         run: tools/mui_preview/regress.sh build-desktop preview
 
