@@ -95,7 +95,8 @@ std::vector<ProfileOverride> profileHdOverrides(const std::string& root)
 size_t profileHdApply(const std::string& root, const std::function<void(const ProfileOverride&)>& set)
 {
     auto list = profileHdOverrides(root);
-    for (const auto& o : list) set(o);
+    for (const auto& o : list)
+        set(o);
     return list.size();
 }
 

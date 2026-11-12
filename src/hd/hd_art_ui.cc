@@ -8,7 +8,7 @@ namespace fallout::hd {
 namespace {
     HdArtCpu gArt;
     bool gTried = false;
-}
+} // namespace
 
 bool uiArtActive()
 {

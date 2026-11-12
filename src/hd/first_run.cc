@@ -101,7 +101,6 @@ bool firstRunScreenSetup(Config* config)
         tiers == 0 ? " none" : "");
     gReport = text;
     return true;
-
 }
 
 const char* firstRunReport()

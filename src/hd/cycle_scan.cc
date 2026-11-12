@@ -11,8 +11,8 @@
 
 #include "art.h"
 #include "debug.h"
-#include "map.h"
 #include "hd/paths.h"
+#include "map.h"
 #include "map_edge.h"
 #include "object.h"
 #include "tile.h"

@@ -1,8 +1,8 @@
 #ifndef FALLOUT_HD_PATHS_H_
 #define FALLOUT_HD_PATHS_H_
 
-#include <string>
 #include "platform_compat.h"
+#include <string>
 
 namespace fallout::hd {
 // Configs and FRM paths can still contain DOS separators. Keep filesystem

@@ -465,7 +465,7 @@ bool handleKey(int keyCode)
         }
         requestNearestDialogue();
         return true;
-    // Ctrl+F11's D3D/ImGui overlay is dropped (no HD UI skin).
+        // Ctrl+F11's D3D/ImGui overlay is dropped (no HD UI skin).
 #ifdef HD_HAVE_MAP_LAYER
     case KEY_CTRL_F10:
         debugPrint("HD: Ctrl+F10 pressed, map self-test\n");
@@ -501,7 +501,7 @@ bool handleKey(int keyCode)
             return true;
         }
         return false;
-    // Ctrl+F4 D3D frame-sequence capture has no GL contract and is dropped.
+        // Ctrl+F4 D3D frame-sequence capture has no GL contract and is dropped.
     }
 
     return false;
