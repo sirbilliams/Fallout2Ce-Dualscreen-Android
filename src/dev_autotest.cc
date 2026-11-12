@@ -1111,13 +1111,6 @@ static bool gDevAutotestStartWindowsTaken = false;
 static Object* gDevAutotestCorpse = nullptr;
 static Object* gDevAutotestPartyMember = nullptr;
 
-// Weak, so this file links before src/mui_mods.cc lands (the check then FAILs
-// with a message instead of the build breaking).
-bool muiModsRestartRequested() __attribute__((weak));
-// Planned for save_compatibility.h (Task 3): forget the game's cached
-// composition after the mounted mods changed.
-void saveCompatibilityReset();
-
 // What the mods fixtures override: line 20 of misc.msg (the main menu's
 // copyright line).
 static std::string devAutotestReadMiscLine20()
@@ -5171,10 +5164,9 @@ void devAutotestTick()
             // Contract with src/mui_mods.cc: `bool muiModsRestartRequested()`
             // (declared in mui.h) is true once Back left with changes asked
             // for the restart (on desktop that replaces openGameFiles).
-            bool exposed = muiModsRestartRequested != nullptr;
-            bool asked = exposed && muiModsRestartRequested();
-            bool ok = exposed && asked == (step->a != 0);
-            devAutotestLog("  mods restart %s: %s\n", exposed ? (asked ? "requested" : "not requested") : "flag muiModsRestartRequested() MISSING", ok ? "PASS" : "FAIL");
+            bool asked = muiModsRestartRequested();
+            bool ok = asked == (step->a != 0);
+            devAutotestLog("  mods restart %s: %s\n", asked ? "requested" : "not requested", ok ? "PASS" : "FAIL");
             if (!ok) {
                 exit(EXIT_FAILURE);
             }
