@@ -1,6 +1,5 @@
 package com.alexbatalov.fallout2ce;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Typeface;
@@ -30,7 +29,7 @@ import java.nio.charset.StandardCharsets;
 // mobile data and low space, then hands the zip to the background download
 // manager (ModDownloads). It is installed from the Downloads screen.
 // Same panel as ImportActivity.
-public class RpuActivity extends Activity {
+public class RpuActivity extends ImmersiveActivity {
     static final String MODE = "rpu";
     private static final String TAG = "RpuActivity";
 

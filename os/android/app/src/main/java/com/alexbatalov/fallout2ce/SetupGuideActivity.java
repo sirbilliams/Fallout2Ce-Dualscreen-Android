@@ -1,6 +1,5 @@
 package com.alexbatalov.fallout2ce;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -22,7 +21,7 @@ import java.io.IOException;
 // bindings). Skippable on every page. The choices go into fallout2.cfg's
 // [touch] (dashboard_layout, bottom_theme: GuideSettings), the same keys the
 // game's settings change; the mobile UI's colors and font as ImportActivity.
-public class SetupGuideActivity extends Activity {
+public class SetupGuideActivity extends ImmersiveActivity {
     private static final int PAGE_FILES = 0;
     private static final int PAGE_LAYOUT = 1;
     private static final int PAGE_THEME = 2;

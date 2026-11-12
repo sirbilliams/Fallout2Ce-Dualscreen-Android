@@ -81,8 +81,21 @@ public class MainActivity extends SDLActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        ImmersiveMode.apply(getWindow());
         if (bottomScreen != null) {
             bottomScreen.start();
+            bottomScreen.applyImmersiveMode();
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) {
+            ImmersiveMode.apply(getWindow());
+            if (bottomScreen != null) {
+                bottomScreen.applyImmersiveMode();
+            }
         }
     }
 

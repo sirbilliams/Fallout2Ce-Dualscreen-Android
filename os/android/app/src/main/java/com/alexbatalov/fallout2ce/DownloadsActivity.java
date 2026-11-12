@@ -1,6 +1,5 @@
 package com.alexbatalov.fallout2ce;
 
-import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.content.Intent;
@@ -34,7 +33,7 @@ import java.util.concurrent.Executors;
 // Mods > Downloads: every archive in mod-downloads with its state; install,
 // cancel and delete (long-press selects several). Polls the DownloadManager
 // about once a second while visible. Runs in the :import process.
-public class DownloadsActivity extends Activity {
+public class DownloadsActivity extends ImmersiveActivity {
     private static final String TAG = "DownloadsActivity";
 
     private final Handler handler = new Handler(Looper.getMainLooper());

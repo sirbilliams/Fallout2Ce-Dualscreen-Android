@@ -27,7 +27,7 @@ import java.util.Locale;
 // game" (GameImport, GameFiles); the saves' import and export (GameSaves,
 // MODE). One panel in the mobile UI's colors and font, its texts and buttons
 // change by step: choose - look - what was found - copying - the game starts.
-public class ImportActivity extends Activity {
+public class ImportActivity extends ImmersiveActivity {
     private static final String TAG = "ImportActivity";
     private static final int REQUEST_FOLDER = 1;
     private static final int REQUEST_ARCHIVE = 2;
