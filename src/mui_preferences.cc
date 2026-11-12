@@ -598,7 +598,7 @@ namespace {
     {
         std::vector<Row> rows;
 
-        auto choice = [&](Section section, int textId, const char* fallback, std::vector<int> options, int PreferenceValues::*field) {
+        auto choice = [&](Section section, int textId, const char* fallback, std::vector<int> options, int PreferenceValues::* field) {
             Row row { section, RowKind::Choice, textId, fallback };
             row.options = options;
             row.get = [field](const Values& values) { return static_cast<float>(values.preferences.*field); };
@@ -607,21 +607,21 @@ namespace {
         };
 
         // Off / on of the game's window (OPTIONS.MSG labels in that order).
-        auto preferenceToggle = [&](Section section, int textId, const char* fallback, int PreferenceValues::*field) {
+        auto preferenceToggle = [&](Section section, int textId, const char* fallback, int PreferenceValues::* field) {
             Row row { section, RowKind::Toggle, textId, fallback };
             row.get = [field](const Values& values) { return static_cast<float>(values.preferences.*field); };
             row.set = [field](Values& values, float value) { values.preferences.*field = value != 0.0f ? 1 : 0; };
             rows.push_back(row);
         };
 
-        auto toggle = [&](Section section, int textId, const char* fallback, Origin origin, bool Values::*field) {
+        auto toggle = [&](Section section, int textId, const char* fallback, Origin origin, bool Values::* field) {
             Row row { section, RowKind::Toggle, textId, fallback, origin };
             row.get = [field](const Values& values) { return values.*field ? 1.0f : 0.0f; };
             row.set = [field](Values& values, float value) { values.*field = value != 0.0f; };
             rows.push_back(row);
         };
 
-        auto volume = [&](int textId, const char* fallback, int PreferenceValues::*field, Sample sample) {
+        auto volume = [&](int textId, const char* fallback, int PreferenceValues::* field, Sample sample) {
             Row row { Section::Sound, RowKind::Slider, textId, fallback };
             row.minValue = 0.0f;
             row.maxValue = static_cast<float>(VOLUME_MAX);
