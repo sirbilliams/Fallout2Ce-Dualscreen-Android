@@ -36,6 +36,7 @@ public class ImportActivity extends Activity {
     // What it is opened for (the game's "Game files" settings): the game's
     // files (none), the saves' import or export.
     static final String MODE = "mode";
+    static final String MODE_MOD = "mod";
     static final String MODE_SAVES_IMPORT = "saves_import";
     static final String MODE_SAVES_EXPORT = "saves_export";
 
@@ -83,7 +84,10 @@ public class ImportActivity extends Activity {
         applyFont(findViewById(R.id.import_panel));
         replacing = GameImport.isInstalled(getExternalFilesDir(null));
         mode = getIntent().getStringExtra(MODE);
-        if (MODE_SAVES_EXPORT.equals(mode)) {
+        if (MODE_MOD.equals(mode)) {
+            showWelcome();
+            if (savedInstanceState == null) chooseArchive();
+        } else if (MODE_SAVES_EXPORT.equals(mode)) {
             startExport(null);
         } else {
             showWelcome();
@@ -115,7 +119,7 @@ public class ImportActivity extends Activity {
 
     private void show(String messageText, String detailsText, String primaryText, View.OnClickListener onPrimary,
         String secondaryText, View.OnClickListener onSecondary) {
-        title.setText(savesMode() ? R.string.saves_title : R.string.import_title);
+        title.setText(MODE_MOD.equals(mode) ? R.string.mod_title : savesMode() ? R.string.saves_title : R.string.import_title);
         // Opened from the game (not the first install): back to it, but not
         // while copying (its own cancel).
         backToGame.setVisibility((replacing || savesMode()) && !busy ? View.VISIBLE : View.GONE);
@@ -142,6 +146,11 @@ public class ImportActivity extends Activity {
     private void showWelcome() {
         busy = false;
         onBack = null;
+        if (MODE_MOD.equals(mode)) {
+            show(getString(R.string.mod_welcome), null,
+                getString(R.string.import_choose_archive), v -> chooseArchive(), null, null);
+            return;
+        }
         int text = MODE_SAVES_IMPORT.equals(mode) ? R.string.saves_import_welcome
             : replacing ? R.string.import_replace_welcome : R.string.import_welcome;
         show(getString(text), null,
@@ -185,8 +194,53 @@ public class ImportActivity extends Activity {
 
         Uri uri = resultCode == Activity.RESULT_OK && resultData != null ? resultData.getData() : null;
         if (uri != null) {
-            look(requestCode == REQUEST_FOLDER, uri);
+            if (MODE_MOD.equals(mode)) installMod(uri);
+            else look(requestCode == REQUEST_FOLDER, uri);
         }
+    }
+
+    private void installMod(Uri uri) {
+        busy = true;
+        cancelled = false;
+        show(getString(R.string.mod_installing), null, null, null,
+            getString(R.string.import_cancel), v -> cancelled = true);
+        progress.setVisibility(View.VISIBLE);
+        progress.setIndeterminate(true);
+        new Thread(() -> {
+            try {
+                if (!waitForGameToClose()) {
+                    runOnUiThread(() -> showError(getString(R.string.import_game_running)));
+                    return;
+                }
+                ModInstall.Result result = ModInstall.install(this, uri, getExternalFilesDir(null), new ModInstall.Progress() {
+                    @Override
+                    public void update(long done, long total, String path) {
+                        runOnUiThread(() -> {
+                            progress.setIndeterminate(false);
+                            progress.setFraction(total > 0 ? (float) done / total : 0);
+                        });
+                    }
+
+                    @Override
+                    public boolean isCancelled() {
+                        return cancelled;
+                    }
+                });
+                runOnUiThread(() -> {
+                    busy = false;
+                    onBack = null;
+                    String skipped = result.skipped.isEmpty() ? null
+                        : getString(R.string.mod_skipped, String.join("\n", result.skipped));
+                    show(getString(R.string.mod_installed, result.id), skipped,
+                        getString(R.string.import_back_to_game), v -> startGame(), null, null);
+                });
+            } catch (GameImport.CancelledException e) {
+                runOnUiThread(this::showWelcome);
+            } catch (IOException | RuntimeException e) {
+                Log.w(TAG, "mod install failed", e);
+                runOnUiThread(() -> showError(problemText(e, null)));
+            }
+        }).start();
     }
 
     // Looks for the game in the chosen folder or archive.
@@ -396,6 +450,14 @@ public class ImportActivity extends Activity {
     // What the player is told when the chosen folder or archive can't be used
     // ([name]: the archive's file name, for the parts of a split one).
     private String problemText(Throwable e, String name) {
+        if (e instanceof ModInstall.Problem) {
+            ModInstall.Problem problem = (ModInstall.Problem) e;
+            return problem.message == R.string.mod_no_space
+                ? getString(problem.message, problem.neededMb) : getString(problem.message);
+        }
+        if (MODE_MOD.equals(mode) && e instanceof NativeArchive.Failure) {
+            return getString(R.string.mod_unreadable);
+        }
         if (e instanceof GameImport.SeveralGamesException) {
             List<String> names = new ArrayList<>();
             for (String root : ((GameImport.SeveralGamesException) e).roots) {
