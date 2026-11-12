@@ -1,6 +1,5 @@
 package com.alexbatalov.fallout2ce;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -21,7 +20,7 @@ import android.widget.TextView;
 // signs in there; no credentials are read or stored). Manual-download files
 // are queued in ModDownloads (system DownloadManager, with the WebView's
 // cookies); the Downloads screen lists and installs them.
-public class NexusActivity extends Activity {
+public class NexusActivity extends ImmersiveActivity {
     // Optional start page (HdPackActivity: Nexus mod 193).
     static final String EXTRA_URL = "url";
     // "dustlight": show the Dustlight HD guide banner under the page.

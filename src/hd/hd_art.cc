@@ -3,6 +3,8 @@
 
 #ifdef FALLOUT_HD
 
+#include <SDL.h>
+
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -183,10 +185,43 @@ namespace {
         bool uiDeferred = false; // the UI's last build hit the upload limit
         long long buildUploadBytes = 0;
         HdArtStats stats;
+        HdArtStats loggedStats;
+        unsigned int statsLastLog = 0;
+        unsigned int statsLastChange = 0;
+        int statsLastFrames = -1;
+        int statsLastHd = -1;
+        bool statsLogged = false;
+        bool statsLogPending = false;
         HdArtStats mapCounts; // the map's build* counters, kept during a UI build
     };
 
     State* gState = nullptr;
+
+    void logArtStats(bool mapBuild)
+    {
+        const HdArtStats& s = gState->stats;
+        const unsigned int now = SDL_GetTicks();
+        if (mapBuild && (s.buildFrames != gState->statsLastFrames || s.buildHd != gState->statsLastHd)) {
+            gState->statsLastFrames = s.buildFrames;
+            gState->statsLastHd = s.buildHd;
+            gState->statsLastChange = now;
+            gState->statsLogPending = true;
+        }
+        const HdArtStats& logged = gState->loggedStats;
+        const bool packsChanged = !gState->statsLogged || s.packsKnown != logged.packsKnown
+            || s.packsLoaded != logged.packsLoaded || s.packsMissing != logged.packsMissing
+            || s.packsFailed != logged.packsFailed;
+        // Report progress every ten seconds, with a final count after one quiet
+        // second. Keeping this state in the store also resets it on reinitialization.
+        if ((mapBuild && packsChanged) || (gState->statsLogPending && (now - gState->statsLastLog >= 10000 || now - gState->statsLastChange >= 1000))) {
+            gState->loggedStats = s;
+            gState->statsLastLog = now;
+            gState->statsLogged = true;
+            gState->statsLogPending = false;
+            debugPrint("HD: art packs: %d known, %d loaded, %d missing, %d failed; map frames %d, HD %d; pages %d/%d\n",
+                s.packsKnown, s.packsLoaded, s.packsMissing, s.packsFailed, s.buildFrames, s.buildHd, s.pagesUsed, s.pages);
+        }
+    }
 
     unsigned int pathHash(const std::string& s)
     {
@@ -938,7 +973,8 @@ void hdArtEndBuild()
         return;
     }
     HdArtStats& s = gState->stats;
-    if (gState->building == HdArtClient::Map) {
+    const bool mapBuild = gState->building == HdArtClient::Map;
+    if (mapBuild) {
         gState->deferred = s.buildDeferred > 0;
     } else {
         gState->uiDeferred = s.buildDeferred > 0;
@@ -959,17 +995,11 @@ void hdArtEndBuild()
     }
     trimRam();
     countPacks();
-    // Settled counts, once per change: the shutdown stats never print where
-    // the process just ends (Android), so this is the on-device evidence.
-    static int loggedKnown = -1, loggedLoaded = -1, loggedHd = -1;
-    if (gState->building == HdArtClient::Map && s.packsLoading == 0 && gState->inFlight == 0
-        && (s.packsKnown != loggedKnown || s.packsLoaded != loggedLoaded || s.buildHd != loggedHd)) {
-        loggedKnown = s.packsKnown;
-        loggedLoaded = s.packsLoaded;
-        loggedHd = s.buildHd;
-        debugPrint("HD: art packs: %d known, %d loaded, %d missing, %d failed; map frames %d, HD %d; pages %d/%d\n",
-            s.packsKnown, s.packsLoaded, s.packsMissing, s.packsFailed, s.buildFrames, s.buildHd, s.pagesUsed, s.pages);
+    // UI builds restore the map counters; only actual map builds advance the log.
+    if (!mapBuild) {
+        return;
     }
+    logArtStats(true);
 }
 
 bool hdArtFrame(int fid, int rotation, int frame, unsigned int hash, int width, int height, HdFrame* out)
@@ -1015,6 +1045,11 @@ bool hdArtPoll(HdArtClient client)
         return false;
     }
     takeResults();
+    // The map may stay cached indefinitely after its last build. Flush the
+    // pending final count here even when no further build is needed.
+    if (client == HdArtClient::Map) {
+        logArtStats(false);
+    }
     bool redraw;
     if (client == HdArtClient::Map) {
         redraw = gState->arrived || gState->deferred;

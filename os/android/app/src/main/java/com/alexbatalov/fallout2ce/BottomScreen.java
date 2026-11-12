@@ -57,6 +57,12 @@ final class BottomScreen implements DisplayManager.DisplayListener {
         update(null);
     }
 
+    void applyImmersiveMode() {
+        if (panel != null) {
+            ImmersiveMode.apply(panel.getWindow());
+        }
+    }
+
     // Shows the panel on the bottom screen while started and it's there,
     // moves or hides it otherwise. [why]: the display log's reason, null for
     // none.
@@ -91,6 +97,7 @@ final class BottomScreen implements DisplayManager.DisplayListener {
         });
         try {
             newPanel.show();
+            ImmersiveMode.apply(newPanel.getWindow());
         } catch (WindowManager.InvalidDisplayException | IllegalStateException e) {
             BottomDisplay.log(activity, "panel didn't show: " + e);
             return;
@@ -138,14 +145,21 @@ final class BottomScreen implements DisplayManager.DisplayListener {
             Window window = getWindow();
             if (window != null) {
                 window.addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                    | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                    | WindowManager.LayoutParams.FLAG_FULLSCREEN);
+                    | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             }
 
             SurfaceView view = new SurfaceView(getContext());
             view.getHolder().addCallback(this);
             view.setOnTouchListener(this);
             setContentView(view);
+        }
+
+        @Override
+        public void onWindowFocusChanged(boolean hasFocus) {
+            super.onWindowFocusChanged(hasFocus);
+            if (hasFocus) {
+                ImmersiveMode.apply(getWindow());
+            }
         }
 
         @Override

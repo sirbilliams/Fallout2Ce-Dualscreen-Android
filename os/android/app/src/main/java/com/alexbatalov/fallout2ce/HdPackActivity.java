@@ -1,6 +1,5 @@
 package com.alexbatalov.fallout2ce;
 
-import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.graphics.Color;
@@ -21,7 +20,7 @@ import java.util.Locale;
 // toggle and lighting quality, the installed tier and its size, install from
 // a zip on the phone, Get HD pack (Nexus mod 193 in Browse Nexus) and
 // Remove HD pack. Same process as the Nexus browser, so it outlives the game.
-public class HdPackActivity extends Activity {
+public class HdPackActivity extends ImmersiveActivity {
     static final String NEXUS_URL = "https://www.nexusmods.com/fallout2/mods/193";
     private static final String TAG = "HdPackActivity";
     private static final int PICK = 1;
