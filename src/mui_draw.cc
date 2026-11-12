@@ -18,6 +18,12 @@
 #include "mui_skin.h"
 #include "svga.h"
 
+#ifdef FALLOUT_HD
+#include <set>
+
+#include "hd/hd_art_ui.h"
+#endif
+
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
 #include <stb_truetype.h>
@@ -79,6 +85,8 @@ namespace {
         unsigned int paletteVersion = 0;
         // The art isn't there (not looked up again).
         bool missing = false;
+        // HD RGBA art (width/height stay the logical size); it doesn't depend on the palette.
+        bool hd = false;
     };
 
     // By fid and frame.
@@ -97,6 +105,11 @@ namespace {
         unsigned int version = 0;
     };
     std::map<std::string, IndexedTexture> gIndexedTextures;
+
+#ifdef FALLOUT_HD
+    // Keys of CE art with no usable HD pack (not looked up again until a reset).
+    std::set<std::string> gHdMissing;
+#endif
     unsigned char gPalette[768];
     unsigned int gPaletteVersion = 0;
     bool gPaletteReady = false;
@@ -353,6 +366,9 @@ void muiDrawReset()
         }
     }
     gIndexedTextures.clear();
+#ifdef FALLOUT_HD
+    gHdMissing.clear();
+#endif
 
     for (auto& entry : gArtTextures) {
         if (entry.second.texture != nullptr) {
@@ -772,6 +788,29 @@ static void checkPalette()
     }
 }
 
+#ifdef FALLOUT_HD
+// HD RGBA of one CE frame into [entry]; width/height of the entry are the
+// original size so that callers lay the art out as before.
+static bool uploadHd(ArtTexture& entry, const hd::HdRgba& rgba, int logicalWidth, int logicalHeight)
+{
+    if (entry.texture != nullptr) {
+        SDL_DestroyTexture(entry.texture);
+        entry.texture = nullptr;
+    }
+    entry.texture = SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STATIC, rgba.width, rgba.height);
+    if (entry.texture == nullptr) {
+        return false;
+    }
+    SDL_SetTextureBlendMode(entry.texture, SDL_BLENDMODE_BLEND);
+    SDL_SetTextureScaleMode(entry.texture, SDL_ScaleModeLinear);
+    SDL_UpdateTexture(entry.texture, nullptr, rgba.pixels.data(), rgba.width * 4);
+    entry.width = logicalWidth;
+    entry.height = logicalHeight;
+    entry.hd = true;
+    return true;
+}
+#endif
+
 // Converts 8-bit image to texture [entry] (created or reused).
 static bool uploadIndexed(ArtTexture& entry, const unsigned char* data, int width, int height)
 {
@@ -866,6 +905,31 @@ SDL_Texture* muiRgbaTexture(const std::string& key, const unsigned char* data, i
     return entry.base.texture;
 }
 
+#ifdef FALLOUT_HD
+SDL_Texture* muiHdFrameTexture(const std::string& key, const char* frmPath, const unsigned char* indexed, int width, int height)
+{
+    if (gRenderer == nullptr || indexed == nullptr || gHdMissing.count(key) != 0) {
+        return nullptr;
+    }
+    auto found = gIndexedTextures.find("rgba." + key);
+    if (found != gIndexedTextures.end() && found->second.base.texture != nullptr) {
+        return found->second.base.texture;
+    }
+    hd::HdRgba rgba;
+    if (!hd::uiArtLookup(frmPath, 0, 0, indexed, width, height, rgba)) {
+        gHdMissing.insert(key);
+        return nullptr;
+    }
+    SDL_Texture* texture = muiRgbaTexture(key, rgba.pixels.data(), rgba.width, rgba.height, 0);
+    if (texture == nullptr) {
+        gHdMissing.insert(key);
+        return nullptr;
+    }
+    SDL_SetTextureScaleMode(texture, SDL_ScaleModeLinear);
+    return texture;
+}
+#endif
+
 SDL_Texture* muiArtTexture(const FrmId& frmId, int frame, int* width, int* height, int rotation)
 {
     if (gRenderer == nullptr) {
@@ -879,7 +943,7 @@ SDL_Texture* muiArtTexture(const FrmId& frmId, int frame, int* width, int* heigh
 
     auto key = std::make_pair(frmId.fid(), frame * 8 + rotation);
     ArtTexture& entry = gArtTextures[key];
-    if (entry.texture != nullptr && entry.paletteVersion == gPaletteVersion) {
+    if (entry.texture != nullptr && (entry.paletteVersion == gPaletteVersion || entry.hd)) {
         *width = entry.width;
         *height = entry.height;
         return entry.texture;
@@ -899,6 +963,19 @@ SDL_Texture* muiArtTexture(const FrmId& frmId, int frame, int* width, int* heigh
         artUnlock(handle);
         return nullptr;
     }
+
+#ifdef FALLOUT_HD
+    {
+        hd::HdRgba rgba;
+        if (hd::uiArtLookup(frmId.filePath(), rotation, frame, data, artWidth, artHeight, rgba)
+            && uploadHd(entry, rgba, artWidth, artHeight)) {
+            artUnlock(handle);
+            *width = artWidth;
+            *height = artHeight;
+            return entry.texture;
+        }
+    }
+#endif
 
     bool uploaded = uploadIndexed(entry, data, artWidth, artHeight);
     artUnlock(handle);
@@ -931,7 +1008,7 @@ SDL_Texture* muiPictureTexture(const FrmId& frmId, int* width, int* height)
     if (entry.missing) {
         return nullptr;
     }
-    if (entry.texture != nullptr && entry.paletteVersion == gPaletteVersion) {
+    if (entry.texture != nullptr && (entry.paletteVersion == gPaletteVersion || entry.hd)) {
         *width = entry.width;
         *height = entry.height;
         return entry.texture;
@@ -949,6 +1026,17 @@ SDL_Texture* muiPictureTexture(const FrmId& frmId, int* width, int* height)
     int artWidth = image.getWidth();
     int artHeight = image.getHeight();
     unsigned char* data = image.getData();
+#ifdef FALLOUT_HD
+    if (data != nullptr && artWidth > 0 && artHeight > 0) {
+        hd::HdRgba rgba;
+        if (hd::uiArtLookup(frmId.filePath(), 0, 0, data, artWidth, artHeight, rgba)
+            && uploadHd(entry, rgba, artWidth, artHeight)) {
+            *width = artWidth;
+            *height = artHeight;
+            return entry.texture;
+        }
+    }
+#endif
     bool uploaded = data != nullptr && artWidth > 0 && artHeight > 0 && uploadIndexed(entry, data, artWidth, artHeight);
     if (!uploaded) {
         return nullptr;

@@ -117,6 +117,15 @@ SDL_Texture* muiIndexedTexture(const std::string& key, const unsigned char* data
 // RGBA image (bytes R, G, B, A) cached under [key], re-uploaded when
 // [version] changes; crisp pixels.
 SDL_Texture* muiRgbaTexture(const std::string& key, const unsigned char* data, int width, int height, unsigned int version);
+
+#ifdef FALLOUT_HD
+// HD art (hd/hd_art_ui.h) for frame 0 / rotation 0 of the FRM [frmPath], the
+// original being [width] x [height] palette indices [indexed]: a texture of
+// the HD size (the caller keeps laying the art out at the original size), or
+// nullptr when HD is off, there is no pack for it or the pack doesn't match.
+// Cached by [key] until muiDrawReset().
+SDL_Texture* muiHdFrameTexture(const std::string& key, const char* frmPath, const unsigned char* indexed, int width, int height);
+#endif
 // Fits texture of [width] x [height] into [rect] keeping aspect ratio.
 MuiRect muiFitRect(const MuiRect& rect, float width, float height);
 
