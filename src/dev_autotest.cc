@@ -38,6 +38,8 @@
 #include "loadsave.h"
 #include "map.h"
 #include "map_hints.h"
+#include "mod_list.h"
+#include "mod_profiles.h"
 #include "mouse.h"
 #include "movie.h"
 #include "mui.h"
@@ -52,6 +54,7 @@
 #include "platform_compat.h"
 #include "player_commands.h"
 #include "preferences.h"
+#include "save_compatibility.h"
 #include "save_storage.h"
 #include "scripts.h"
 #include "settings.h"
@@ -372,6 +375,16 @@ enum DevAutotestAction {
     DEV_AUTOTEST_ACTION_PAD_HOLD,
     DEV_AUTOTEST_ACTION_TWO_TAP,
     DEV_AUTOTEST_ACTION_TOUCH_AT,
+    // Mod Organizer (docs/mods-testing.md): case [a] of the `mods` scenario
+    // (0 - fixture-a only, 1 - a then b, 2 - none, 3 - a save made with
+    // fixture-a, loaded with it disabled).
+    DEV_AUTOTEST_ACTION_MODS_CASE,
+    // FAIL unless the text file `widget` (relative to the working dir) holds
+    // exactly `target`.
+    DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT,
+    // FAIL unless the Mods screen asked for a restart ([a] 1) or did not
+    // ([a] 0).
+    DEV_AUTOTEST_ACTION_CHECK_MODS_RESTART,
 };
 
 struct DevAutotestStep {
@@ -1097,6 +1110,173 @@ static std::set<int> gDevAutotestStartWindows;
 static bool gDevAutotestStartWindowsTaken = false;
 static Object* gDevAutotestCorpse = nullptr;
 static Object* gDevAutotestPartyMember = nullptr;
+
+// Weak, so this file links before src/mui_mods.cc lands (the check then FAILs
+// with a message instead of the build breaking).
+bool muiModsRestartRequested() __attribute__((weak));
+// Planned for save_compatibility.h (Task 3): forget the game's cached
+// composition after the mounted mods changed.
+void saveCompatibilityReset();
+
+// What the mods fixtures override: line 20 of misc.msg (the main menu's
+// copyright line).
+static std::string devAutotestReadMiscLine20()
+{
+    std::string path = "text\\" + settings.system.language + "\\game\\misc.msg";
+    int size = 0;
+    if (dbGetFileSize(path.c_str(), &size) != 0 || size <= 0) {
+        return "<misc.msg missing>";
+    }
+    std::string text(static_cast<size_t>(size), '\0');
+    if (dbGetFileContents(path.c_str(), &text[0]) != 0) {
+        return "<misc.msg unreadable>";
+    }
+    size_t at = text.find("{20}{}{");
+    if (at == std::string::npos) {
+        return "<line 20 missing>";
+    }
+    at += 7;
+    size_t end = text.find('}', at);
+    return text.substr(at, end == std::string::npos ? std::string::npos : end - at);
+}
+
+// Writes profile T's list, then mounts the game's archives again the way
+// gameDbInit does, with modProfileMount() for the mods.
+static void devAutotestModsRemount(const char* listText)
+{
+    ModList list;
+    if (!modListParse(listText, &list) || !modProfileSetActive("T") || !modProfileSaveList(list)) {
+        devAutotestLog("FAIL: profile T's list '%s' not written (run tools/mods-fixtures.sh first)\n", listText);
+        exit(EXIT_FAILURE);
+    }
+
+    dbCloseAll();
+    dbOpen(settings.system.master_dat_path.empty() ? nullptr : settings.system.master_dat_path.c_str());
+    dbOpen(settings.system.critter_dat_path.empty() ? nullptr : settings.system.critter_dat_path.c_str());
+    if (!settings.system.f2_res_dat_path.empty() && compat_access(settings.system.f2_res_dat_path.c_str(), 0) == 0) {
+        dbOpen(settings.system.f2_res_dat_path.c_str());
+    }
+    if (compat_access("ce.dat", 0) == 0) {
+        dbOpen("ce.dat");
+    }
+    for (int index = 0; index < 1000; index++) {
+        char name[32];
+        snprintf(name, sizeof(name), "patch%03d.dat", index);
+        if (compat_access(name, 0) != 0) {
+            break;
+        }
+        dbOpen(name);
+    }
+    modProfileMount();
+    if (!settings.system.master_patches_path.empty()) {
+        dbOpen(settings.system.master_patches_path.c_str());
+    }
+    saveCompatibilityReset();
+}
+
+static void devAutotestModsExpectLine(const char* what, const char* expected)
+{
+    std::string actual = devAutotestReadMiscLine20();
+    bool ok = actual == expected;
+    devAutotestLog("  %s: misc.msg line 20 = '%s' (want '%s'): %s\n", what, actual.c_str(), expected, ok ? "PASS" : "FAIL");
+    if (!ok) {
+        exit(EXIT_FAILURE);
+    }
+}
+
+static void devAutotestModsCase(int index)
+{
+    static std::string originalLine;
+
+    switch (index) {
+    case 0:
+        // The text before any fixture is mounted is what "none" must give
+        // back later.
+        devAutotestModsRemount("-fixture-a\n-fixture-b\n");
+        originalLine = devAutotestReadMiscLine20();
+        devAutotestLog("  original line 20: '%s'\n", originalLine.c_str());
+        if (originalLine.compare(0, 7, "MODTEST") == 0 || originalLine[0] == '<') {
+            devAutotestLog("FAIL: original line 20 is not Fallout's text\n");
+            exit(EXIT_FAILURE);
+        }
+        devAutotestModsRemount("+fixture-a\n-fixture-b\n");
+        devAutotestModsExpectLine("+a", "MODTEST A");
+        break;
+    case 1:
+        devAutotestModsRemount("+fixture-a\n+fixture-b\n");
+        devAutotestModsExpectLine("+a +b (b wins)", "MODTEST B");
+        devAutotestModsRemount("+fixture-b\n+fixture-a\n");
+        devAutotestModsExpectLine("+b +a (a wins)", "MODTEST A");
+        break;
+    case 2:
+        devAutotestModsRemount("-fixture-a\n-fixture-b\n");
+        devAutotestModsExpectLine("-a -b", originalLine.c_str());
+        break;
+    case 3: {
+        // Review focus 3: a save made with fixture-a, loaded with it
+        // disabled, is marked changed and loading would ask first.
+        settings.enhancements.save_compatibility = true;
+        devAutotestModsRemount("+fixture-a\n-fixture-b\n");
+        int rc = lsgSaveGameToSlot(7, "MODTEST");
+        devAutotestLog("  saved to slot 8 with +fixture-a: %s\n", rc != -1 ? "ok" : "FAIL");
+        SaveCompatibility same = saveCompatibilityCheck(7, nullptr);
+        bool ok = rc != -1 && same == SaveCompatibility::kSame;
+        devAutotestLog("  same mods: compatibility %d: %s\n", static_cast<int>(same), ok ? "PASS" : "FAIL");
+        if (!ok) {
+            exit(EXIT_FAILURE);
+        }
+
+        devAutotestModsRemount("-fixture-a\n-fixture-b\n");
+        std::vector<SaveCompatibilityChange> changes;
+        SaveCompatibility now = saveCompatibilityCheck(7, &changes);
+        bool removed = false;
+        for (const SaveCompatibilityChange& change : changes) {
+            devAutotestLog("    change kind %d: %s\n", static_cast<int>(change.kind), change.name.c_str());
+            removed = removed || (change.kind == SaveCompatibilityChange::Kind::kModRemoved && change.name.find("fixture-a") != std::string::npos);
+        }
+        // fixture-a carries a script, so it counts as game logic: its
+        // removal is the "x" (kUnlikely) mark.
+        ok = now == SaveCompatibility::kUnlikely && removed;
+        devAutotestLog("  fixture-a disabled: compatibility %d (x is %d), removed listed %d: %s\n",
+            static_cast<int>(now), static_cast<int>(SaveCompatibility::kUnlikely), removed ? 1 : 0, ok ? "PASS" : "FAIL");
+        if (!ok) {
+            exit(EXIT_FAILURE);
+        }
+        break;
+    }
+    }
+}
+
+// Mod Organizer: `mods` mounts the fixture profile "T"
+// (tools/mods-fixtures.sh) with different lists and reads the line of
+// misc.msg the fixtures override; a save made with fixture-a, loaded with it
+// disabled, must be marked as changed. Run on a new game:
+// `--dev-new-game --dev-autotest-scenario=mods`.
+static const DevAutotestStep kDevAutotestModsSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 20, "md00_start" },
+    { DEV_AUTOTEST_ACTION_MODS_CASE, 0, 0, 0, 1, "md01_fixture_a" },
+    { DEV_AUTOTEST_ACTION_MODS_CASE, 1, 0, 0, 1, "md02_a_then_b" },
+    { DEV_AUTOTEST_ACTION_MODS_CASE, 2, 0, 0, 1, "md03_none" },
+    { DEV_AUTOTEST_ACTION_MODS_CASE, 3, 0, 0, 1, "md04_save_a_load_without" },
+};
+
+// Mods screen (starts on the title screen, profile "T" active with
+// +fixture-a +fixture-b): MODS, switch row 0 off, move row 1 up, Back saves
+// the list and asks for a restart.
+static const DevAutotestStep kDevAutotestModsUiSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "mu00_title" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "mu01_mods_button_shown", "mainmenu.mods" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "mu02_open", "mainmenu.mods" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "mu03_profile_shown", "mods.profile" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "mu04_add_shown", "mods.add" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "mu05_row0_shown", "mods.row.0.toggle" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "mu06_row1_drag_shown", "mods.row.1.drag" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "mu07_toggle_row0", "mods.row.0.toggle" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 20, "mu08_row1_up", "mods.row.1.up" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "mu09_back", "mods.back" },
+    { DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT, 0, 0, 0, 1, "mu10_list_saved", "profiles/T/modlist.txt", "+fixture-b\n-fixture-a\n" },
+    { DEV_AUTOTEST_ACTION_CHECK_MODS_RESTART, 1, 0, 0, 1, "mu11_restart_asked" },
+};
 
 static const DevAutotestStep* gDevAutotestSteps = kDevAutotestSteps;
 static int gDevAutotestStepCount = sizeof(kDevAutotestSteps) / sizeof(kDevAutotestSteps[0]);
@@ -2832,6 +3012,12 @@ void devAutotestSetScenario(const char* name)
     } else if (strcmp(name, "elevator") == 0) {
         gDevAutotestSteps = kDevAutotestElevatorSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestElevatorSteps) / sizeof(kDevAutotestElevatorSteps[0]);
+    } else if (strcmp(name, "mods") == 0) {
+        gDevAutotestSteps = kDevAutotestModsSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestModsSteps) / sizeof(kDevAutotestModsSteps[0]);
+    } else if (strcmp(name, "modsui") == 0) {
+        gDevAutotestSteps = kDevAutotestModsUiSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestModsUiSteps) / sizeof(kDevAutotestModsUiSteps[0]);
     } else if (strcmp(name, "mainmenu") == 0) {
         gDevAutotestSteps = kDevAutotestMainMenuSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestMainMenuSteps) / sizeof(kDevAutotestMainMenuSteps[0]);
@@ -4957,6 +5143,41 @@ void devAutotestTick()
             bool aiming;
             interfaceGetCurrentHitMode(&hitMode, &aiming);
             devAutotestLog("  hit mode %d, aiming %d\n", hitMode, aiming ? 1 : 0);
+            break;
+        }
+        case DEV_AUTOTEST_ACTION_MODS_CASE:
+            devAutotestModsCase(static_cast<int>(step->a));
+            break;
+        case DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT: {
+            std::string actual;
+            FILE* stream = step->widget != nullptr ? fopen(step->widget, "rb") : nullptr;
+            if (stream != nullptr) {
+                char buffer[512];
+                size_t read;
+                while ((read = fread(buffer, 1, sizeof(buffer), stream)) > 0) {
+                    actual.append(buffer, read);
+                }
+                fclose(stream);
+            }
+            bool ok = stream != nullptr && step->target != nullptr && actual == step->target;
+            devAutotestLog("  file %s %s: %s\n", step->widget != nullptr ? step->widget : "?", stream != nullptr ? "read" : "MISSING", ok ? "PASS" : "FAIL");
+            if (!ok) {
+                devAutotestLog("    expected: [%s]\n    actual:   [%s]\n", step->target != nullptr ? step->target : "", actual.c_str());
+                exit(EXIT_FAILURE);
+            }
+            break;
+        }
+        case DEV_AUTOTEST_ACTION_CHECK_MODS_RESTART: {
+            // Contract with src/mui_mods.cc: `bool muiModsRestartRequested()`
+            // (declared in mui.h) is true once Back left with changes asked
+            // for the restart (on desktop that replaces openGameFiles).
+            bool exposed = muiModsRestartRequested != nullptr;
+            bool asked = exposed && muiModsRestartRequested();
+            bool ok = exposed && asked == (step->a != 0);
+            devAutotestLog("  mods restart %s: %s\n", exposed ? (asked ? "requested" : "not requested") : "flag muiModsRestartRequested() MISSING", ok ? "PASS" : "FAIL");
+            if (!ok) {
+                exit(EXIT_FAILURE);
+            }
             break;
         }
         case DEV_AUTOTEST_ACTION_CHECK_MODS:
