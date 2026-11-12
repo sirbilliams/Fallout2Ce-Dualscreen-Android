@@ -32,7 +32,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         "-ffile-prefix-map=${CMAKE_BINARY_DIR}/=")
 endif()
 
-option(HD "Build the Dustlight HD map modules" OFF)
+option(HD "Build the Dustlight HD port (GLES 3.1 map renderer, lighting, hooks)" OFF)
 
 option(FALLOUT_VENDORED "Use vendored third-party libraries" ON)
 option(FALLOUT_AUDIO_OGG "Enable OGG decoding with stb_vorbis when available" ON)
@@ -1007,28 +1007,29 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
     set_tests_properties(sfall_arrays_test PROPERTIES TIMEOUT 10)
 endif()
 
-# L1 portable core plus the GL implementation files supplied by L3/L4.
-# Unit-test sources stay in src/hd/tests to keep this lane inside src/hd.
+# Dustlight HD port: one block. L1 portable core + L2 hooks + L3 GLES map
+# renderer + L4 lighting/post, all globbed from src/hd/*.cc (each file once).
+# Unit-test sources live in src/hd/tests and tests/.
 if(HD)
-    file(GLOB FALLOUT_HD_SOURCES CONFIGURE_DEPENDS "src/hd/*.cc")
-    target_sources(${EXECUTABLE_NAME} PRIVATE ${FALLOUT_HD_SOURCES})
-    target_compile_definitions(${EXECUTABLE_NAME} PRIVATE FALLOUT_HD)
-    target_include_directories(${EXECUTABLE_NAME} PRIVATE "src" "third_party/khronos")
+    find_package(Threads REQUIRED)
     if(ANDROID)
-        target_link_libraries(${EXECUTABLE_NAME} GLESv3)
+        set(HD_GLES_LIBRARY GLESv3)
     else()
-        find_library(FALLOUT_GLES_LIBRARY NAMES GLESv2 REQUIRED)
-        target_link_libraries(${EXECUTABLE_NAME} ${FALLOUT_GLES_LIBRARY})
+        find_library(HD_GLES_LIBRARY NAMES GLESv2 REQUIRED)
     endif()
-    # Enable controls as their lane implementations become available, without
-    # fake GPU implementations in the portable core.
-    foreach(backend MAP_LAYER MAP_LIGHTING MAP_POST)
-        string(TOLOWER "${backend}" backend_file)
-        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/hd/${backend_file}.cc")
-            target_compile_definitions(${EXECUTABLE_NAME} PRIVATE HD_HAVE_${backend})
+    file(GLOB FALLOUT_HD_SOURCES CONFIGURE_DEPENDS "src/hd/*.cc")
+    foreach(hd_target ${EXECUTABLE_NAME} mapper-ce)
+        if(TARGET ${hd_target})
+            target_sources(${hd_target} PRIVATE ${FALLOUT_HD_SOURCES})
+            target_compile_definitions(${hd_target} PRIVATE FALLOUT_HD
+                HD_HAVE_MAP_LAYER HD_HAVE_MAP_LIGHTING HD_HAVE_MAP_POST FALLOUT_HD_LIGHTING)
+            target_include_directories(${hd_target} PRIVATE src third_party/khronos)
+            target_link_libraries(${hd_target} ${HD_GLES_LIBRARY} Threads::Threads)
         endif()
     endforeach()
-    if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripten")
+    if(UNIX AND NOT ANDROID AND NOT IOS AND NOT APPLE AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripten")
+        set(HD_GL_ENV "SDL_VIDEODRIVER=offscreen;SDL_AUDIODRIVER=dummy;LIBGL_ALWAYS_SOFTWARE=1;EGL_PLATFORM=surfaceless")
+        # L1 portable core test
         add_executable(hd_core_test
             src/hd/tests/core_test.cc
             src/hd/draw_recorder.cc src/hd/light_scene.cc src/hd/sprite_shape.cc
@@ -1040,5 +1041,24 @@ if(HD)
             add_test(NAME hd_${module} COMMAND hd_core_test ${module})
             set_tests_properties(hd_${module} PROPERTIES TIMEOUT 10)
         endforeach()
+        # L3 map renderer test (identity L4 fixtures live in the test)
+        add_executable(hd_map_test EXCLUDE_FROM_ALL tests/hd_map_test.cc
+            src/hd/gl.cc src/hd/gl_private.cc src/hd/bc7.cc src/hd/hd_art.cc
+            src/hd/map_renderer.cc src/hd/map_layer.cc
+            src/hd/json_reader.cc src/hd/sprite_shape.cc src/hd/palette_fit.cc)
+        target_compile_definitions(hd_map_test PRIVATE FALLOUT_HD FALLOUT_HD_LIGHTING)
+        target_include_directories(hd_map_test PRIVATE src third_party/khronos ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+        target_link_libraries(hd_map_test ${HD_GLES_LIBRARY} ${SDL2_LIBRARIES} Threads::Threads)
+        add_test(NAME hd_map_test COMMAND hd_map_test "${CMAKE_BINARY_DIR}/synthetic-hd-pack")
+        set_tests_properties(hd_map_test PROPERTIES TIMEOUT 60 ENVIRONMENT "${HD_GL_ENV}")
+        # L4 lighting/post test
+        add_executable(hd_light_test tests/hd_light_test.cc src/hd/map_lighting.cc src/hd/map_post.cc)
+        target_compile_definitions(hd_light_test PRIVATE FALLOUT_HD)
+        target_include_directories(hd_light_test PRIVATE src third_party/khronos)
+        target_link_libraries(hd_light_test PRIVATE ${HD_GLES_LIBRARY} EGL ${CMAKE_DL_LIBS})
+        target_link_options(hd_light_test PRIVATE -Wl,--wrap=glDispatchCompute)
+        add_test(NAME hd_light_test COMMAND hd_light_test)
+        set_tests_properties(hd_light_test PROPERTIES TIMEOUT 120 ENVIRONMENT "${HD_GL_ENV}")
     endif()
+endif()
 endif()

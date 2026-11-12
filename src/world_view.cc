@@ -17,6 +17,9 @@
 #include "tile.h"
 #include "window_manager.h"
 #include "world_texture.h"
+#ifdef FALLOUT_HD
+#include "hd/map_present.h"
+#endif
 
 namespace fallout {
 
@@ -709,6 +712,9 @@ static void worldViewDraw(SDL_Renderer* renderer)
     clipRect.h = gViewHeight;
     SDL_RenderSetClipRect(renderer, &clipRect);
     SDL_RenderCopyF(renderer, gComposeTexture, &textureRect, &destRect);
+#ifdef FALLOUT_HD
+    hd::mapLayerRenderWorld(renderer, srcRect, destRect);
+#endif
     worldViewRenderOverlay(renderer, centerX, centerY);
     SDL_RenderSetClipRect(renderer, nullptr);
 }
