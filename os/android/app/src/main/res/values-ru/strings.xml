@@ -76,4 +76,16 @@
     <string name="mod_unreadable">Не удалось прочитать архив (.7z и .rar не поддерживаются)</string>
     <string name="mod_no_space">Недостаточно места: нужно %d МБ свободного места</string>
     <string name="mod_vanilla_dat_only">Vanilla поддерживает только DAT-моды. Для отдельных файлов data создайте профиль.</string>
+    <string name="nexus_title">Nexus Mods</string>
+    <string name="nexus_back">Назад</string>
+    <string name="nexus_done">Готово</string>
+    <string name="nexus_downloading">Загрузка %1$s: %2$s</string>
+    <string name="nexus_downloaded">Скачано, не установлено: %s</string>
+    <string name="nexus_download_failed">Не удалось скачать: %s</string>
+    <string name="nexus_install_q">Установить %s?</string>
+    <string name="nexus_install">Установить</string>
+    <string name="nexus_later">Позже</string>
+    <string name="nexus_delete">Удалить</string>
+    <string name="nexus_installing">Устанавливаю %s…</string>
+    <string name="nexus_install_failed">%1$s: %2$s</string>
 </resources>

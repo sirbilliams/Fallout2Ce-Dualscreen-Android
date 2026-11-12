@@ -113,4 +113,16 @@
     <string name="mod_unreadable">Can\'t read this archive (.7z and .rar aren\'t supported)</string>
     <string name="mod_no_space">Not enough space: needs %d MB free</string>
     <string name="mod_vanilla_dat_only">Vanilla supports DAT mods only. Create a profile to install loose data files.</string>
+    <string name="nexus_title">Nexus Mods</string>
+    <string name="nexus_back">Back</string>
+    <string name="nexus_done">Done</string>
+    <string name="nexus_downloading">Downloading %1$s: %2$s</string>
+    <string name="nexus_downloaded">Downloaded, not installed: %s</string>
+    <string name="nexus_download_failed">Download failed: %s</string>
+    <string name="nexus_install_q">Install %s?</string>
+    <string name="nexus_install">Install</string>
+    <string name="nexus_later">Later</string>
+    <string name="nexus_delete">Delete</string>
+    <string name="nexus_installing">Installing %s…</string>
+    <string name="nexus_install_failed">%1$s: %2$s</string>
 </resources>

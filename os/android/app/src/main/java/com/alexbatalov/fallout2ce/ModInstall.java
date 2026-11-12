@@ -106,8 +106,13 @@ final class ModInstall {
     }
 
     static Result install(Context context, Uri zip, File gameDir, Progress progress) throws IOException {
-        String name = "mod.zip";
-        try (Cursor cursor = context.getContentResolver().query(zip,
+        return install(context, zip, null, gameDir, progress);
+    }
+
+    // [wantedName]: the mod's file name when the Uri has no display name (file://).
+    static Result install(Context context, Uri zip, String wantedName, File gameDir, Progress progress) throws IOException {
+        String name = wantedName != null ? wantedName : "mod.zip";
+        if (wantedName == null) try (Cursor cursor = context.getContentResolver().query(zip,
             new String[] { OpenableColumns.DISPLAY_NAME }, null, null, null)) {
             if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0)) name = cursor.getString(0);
         }

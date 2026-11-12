@@ -213,6 +213,11 @@ public class MainActivity extends SDLActivity {
     // starts it again when done.
     public void openGameFiles(String mode) {
         runOnUiThread(() -> {
+            if ("nexus".equals(mode)) {
+                startActivity(new Intent(this, NexusActivity.class));
+                finish();
+                return;
+            }
             Intent intent = new Intent(this, ImportActivity.class);
             if (mode != null) {
                 intent.putExtra(ImportActivity.MODE, mode);
