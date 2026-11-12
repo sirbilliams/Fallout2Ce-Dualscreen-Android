@@ -104,6 +104,12 @@ public class DownloadsActivity extends Activity {
         selectDone.setOnClickListener(v -> endSelecting());
         bar.addView(back);
         bar.addView(title);
+        Button getHd = new Button(this);
+        getHd.setText(R.string.dl_get_hd);
+        getHd.setOnClickListener(v -> startActivity(new Intent(this, NexusActivity.class)
+            .putExtra(NexusActivity.EXTRA_URL, DustlightHd.NEXUS_FILES)
+            .putExtra(NexusActivity.EXTRA_GUIDE, DustlightHd.GUIDE)));
+        bar.addView(getHd);
         bar.addView(message, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         bar.addView(deleteSelected);
         bar.addView(selectDone);
@@ -356,6 +362,12 @@ public class DownloadsActivity extends Activity {
             info(getString(R.string.dl_unsupported, row.item.file));
             return;
         }
+        if (DustlightHd.classify(row.item.file).kind == DustlightHd.Kind.ENGINE) {
+            // The Dustlight engine zip is the Windows exe: nothing to install here.
+            info(getString(R.string.dl_hd_engine, row.item.file));
+            return;
+        }
+        DustlightAuto.forget(row.item.file);
         installing = true;
         signature = "";
         adapter.notifyDataSetChanged();
@@ -377,12 +389,16 @@ public class DownloadsActivity extends Activity {
                     ? ModProfile.createAndActivate(gameDir, "RPU") : null;
                 if (!rpu && HdPackInstall.isHdPack(this, Uri.fromFile(file))) {
                     // Dustlight HD art pack: its own installer (files/hd/<tier>).
-                    HdPackInstall.Result hd = HdPackInstall.install(this, Uri.fromFile(file), row.item.file, gameDir,
-                        new HdPackInstall.Progress() {
-                            public void update(long done, long total, String path) { }
-                            public boolean isCancelled() { return false; }
-                        });
-                    ok = getString(R.string.hd_done, hd.tier, hd.packs);
+                    synchronized (DustlightAuto.lock()) {
+                        DustlightHd.Status before = DustlightHd.status(gameDir);
+                        HdPackInstall.Result hd = HdPackInstall.install(this, Uri.fromFile(file), row.item.file, gameDir,
+                            new HdPackInstall.Progress() {
+                                public void update(long done, long total, String path) { }
+                                public boolean isCancelled() { return false; }
+                            });
+                        ok = getString(R.string.hd_done, hd.tier, hd.packs);
+                        if (DustlightHd.enableIfNewlyComplete(gameDir, before)) ok += "\n" + getString(R.string.dl_hd_ready);
+                    }
                 } else {
                     ModInstall.Result result;
                     try {

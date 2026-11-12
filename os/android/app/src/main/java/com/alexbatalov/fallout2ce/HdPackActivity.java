@@ -31,6 +31,7 @@ public class HdPackActivity extends Activity {
     private CheckBox enabled;
     private Button quality;
     private Button remove;
+    private Button zips;
     private boolean busy;
 
     @Override
@@ -86,10 +87,21 @@ public class HdPackActivity extends Activity {
             .putExtra(NexusActivity.EXTRA_URL, NEXUS_URL)));
         root.addView(get);
 
+        Button dustlight = new Button(this);
+        dustlight.setText(R.string.hd_get_dustlight);
+        dustlight.setOnClickListener(v -> startActivity(new Intent(this, NexusActivity.class)
+            .putExtra(NexusActivity.EXTRA_URL, DustlightHd.NEXUS_FILES)
+            .putExtra(NexusActivity.EXTRA_GUIDE, DustlightHd.GUIDE)));
+        root.addView(dustlight, root.indexOfChild(get));
+
         remove = new Button(this);
         remove.setText(R.string.hd_remove);
         remove.setOnClickListener(v -> confirmRemove());
         root.addView(remove);
+
+        zips = new Button(this);
+        zips.setVisibility(android.view.View.GONE);
+        root.addView(zips);
 
         Button back = new Button(this);
         back.setText(R.string.nexus_done);
@@ -104,6 +116,31 @@ public class HdPackActivity extends Activity {
     protected void onResume() {
         super.onResume();
         refresh();
+        // Parts that finished while this screen was closed; tier and zip questions.
+        new Thread(() -> {
+            DustlightAuto.Report report;
+            try {
+                DustlightAuto.processPending(this);
+                report = DustlightAuto.report(this);
+            } catch (RuntimeException e) {
+                return;
+            }
+            final DustlightAuto.Report r = report;
+            runOnUiThread(() -> {
+                if (isFinishing()) return;
+                refresh();
+                if (r.blockedTier != 0) {
+                    DustlightBanner.askSwitch(this, r.blockedTier, r.status.tier, this::refresh);
+                }
+                if (r.deletableCount > 0) {
+                    zips.setText(getString(R.string.hd_guide_delete, DownloadIndex.formatSize(r.deletableBytes)));
+                    zips.setOnClickListener(v -> DustlightBanner.askDelete(this, r.deletableBytes, () -> zips.setVisibility(android.view.View.GONE)));
+                    zips.setVisibility(android.view.View.VISIBLE);
+                } else {
+                    zips.setVisibility(android.view.View.GONE);
+                }
+            });
+        }, "hd-resume").start();
     }
 
     private void refresh() {
@@ -112,7 +149,14 @@ public class HdPackActivity extends Activity {
             status.setText(R.string.hd_none);
         } else {
             long mb = HdPackInstall.sizeOf(HdPackInstall.tierDir(game, tier)) / 1048576;
-            status.setText(getString(R.string.hd_installed, tier, mb));
+            String more = "";
+            DustlightHd.Status s = DustlightHd.status(game);
+            if (s.complete()) more = "\n" + getString(R.string.hd_guide_ready);
+            else if (s.totalPacks >= 0) {
+                more = "\n" + getString(R.string.hd_guide_packs, s.tier, s.packs, s.totalPacks)
+                    + "\n" + getString(R.string.hd_guide_more, s.moreParts());
+            }
+            status.setText(getString(R.string.hd_installed, tier, mb) + "\n" + getString(R.string.hd_shared, mb) + more);
         }
         remove.setEnabled(tier != 0);
         enabled.setChecked(HdSettings.isEnabled(game));
@@ -156,12 +200,14 @@ public class HdPackActivity extends Activity {
         new Thread(() -> {
             String text;
             try {
+                DustlightHd.Status before = DustlightHd.status(game);
                 HdPackInstall.Result r = HdPackInstall.install(this, uri, uri.getLastPathSegment(), game,
                     new HdPackInstall.Progress() {
                         public void update(long done, long total, String path) { }
                         public boolean isCancelled() { return false; }
                     });
                 text = getString(R.string.hd_done, r.tier, r.packs);
+                if (DustlightHd.enableIfNewlyComplete(game, before)) text += "\n" + getString(R.string.dl_hd_ready);
             } catch (HdPackInstall.Problem p) {
                 text = p.message == R.string.mod_no_space ? getString(p.message, p.neededMb) : getString(p.message);
             } catch (HdPackInstall.Invalid e) {

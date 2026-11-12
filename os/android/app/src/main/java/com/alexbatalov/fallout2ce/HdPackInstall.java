@@ -35,7 +35,7 @@ final class HdPackInstall {
     private static final long MARGIN = 64L << 20;
     private static final Pattern ALBEDO = Pattern.compile("albedo_(\\d)x\\.dds");
     private static final Pattern MARKER = Pattern.compile("pack_(\\d)x\\.json");
-    private static final Pattern PART = Pattern.compile("-part\\d+(\\.zip)?$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PART = Pattern.compile("-part\\d+(?=[-_.]|$)", Pattern.CASE_INSENSITIVE);
 
     private HdPackInstall() { }
 
@@ -47,6 +47,19 @@ final class HdPackInstall {
             super("hd pack: " + message);
             this.message = message;
             this.neededMb = neededMb;
+        }
+    }
+
+    // The zip is another tier than the one installed (and switching was not
+    // allowed): the caller asks the player.
+    static final class TierMismatch extends IOException {
+        final int installed;
+        final int incoming;
+
+        TierMismatch(int installed, int incoming) {
+            super("hd tier " + incoming + " vs installed " + installed);
+            this.installed = installed;
+            this.incoming = incoming;
         }
     }
 
@@ -230,6 +243,10 @@ final class HdPackInstall {
     }
 
     static Result install(Context context, Uri zip, String name, File gameDir, Progress progress) throws IOException {
+        return install(context, zip, name, gameDir, progress, true);
+    }
+
+    static Result install(Context context, Uri zip, String name, File gameDir, Progress progress, boolean allowSwitch) throws IOException {
         try (InputStream in = context.getContentResolver().openInputStream(zip)) {
             if (in == null || in.read() != 'P' || in.read() != 'K') throw new Problem(R.string.mod_unreadable, 0);
         }
@@ -237,7 +254,7 @@ final class HdPackInstall {
             if (progress.isCancelled()) throw new GameImport.CancelledException();
             progress.update(done, total, "");
         })) {
-            return install(source, name, gameDir, progress);
+            return install(source, name, gameDir, progress, allowSwitch);
         } catch (NativeArchive.Failure failure) {
             throw new Problem(R.string.mod_unreadable, 0);
         }
@@ -246,8 +263,16 @@ final class HdPackInstall {
     // Replaces tier N atomically (written next to it as .tmp-Nx, then renamed);
     // a part zip (-partK in [name]) is merged into the tier already there.
     static Result install(GameImport.Source source, String name, File gameDir, Progress progress) throws IOException {
+        return install(source, name, gameDir, progress, true);
+    }
+
+    // [allowSwitch] false: a zip of another tier than the installed one throws
+    // TierMismatch (nothing written) instead of replacing that tier.
+    static Result install(GameImport.Source source, String name, File gameDir, Progress progress, boolean allowSwitch) throws IOException {
         if (gameDir == null) throw new IOException("game storage unavailable");
         Plan plan = validate(source);
+        int have = installedTier(gameDir);
+        if (!allowSwitch && have != 0 && have != plan.tier) throw new TierMismatch(have, plan.tier);
         File root = new File(gameDir, DIR);
         if (!root.isDirectory() && !root.mkdirs()) throw new IOException("can't create " + root);
         cleanup(gameDir);
@@ -258,7 +283,7 @@ final class HdPackInstall {
         File target = tierDir(gameDir, plan.tier);
         File temp = GameImport.targetFile(root, TMP + plan.tier + "x");
         if (temp.exists()) throw new IOException("can't clean interrupted hd install");
-        boolean merge = isPart(name) && target.isDirectory();
+        boolean merge = (isPart(name) || DustlightHd.classify(name).kind == DustlightHd.Kind.ART) && target.isDirectory();
         try {
             if (!temp.mkdir()) throw new IOException("can't create " + temp);
             unpack(source, plan, temp, progress);
@@ -275,6 +300,7 @@ final class HdPackInstall {
                 }
                 GameFiles.deleteRecursively(old);
             }
+            DustlightHd.record(target, name, merge);
             // One tier at a time.
             for (int other = 2; other <= 4; other++) {
                 if (other != plan.tier) GameFiles.deleteRecursively(tierDir(gameDir, other));
