@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <chrono>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -34,6 +35,27 @@ namespace {
         }
     };
     State* gState = nullptr;
+
+    // [hd_light] timing=1: glFinish-bracketed CPU wall-clock per stage,
+    // averaged over kTimingWindow draws and logged once per window. (GPU timer
+    // queries read a bogus 1 ns on the Thor, so they aren't used.)
+    constexpr int kTimingWindow = 120, kTimingStages = 16;
+    struct Timing {
+        const char* names[kTimingStages] = {};
+        double total[kTimingStages] = {};
+        int count = 0;
+        std::chrono::steady_clock::time_point last;
+    } gTiming;
+    bool timingOn()
+    {
+        return gState && gState->settings.timing;
+    }
+    void timingBegin()
+    {
+        if (!timingOn()) return;
+        glFinish();
+        gTiming.last = std::chrono::steady_clock::now();
+    }
     unsigned features()
     {
         const auto& s = gState->settings;
@@ -109,6 +131,36 @@ void mapLightingShutdown()
     delete gState;
     gState = nullptr;
 }
+void mapLightingTimingMark(const char* stage)
+{
+    if (!timingOn()) return;
+    glFinish();
+    auto now = std::chrono::steady_clock::now();
+    double ms = std::chrono::duration<double, std::milli>(now - gTiming.last).count();
+    gTiming.last = now;
+    for (int i = 0; i < kTimingStages; i++) {
+        if (!gTiming.names[i]) gTiming.names[i] = stage;
+        if (gTiming.names[i] == stage || !strcmp(gTiming.names[i], stage)) {
+            gTiming.total[i] += ms;
+            return;
+        }
+    }
+}
+void mapLightingTimingEndFrame()
+{
+    if (!timingOn() || ++gTiming.count < kTimingWindow) return;
+    std::string line;
+    double sum = 0;
+    char buf[64];
+    for (int i = 0; i < kTimingStages && gTiming.names[i]; i++) {
+        snprintf(buf, sizeof(buf), " %s=%.2f", gTiming.names[i], gTiming.total[i] / gTiming.count);
+        line += buf;
+        sum += gTiming.total[i] / gTiming.count;
+        gTiming.total[i] = 0;
+    }
+    debugPrint("[hd_light] timing ms/draw (%d draws):%s total=%.2f\n", gTiming.count, line.c_str(), sum);
+    gTiming.count = 0;
+}
 bool mapLightingActive()
 {
     return gState && gState->settings.newLight && gState->settings.quality >= 0;
@@ -144,6 +196,7 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     if (!gState || mapWidth <= 0 || mapHeight <= 0 || scale < 1 || scale > 4) return lightingFail("!gState || mapWidth <= 0 || mapHeight <= 0 || scale < 1 || scale > 4");
     gState->bloomValid = false;
     if (!mapLightingActive()) return mapRendererDrawHd(scale, palette);
+    timingBegin();
     GLuint output = mapRendererHdUav(scale);
     if (!output || !ensureTargets(mapWidth, mapHeight, scale)) return lightingFail("!output || !ensureTargets(mapWidth, mapHeight, scale)");
     const Settings& s = gState->settings;
@@ -239,6 +292,7 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     std::vector<unsigned> zero(size_t(t.occluders.width) * t.occluders.height, 0);
     glBindTexture(GL_TEXTURE_2D, t.occluders.id);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, t.occluders.width, t.occluders.height, GL_RED_INTEGER, GL_UNSIGNED_INT, zero.data());
+    mapLightingTimingMark("setup");
     MapGbufferDraw draw;
     for (int i = 0; i < 6; i++)
         draw.targets[i] = t.gbuffer[i].id;
@@ -250,6 +304,7 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     draw.detailScale = scale / 4.0f;
     if (!mapRendererDrawGbuffer(scale, palette, draw)) return lightingFail("!mapRendererDrawGbuffer(scale, palette, draw)");
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
+    mapLightingTimingMark("gbuffer");
     GLuint p = t.programs[7];
     glUseProgram(p);
     glUniform2i(glGetUniformLocation(p, "size"), t.field.width, t.field.height);
@@ -258,16 +313,20 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     glUniform1i(glGetUniformLocation(p, "count"), hexes.size());
     compute::image(0, t.field);
     compute::dispatch(t.field.width, t.field.height);
+    mapLightingTimingMark("field");
     compute::sample(1, t.occluders.id);
     compute::image(0, t.occluderMax);
     pass(0, constants, t.occluderMax.width, t.occluderMax.height);
+    mapLightingTimingMark("occluderMax");
     compute::sample(2, t.occluderMax.id);
     if ((enabled & kShadows) && !lights.empty()) {
         compute::image(0, t.shadows);
         pass(1, constants, 320, 144, lights.size());
     }
+    mapLightingTimingMark("shadows");
     compute::image(0, t.sunAo);
     pass(2, constants, t.sunAo.width, t.sunAo.height);
+    mapLightingTimingMark("sunAo");
     for (int i = 0; i < 6; i++)
         compute::sample(4 + i, t.gbuffer[i].id);
     compute::sample(10, t.field.id);
@@ -287,10 +346,12 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
         compute::image(0, t.fluence);
         pass(5, constants, t.fluence.width, t.fluence.height);
     }
+    mapLightingTimingMark("gi");
     compute::sample(15, t.fluence.id);
     glBindImageTexture(0, output, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
     compute::image(1, t.bloom);
     pass(6, constants, mapWidth * scale, mapHeight * scale);
+    mapLightingTimingMark("resolve");
     for (int i = 0; i < 2; i++)
         glBindImageTexture(i, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA16F);
     GLenum error = glGetError();

@@ -97,6 +97,8 @@ void mapLightingShutdown() { }
 bool mapLightingActive() { return false; }
 bool mapLightingDraw(int, int, int, const float*) { return false; }
 GLuint mapLightingBloomSource() { return 0; }
+void mapLightingTimingMark(const char*) { }
+void mapLightingTimingEndFrame() { }
 bool mapPostInit() { return true; }
 void mapPostShutdown() { }
 GLuint mapPostDraw(GLuint hd, GLuint, int, int) { return hd; }

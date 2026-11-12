@@ -196,6 +196,10 @@ MapComposite mapLayerPrepare(int scale, bool selfTest)
             g->presented = mapRendererHdView(tier);
 #ifdef FALLOUT_HD_LIGHTING
             g->presented = mapPostDraw(g->presented, mapLightingActive() ? mapLightingBloomSource() : 0, w * tier, h * tier);
+            if (mapLightingActive()) {
+                mapLightingTimingMark("post");
+                mapLightingTimingEndFrame();
+            }
             c.grain = mapPostGrain();
 #endif
             c.hd = g->presented;

@@ -83,6 +83,12 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
 // target's size. Null with the original light or quality low.
 GLuint mapLightingBloomSource();
 
+// [hd_light] timing=1: glFinish-bracketed wall-clock per stage, averaged over
+// 120 draws and logged once per window (no-ops otherwise). The renderer
+// marks the end of each stage; the caller ends the draw after the post pass.
+void mapLightingTimingMark(const char* stage);
+void mapLightingTimingEndFrame();
+
 // Lines for the developer overlay.
 void mapLightingDrawOverlay();
 

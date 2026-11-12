@@ -93,6 +93,7 @@
     struct Settings {
         bool newLight = true;
         int quality = 2; // 0 low, 1 medium, 2 high
+        bool timing = false; // timing=1: per-stage timing log
         unsigned int switches = kNormals | kColors | kShadows | kPool | kTonemap | kSun | kAo | kNight | kGi;
         int effectOff = -1; // Ctrl+F6: index into kEffects, -1 = none
         float poolGain = 0.6f;
@@ -201,6 +202,9 @@
         std::string quality = configString("quality", "high");
 #endif
         s.quality = quality == "off" ? -1 : (quality == "low" ? 0 : (quality == "medium" ? 1 : 2));
+        int timing = 0;
+        configGetInt(&gGameConfig, "hd_light", "timing", &timing, 0);
+        s.timing = timing != 0;
         for (const Effect& effect : kEffects) {
             configSwitch(effect.name, effect.bit, &s.switches);
         }
