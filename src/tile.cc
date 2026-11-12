@@ -841,11 +841,11 @@ static void tileRefreshGame(Rect* rect, int elevation)
         }
         if (!(hd::enabled() && hd::gDrawEmitOnly))
 #endif
-        bufferFill(gTileWindowBuffer + rectToUpdate.top * gTileWindowPitch + rectToUpdate.left,
-            rectGetWidth(&rectToUpdate),
-            rectGetHeight(&rectToUpdate),
-            gTileWindowPitch,
-            COLOR_FIRST);
+            bufferFill(gTileWindowBuffer + rectToUpdate.top * gTileWindowPitch + rectToUpdate.left,
+                rectGetWidth(&rectToUpdate),
+                rectGetHeight(&rectToUpdate),
+                gTileWindowPitch,
+                COLOR_FIRST);
     }
 
     if (hasVisArea && rectIntersection(&renderRect, &visArea, &renderRect) == -1) {
@@ -859,7 +859,7 @@ static void tileRefreshGame(Rect* rect, int elevation)
 #ifdef FALLOUT_HD
         if (!(hd::enabled() && hd::gDrawEmitOnly))
 #endif
-        worldViewRendered(&rectToUpdate);
+            worldViewRendered(&rectToUpdate);
         return;
     }
 

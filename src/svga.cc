@@ -215,7 +215,7 @@ int _GNW95_init_window(int width, int height, WindowMode mode, int scale)
             SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengles2");
         } else
 #endif
-        SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
+            SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
 
         // CE: Naming a driver turns SDL's command batching off; the mobile UI
         // and the tiled world view make many small draws a frame.

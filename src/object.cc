@@ -864,8 +864,8 @@ void _obj_render_pre_roof(Rect* rect, int elevation)
     // Emission must leave the CPU tactical coverage state untouched.
     if (!(hd::enabled() && hd::gDrawEmitOnly)) {
 #endif
-    gSeeThroughDude.clear();
-    gSeeThroughMarking = false;
+        gSeeThroughDude.clear();
+        gSeeThroughMarking = false;
 #ifdef FALLOUT_HD
     }
 #endif
@@ -923,7 +923,7 @@ void _obj_render_pre_roof(Rect* rect, int elevation)
 #ifdef FALLOUT_HD
         if (!(hd::enabled() && hd::gDrawEmitOnly))
 #endif
-        objectSeeThroughCoverStart(updatedRect);
+            objectSeeThroughCoverStart(updatedRect);
     }
 
 #ifdef FALLOUT_HD
@@ -5542,12 +5542,12 @@ static void _obj_render_object(Object* object, Rect* rect, int light)
 #ifdef FALLOUT_HD
         if (!(hd::enabled() && hd::gDrawEmitOnly))
 #endif
-        blitBufferToBufferTrans(src,
-            objectWidth,
-            objectHeight,
-            frameWidth,
-            gObjectsWindowBuffer + gObjectsWindowPitch * objectRect.top + objectRect.left,
-            gObjectsWindowPitch);
+            blitBufferToBufferTrans(src,
+                objectWidth,
+                objectHeight,
+                frameWidth,
+                gObjectsWindowBuffer + gObjectsWindowPitch * objectRect.top + objectRect.left,
+                gObjectsWindowPitch);
         artUnlock(cacheEntry);
         return;
     }

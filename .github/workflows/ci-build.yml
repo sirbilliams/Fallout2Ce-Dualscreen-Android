@@ -33,10 +33,13 @@ jobs:
       - name: Clone
         uses: actions/checkout@v4
 
+      - name: Install clang-format 19
+        run: sudo apt-get update && sudo apt-get install -y clang-format-19
+
       - name: clang-format
         run: |
-          clang-format --version
-          find src -type f \( -name \*.cc -o -name \*.h \) | xargs clang-format --dry-run --Werror
+          clang-format-19 --version
+          find src -type f \( -name \*.cc -o -name \*.h \) ! -path src/platform/git_version.h | xargs clang-format-19 --dry-run --Werror
 
   android:
     name: Android APK (arm64)

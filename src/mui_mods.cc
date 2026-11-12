@@ -588,7 +588,8 @@ namespace {
             // The app's RPU download (mode "rpu"), Nexus browser (mode
             // "nexus") or Downloads (mode "downloads") screen installs into
             // the saved list.
-            const char* mode = pendingRpu ? "rpu" : pendingNexus ? "nexus" : "downloads";
+            const char* mode = pendingRpu ? "rpu" : pendingNexus ? "nexus"
+                                                                 : "downloads";
             pendingRpu = false;
             pendingNexus = false;
             pendingDownloads = false;
