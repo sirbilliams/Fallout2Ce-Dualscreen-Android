@@ -114,4 +114,21 @@
     <string name="dl_started">Загрузка начата: %s</string>
     <string name="dl_start_failed">Не удалось начать загрузку</string>
     <string name="dl_unsupported">%s нельзя установить: .7z и .rar не поддерживаются. Скачайте ZIP.</string>
+
+    <string name="rpu_title">Restoration Project</string>
+    <string name="rpu_checking">Проверяю последний релиз…</string>
+    <string name="rpu_offline">Нет связи с GitHub: %s</string>
+    <string name="rpu_no_zip">В последнем релизе нет zip для загрузки.</string>
+    <string name="rpu_info">%1$s\nРазмер: %2$d МБ\nНужна новая игра: старые сохранения с ним не работают.</string>
+    <string name="rpu_info_vanilla">\nАктивный профиль Vanilla: RPU установится в новый профиль RPU, Vanilla не изменится.</string>
+    <string name="rpu_download">Скачать</string>
+    <string name="rpu_no_wifi">Нет безлимитного Wi-Fi. Загрузка около %d МБ. Всё равно продолжить?</string>
+    <string name="rpu_continue">Продолжить</string>
+    <string name="rpu_no_space">Недостаточно места: нужно %d МБ свободно</string>
+    <string name="rpu_download_failed">Не удалось скачать: %s</string>
+    <string name="rpu_retry">Повторить</string>
+    <string name="rpu_installed">Установлено: %s.\nRPU требует новой игры: начните её в главном меню.</string>
+    <string name="rpu_installed_profile">%1$s установлен в новый профиль %2$s. Ваши сохранения Vanilla остались как были.\nRPU требует новой игры: начните её в главном меню.</string>
+    <string name="rpu_bg_started">Загрузка идёт в фоне. Её можно найти в Загрузках.</string>
+    <string name="rpu_bg_exists">Уже скачано или скачивается: смотрите Загрузки.</string>
 </resources>

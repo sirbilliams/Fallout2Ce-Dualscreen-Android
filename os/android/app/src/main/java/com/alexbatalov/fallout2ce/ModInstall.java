@@ -109,7 +109,8 @@ final class ModInstall {
         return install(context, zip, null, gameDir, progress);
     }
 
-    // [wantedName]: the mod's file name when the Uri has no display name (file://).
+    // [wantedName]: the mod's name (its id is made from it), e.g. the file name
+    // of a download in the app's own folder; null = the Uri's display name.
     static Result install(Context context, Uri zip, String wantedName, File gameDir, Progress progress) throws IOException {
         String name = wantedName != null ? wantedName : "mod.zip";
         if (wantedName == null) try (Cursor cursor = context.getContentResolver().query(zip,

@@ -368,12 +368,27 @@ public class DownloadsActivity extends Activity {
             try {
                 if (!waitForGameToClose()) throw new IOException(getString(R.string.import_game_running));
                 File file = new File(ModDownloads.folder(this), row.item.file);
-                ModInstall.Result result = ModInstall.install(this, Uri.fromFile(file), row.item.file,
-                    getExternalFilesDir(null), new ModInstall.Progress() {
-                        public void update(long done, long total, String path) { }
-                        public boolean isCancelled() { return false; }
-                    });
-                ok = getString(R.string.mod_installed, result.id);
+                File gameDir = getExternalFilesDir(null);
+                boolean rpu = DownloadIndex.RPU.equals(row.item.source);
+                String modName = rpu && row.item.title != null && !row.item.title.trim().isEmpty()
+                    ? row.item.title : row.item.file;
+                // RPU never goes into Vanilla: it gets a profile of its own.
+                ModProfile.Created profile = rpu && gameDir != null && ModProfile.isVanilla(gameDir)
+                    ? ModProfile.createAndActivate(gameDir, "RPU") : null;
+                ModInstall.Result result;
+                try {
+                    result = ModInstall.install(this, Uri.fromFile(file), modName,
+                        gameDir, new ModInstall.Progress() {
+                            public void update(long done, long total, String path) { }
+                            public boolean isCancelled() { return false; }
+                        });
+                } catch (IOException | RuntimeException e) {
+                    if (profile != null) ModProfile.rollback(gameDir, profile);
+                    throw e;
+                }
+                if (profile != null) ok = getString(R.string.rpu_installed_profile, result.id, profile.name);
+                else if (rpu) ok = getString(R.string.rpu_installed, result.id);
+                else ok = getString(R.string.mod_installed, result.id);
                 ModDownloads.markInstalled(this, row.item.file);
             } catch (ModInstall.Problem p) {
                 problem = p.message == R.string.mod_no_space ? getString(p.message, p.neededMb) : getString(p.message);

@@ -218,12 +218,13 @@ public class MainActivity extends SDLActivity {
                 finish();
                 return;
             }
-            Intent intent = new Intent(this, ImportActivity.class);
-            if (mode != null) {
+            boolean rpu = RpuActivity.MODE.equals(mode);
+            Intent intent = new Intent(this, rpu ? RpuActivity.class : ImportActivity.class);
+            if (mode != null && !rpu) {
                 intent.putExtra(ImportActivity.MODE, mode);
             }
             startActivity(intent);
-            if (mode == null || ImportActivity.MODE_MOD.equals(mode)) {
+            if (mode == null || rpu || ImportActivity.MODE_MOD.equals(mode)) {
                 finish();
             }
         });

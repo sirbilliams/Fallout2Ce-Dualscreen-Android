@@ -151,4 +151,21 @@
     <string name="dl_started">Download started: %s</string>
     <string name="dl_start_failed">Couldn\'t start the download</string>
     <string name="dl_unsupported">%s can\'t be installed: .7z and .rar aren\'t supported. Download the ZIP instead.</string>
+
+    <string name="rpu_title">Restoration Project</string>
+    <string name="rpu_checking">Checking the latest release…</string>
+    <string name="rpu_offline">Can\'t reach GitHub: %s</string>
+    <string name="rpu_no_zip">The latest release has no zip to download.</string>
+    <string name="rpu_info">%1$s\nSize: %2$d MB\nIt needs a new game: old saves won\'t work with it.</string>
+    <string name="rpu_info_vanilla">\nThe active profile is Vanilla: RPU is installed into a new profile RPU and your Vanilla stays untouched.</string>
+    <string name="rpu_download">Download</string>
+    <string name="rpu_no_wifi">You\'re not on an unmetered Wi-Fi connection. The download is about %d MB. Continue anyway?</string>
+    <string name="rpu_continue">Continue</string>
+    <string name="rpu_no_space">Not enough space: needs %d MB free</string>
+    <string name="rpu_download_failed">Download failed: %s</string>
+    <string name="rpu_retry">Try again</string>
+    <string name="rpu_installed">Installed %s.\nRPU needs a new game: start one from the main menu.</string>
+    <string name="rpu_installed_profile">Installed %1$s into a new profile %2$s. Your Vanilla saves stay as they were.\nRPU needs a new game: start one from the main menu.</string>
+    <string name="rpu_bg_started">Downloading in the background. Find it in Downloads.</string>
+    <string name="rpu_bg_exists">Already downloaded or downloading: see Downloads.</string>
 </resources>
