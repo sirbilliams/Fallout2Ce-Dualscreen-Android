@@ -13,3 +13,9 @@ which is licensed under the Sustainable Use License v1.0 (see `LICENSE.md`).
 This repository contains no game data. Running it requires your own copy of
 Fallout 2. "Fallout" is a trademark of its respective owner; this is an
 unofficial, non-commercial project.
+
+The GLES 3.1 map lighting and post shaders in `src/hd/shaders/` are ports
+of Dustlight commit `c1752ecc`, specifically the embedded HLSL in
+`map_lighting.cc` and `map_post.cc`. Their CE light-field, shadow, radiance
+cascade, AgX, bloom and grading algorithms retain Dustlight's design and
+comments. The G-buffer contract follows Dustlight's `map_renderer.cc`.

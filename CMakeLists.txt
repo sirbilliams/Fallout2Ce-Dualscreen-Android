@@ -1042,7 +1042,7 @@ if(HD)
             set_tests_properties(hd_${module} PROPERTIES TIMEOUT 10)
         endforeach()
         # L3 map renderer test (identity L4 fixtures live in the test)
-        add_executable(hd_map_test EXCLUDE_FROM_ALL tests/hd_map_test.cc
+        add_executable(hd_map_test tests/hd_map_test.cc
             src/hd/gl.cc src/hd/gl_private.cc src/hd/bc7.cc src/hd/hd_art.cc
             src/hd/map_renderer.cc src/hd/map_layer.cc
             src/hd/json_reader.cc src/hd/sprite_shape.cc src/hd/palette_fit.cc)

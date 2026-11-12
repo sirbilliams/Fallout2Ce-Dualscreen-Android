@@ -1,0 +1,37 @@
+static void uniforms(GLuint p, const LightingConstants& c)  {
+    glUniform2iv(glGetUniformLocation(p,"gTargetSize"), 1, c.targetSize);
+    glUniform1i(glGetUniformLocation(p,"gScale"), c.scale);
+    glUniform1i(glGetUniformLocation(p,"gLightCount"), c.lightCount);
+    glUniform2iv(glGetUniformLocation(p,"gGroundOrigin"), 1, c.groundOrigin);
+    glUniform2iv(glGetUniformLocation(p,"gGroundSize"), 1, c.groundSize);
+    glUniform1f(glGetUniformLocation(p,"gAmbient"), c.ambient);
+    glUniform3fv(glGetUniformLocation(p,"gAmbientColor"), 1, c.ambientColor);
+    glUniform1f(glGetUniformLocation(p,"gPoolGain"), c.poolGain);
+    glUniform1f(glGetUniformLocation(p,"gShadowStrength"), c.shadowStrength);
+    glUniform1f(glGetUniformLocation(p,"gSunStrength"), c.sunStrength);
+    glUniform1f(glGetUniformLocation(p,"gAoStrength"), c.aoStrength);
+    glUniform4fv(glGetUniformLocation(p,"gSun"), 1, c.sun);
+    glUniform2fv(glGetUniformLocation(p,"gSunStep"), 1, c.sunStep);
+    glUniform1f(glGetUniformLocation(p,"gSunRise"), c.sunRise);
+    glUniform1i(glGetUniformLocation(p,"gFeatures"), c.features);
+    glUniform1f(glGetUniformLocation(p,"gMix"), c.mix);
+    glUniform1f(glGetUniformLocation(p,"gFieldSigma"), c.fieldSigma);
+    glUniform1f(glGetUniformLocation(p,"gShadowRange"), c.shadowRange);
+    glUniform1f(glGetUniformLocation(p,"gFieldMax"), c.fieldMax);
+    glUniform2iv(glGetUniformLocation(p,"gFieldSize"), 1, c.fieldSize);
+    glUniform2iv(glGetUniformLocation(p,"gShadowSize"), 1, c.shadowSize);
+    glUniform1f(glGetUniformLocation(p,"gKnee"), c.knee);
+    glUniform1f(glGetUniformLocation(p,"gLightScale"), c.lightScale);
+    glUniform1f(glGetUniformLocation(p,"gSunGain"), c.sunGain);
+    glUniform1f(glGetUniformLocation(p,"gTonemapWhite"), c.tonemapWhite);
+    glUniform1f(glGetUniformLocation(p,"gGiStrength"), c.giStrength);
+    glUniform1f(glGetUniformLocation(p,"gGiGround"), c.giGround);
+    glUniform1f(glGetUniformLocation(p,"gGiWall"), c.giWall);
+    glUniform1i(glGetUniformLocation(p,"gCascade"), c.cascade);
+    glUniform2iv(glGetUniformLocation(p,"gCascadeSize"), 1, c.cascadeSize);
+    glUniform1i(glGetUniformLocation(p,"gTonemapCurve"), c.tonemapCurve);
+    glUniform1f(glGetUniformLocation(p,"gAgxExposure"), c.agxExposure);
+    glUniform1f(glGetUniformLocation(p,"gBloomGlow"), c.bloomGlow);
+    glUniform1f(glGetUniformLocation(p,"gBloomHot"), c.bloomHot);
+    glUniform1i(glGetUniformLocation(p,"gSunSteps"), c.sunSteps);
+}

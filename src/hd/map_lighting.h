@@ -25,7 +25,8 @@ namespace fallout::hd {
 //
 //   [hd_light]
 //   mode=new                  new | original (the P4 look); Ctrl+F7 toggles
-//   quality=high              low (no shadows, sun, AO, bounce, bloom) | medium (no
+//   quality=high              off (original light) | low (no shadows, sun, AO,
+//                             bounce, bloom) | medium (no
 //                             bounce) | high (everything)
 //   normals=1 colors=1 shadows=1 sun=1 ao=1 pool=1 tonemap=1 night=1 gi=1
 //                             one switch per effect (quality caps them)
