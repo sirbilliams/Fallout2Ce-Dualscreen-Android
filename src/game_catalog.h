@@ -3,7 +3,9 @@
 #include <array>
 #include <string>
 namespace fallout {
-enum class GameDownloadKind { GithubRelease, Direct, ProjectPage };
+enum class GameDownloadKind { GithubRelease,
+    Direct,
+    ProjectPage };
 struct GameCatalogEntry {
     const char* id;
     const char* title;

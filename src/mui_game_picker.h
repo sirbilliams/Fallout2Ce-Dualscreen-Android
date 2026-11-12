@@ -8,5 +8,5 @@ bool muiGamePickerMove(int direction);
 bool muiGamePickerAccept(MuiSurface surface);
 // X on a pad: plays the shown game's intro movies, when it has some.
 bool muiGamePickerIntro();
-}
+} // namespace fallout
 #endif

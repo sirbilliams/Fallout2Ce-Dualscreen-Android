@@ -1,6 +1,6 @@
 #include "mui_pad.h"
-#include "mui_game_picker.h"
 #include "dev_autotest.h"
+#include "mui_game_picker.h"
 
 #include <algorithm>
 #include <cmath>
