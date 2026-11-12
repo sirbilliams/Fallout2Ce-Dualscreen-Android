@@ -45,7 +45,7 @@ final class RpuRelease {
     // Files in the app's folder are named by tag and size, so a newer release
     // never resumes into an older release's partial file.
     String partName() {
-        return "rpu-" + safe(tag) + "-" + zip.size + ".zip.part";
+        return zipName() + ".part";
     }
 
     String zipName() {

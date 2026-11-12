@@ -22,7 +22,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -51,6 +50,8 @@ public class RpuActivity extends Activity {
     private RpuRelease release;
     private File folder;
     private Thread worker;
+    // Swappable (see FileDownloader).
+    private final FileDownloader downloader = new HttpDownloader();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,6 +77,7 @@ public class RpuActivity extends Activity {
     public void onBackPressed() {
         if (busy) {
             cancelled = true;
+            downloader.cancel();
             return;
         }
         leave();
@@ -85,6 +87,7 @@ public class RpuActivity extends Activity {
     protected void onDestroy() {
         // Leaving keeps the partial file; stop the thread.
         cancelled = true;
+        downloader.cancel();
         super.onDestroy();
     }
 
@@ -231,98 +234,63 @@ public class RpuActivity extends Activity {
         busy = true;
         cancelled = false;
         show(getString(R.string.rpu_downloading, 0, RpuRelease.toMegabytes(release.zip.size)), null, null, null,
-            getString(R.string.import_cancel), v -> cancelled = true);
+            getString(R.string.import_cancel), v -> { cancelled = true; downloader.cancel(); });
         progress.setVisibility(View.VISIBLE);
         progress.setIndeterminate(true);
-        startWorker(() -> {
-            File zip = new File(folder, release.zipName());
-            try {
-                if (!zip.exists()) fetch(zip);
-                if (cancelled) {
-                    runOnUiThread(() -> { busy = false; showStopped(); });
-                    return;
-                }
-                runOnUiThread(() -> {
-                    show(getString(R.string.mod_installing), null, null, null, getString(R.string.import_cancel), v -> cancelled = true);
-                    progress.setVisibility(View.VISIBLE);
-                    progress.setIndeterminate(true);
-                });
-                install(zip);
-            } catch (IOException | RuntimeException e) {
-                Log.w(TAG, "rpu failed", e);
+        File zip = new File(folder, release.zipName());
+        if (zip.exists()) {
+            startWorker(() -> installAndShow(zip));
+            return;
+        }
+        // Parts of other releases are no use.
+        File[] old = folder.listFiles();
+        if (old != null) {
+            for (File file : old) {
+                String name = file.getName();
+                if (!name.equals(release.partName()) && !name.equals(release.zipName())) file.delete();
+            }
+        }
+        downloader.start(release.zip.url, zip, release.zip.size, new FileDownloader.Listener() {
+            @Override
+            public void progress(long done, long total) {
+                showProgress(done, total);
+            }
+
+            @Override
+            public void finished(File target) {
+                installAndShow(target);
+            }
+
+            @Override
+            public void stopped() {
+                runOnUiThread(() -> { busy = false; if (isFinishing()) return; showStopped(); });
+            }
+
+            @Override
+            public void failed(IOException e) {
+                Log.w(TAG, "rpu download failed", e);
                 runOnUiThread(() -> showError(getString(R.string.rpu_download_failed, String.valueOf(e.getMessage()))));
             }
         });
     }
 
+    private void installAndShow(File zip) {
+        try {
+            runOnUiThread(() -> {
+                show(getString(R.string.mod_installing), null, null, null, getString(R.string.import_cancel), v -> cancelled = true);
+                progress.setVisibility(View.VISIBLE);
+                progress.setIndeterminate(true);
+            });
+            install(zip);
+        } catch (IOException | RuntimeException e) {
+            Log.w(TAG, "rpu install failed", e);
+            runOnUiThread(() -> showError(getString(R.string.rpu_download_failed, String.valueOf(e.getMessage()))));
+        }
+    }
+
     private void showStopped() {
         show(getString(R.string.rpu_paused), null, getString(R.string.rpu_retry), v -> showInfo(),
             getString(R.string.import_cancel), v -> leave());
-    }
-
-    // Downloads (resuming a .part file) into [zip]; returns early when
-    // cancelled, leaving the .part file for the next time.
-    private void fetch(File zip) throws IOException {
-        if (!folder.isDirectory() && !folder.mkdirs()) throw new IOException("can't make " + folder);
-        // Parts of other releases are no use.
-        File[] old = folder.listFiles();
-        if (old != null) {
-            for (File file : old) {
-                if (!file.getName().equals(release.partName()) && !file.getName().equals(release.zipName())) {
-                    file.delete();
-                }
-            }
-        }
-        File part = new File(folder, release.partName());
-        long total = release.zip.size;
-        long have = part.length();
-        if (have > total) { part.delete(); have = 0; }
-        if (RpuRelease.resume(have, total) != RpuRelease.Resume.DONE) {
-            HttpURLConnection connection = open(release.zip.url);
-            try {
-                String range = RpuRelease.rangeHeader(have, total);
-                if (range != null) connection.setRequestProperty("Range", range);
-                int status = connection.getResponseCode();
-                if (status == 416) {
-                    // The partial file isn't ours: start again.
-                    part.delete();
-                    have = 0;
-                    connection.disconnect();
-                    connection = open(release.zip.url);
-                    status = connection.getResponseCode();
-                    range = null;
-                }
-                if (status != 200 && status != 206) throw new IOException("HTTP " + status);
-                if (range != null && !RpuRelease.rangeAccepted(status, connection.getHeaderField("Content-Range"), have, total)) {
-                    if (status == 206) throw new IOException("unexpected range");
-                    // The server ignored the Range header and sends all of it.
-                    have = 0;
-                } else if (range == null && status == 206) {
-                    throw new IOException("unexpected range");
-                }
-                try (InputStream in = connection.getInputStream(); RandomAccessFile out = new RandomAccessFile(part, "rw")) {
-                    out.setLength(have);
-                    out.seek(have);
-                    byte[] buffer = new byte[65536];
-                    long lastUpdate = 0;
-                    int count;
-                    while (!cancelled && (count = in.read(buffer)) != -1) {
-                        out.write(buffer, 0, count);
-                        have += count;
-                        long now = System.currentTimeMillis();
-                        if (now - lastUpdate > 250) {
-                            lastUpdate = now;
-                            showProgress(have, total);
-                        }
-                    }
-                    if (cancelled) return;
-                }
-            } finally {
-                connection.disconnect();
-            }
-        }
-        if (part.length() != total) throw new IOException("incomplete download (" + part.length() + " of " + total + ")");
-        if (!part.renameTo(zip)) throw new IOException("can't finish " + zip);
     }
 
     private void showProgress(long done, long total) {
@@ -379,18 +347,8 @@ public class RpuActivity extends Activity {
         worker.start();
     }
 
-    private HttpURLConnection open(String url) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
-        connection.setConnectTimeout(20000);
-        connection.setReadTimeout(30000);
-        connection.setInstanceFollowRedirects(true);
-        connection.setRequestProperty("User-Agent", "Fallout2CE-Android");
-        connection.setRequestProperty("Accept", "application/octet-stream, application/vnd.github+json");
-        return connection;
-    }
-
     private String httpText(String url) throws IOException {
-        HttpURLConnection connection = open(url);
+        HttpURLConnection connection = HttpDownloader.open(url);
         try {
             int status = connection.getResponseCode();
             if (status != 200) throw new IOException("HTTP " + status);
