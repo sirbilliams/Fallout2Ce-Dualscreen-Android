@@ -42,6 +42,8 @@ namespace {
     constexpr int kTextRestartNote = 391;
     constexpr int kTextDeleteAsk = 392;
     constexpr int kTextProfileFailed = 393;
+    constexpr int kTextInstallRpu = 394;
+    constexpr int kTextBrowseNexus = 395;
 
     constexpr size_t kNameLength = 24;
 
@@ -160,6 +162,8 @@ namespace {
 
         bool pendingBack = false;
         bool pendingAdd = false;
+        bool pendingRpu = false;
+        bool pendingNexus = false;
         bool pendingSwitch = false;
         bool pendingDelete = false;
         bool pendingCreate = false;
@@ -216,13 +220,19 @@ namespace {
             }
         }
 
-        // Footer: add from zip, back.
+        // Footer: add from zip, install RPU, browse Nexus, back.
         MuiRect footer = { safe.x, safe.bottom() - footerHeight, safe.w, footerHeight };
-        float half = (footer.w - gap) / 2.0f;
-        if (ui.button("mods.add", { footer.x, footer.y, half, footer.h }, text(kTextAddZip, "Add from zip"))) {
+        float quarter = (footer.w - gap * 3.0f) / 4.0f;
+        if (ui.button("mods.add", { footer.x, footer.y, quarter, footer.h }, text(kTextAddZip, "Add from zip"))) {
             pendingAdd = true;
         }
-        if (ui.button("mods.back", { footer.x + half + gap, footer.y, half, footer.h }, text(kTextBack, "Back"), MuiButtonStyle::Primary)) {
+        if (ui.button("mods.rpu", { footer.x + (quarter + gap), footer.y, quarter, footer.h }, text(kTextInstallRpu, "Install RPU"))) {
+            pendingRpu = true;
+        }
+        if (ui.button("mods.nexus", { footer.x + (quarter + gap) * 2.0f, footer.y, quarter, footer.h }, text(kTextBrowseNexus, "Browse Nexus"))) {
+            pendingNexus = true;
+        }
+        if (ui.button("mods.back", { footer.x + (quarter + gap) * 3.0f, footer.y, quarter, footer.h }, text(kTextBack, "Back"), MuiButtonStyle::Primary)) {
             pendingBack = true;
         }
 
@@ -249,7 +259,7 @@ namespace {
         int count = static_cast<int>(list.entries.size());
 
         if (count == 0) {
-            std::u32string label = text(kTextNoMods, "No mods installed yet. Add one from a zip.");
+            std::u32string label = text(kTextNoMods, "No mods installed yet. Add one from a zip, install RPU or browse Nexus.");
             muiDrawTextAligned(label, rect, ui.dp(14.0f), theme.textDim, MuiAlign::Center, MuiAlign::Center);
             return;
         }
@@ -504,6 +514,19 @@ namespace {
                 finished = true;
             }
             requestRestart("mod");
+        }
+
+        if (pendingRpu || pendingNexus) {
+            // The app's RPU download (mode "rpu") or Nexus browser (mode
+            // "nexus") screen installs into the saved list.
+            const char* mode = pendingRpu ? "rpu" : "nexus";
+            pendingRpu = false;
+            pendingNexus = false;
+            save();
+            if (changed) {
+                finished = true;
+            }
+            requestRestart(mode);
         }
 
         if (pendingBack) {
