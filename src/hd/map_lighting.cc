@@ -8,9 +8,9 @@
 #include "hd/light_scene.h"
 #include "hd/map_renderer.h"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdio>
-#include <chrono>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -23,8 +23,8 @@ namespace {
 #include "map_lighting_uniforms.inc"
     struct State {
         Settings settings;
-        GLuint programs[8] = {}, hexes = 0, lights = 0;
-        compute::Texture gbuffer[6], occluders, occluderMax, field, sunAo, shadows, giScene, cascades[4], fluence, bloom;
+        GLuint programs[9] = {}, hexes = 0, lights = 0;
+        compute::Texture gbuffer[6], lightA, lightB, hdAlbedo, hdCover, occluders, occluderMax, field, sunAo, shadows, giScene, cascades[4], fluence, bloom;
         bool bloomValid = false;
         ~State()
         {
@@ -64,12 +64,22 @@ namespace {
         if (s.effectOff >= 0) allowed &= ~kEffects[s.effectOff].bit;
         return s.quality < 0 ? 0 : s.switches & allowed;
     }
+    // HD pixels per light buffer pixel: 1 for full, else the HD tier (the light
+    // buffer is the 1x map's size) times 1 ("1x") or 2 ("half").
+    int lightDiv(int scale)
+    {
+        int r = gState->settings.resolution;
+        return r == 0 ? 1 : scale * r;
+    }
     bool ensureTargets(int width, int height, int scale)
     {
         auto& t = *gState;
-        int w = width * scale, h = height * scale, gw = width + 160, gh = height + 384, fw = (gw + 1) / 2, fh = (gh + 1) / 2;
+        int k = lightDiv(scale);
+        int w = width * scale, h = height * scale, lw = (w + k - 1) / k, lh = (h + k - 1) / k;
+        int gw = width + 160, gh = height + 384, fw = (gw + 1) / 2, fh = (gh + 1) / 2;
         for (int i = 0; i < 6; i++)
-            if (!t.gbuffer[i].ensure(w, h, (i == 0 || i == 3) ? GL_RGBA16F : GL_RGBA8)) return false;
+            if (!t.gbuffer[i].ensure(lw, lh, (i == 0 || i == 3) ? GL_RGBA16F : GL_RGBA8)) return false;
+        if (k > 1 && !(t.lightA.ensure(lw, lh) && t.lightB.ensure(lw, lh) && t.hdAlbedo.ensure(w, h) && t.hdCover.ensure(w, h, GL_RGBA8))) return false;
         int cw = (fw + 15) / 16 * 16, ch = (fh + 15) / 16 * 16;
         for (auto& c : t.cascades)
             if (!c.ensure(cw, ch)) return false;
@@ -119,7 +129,7 @@ bool mapLightingInit()
             mapLightingShutdown();
             return false;
         }
-    if (!(gState->programs[7] = compute::program(kFieldShader, "csField"))) {
+    if (!(gState->programs[7] = compute::program(kFieldShader, "csField")) || !(gState->programs[8] = compute::program(kShaderSource, "csCombine"))) {
         mapLightingShutdown();
         return false;
     }
@@ -160,6 +170,10 @@ void mapLightingTimingEndFrame()
     }
     debugPrint("[hd_light] timing ms/draw (%d draws):%s total=%.2f\n", gTiming.count, line.c_str(), sum);
     gTiming.count = 0;
+}
+int mapLightingResolution()
+{
+    return gState ? gState->settings.resolution : 0;
 }
 bool mapLightingActive()
 {
@@ -236,9 +250,14 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     float daylight = dayAmount(scene.timeOfDay, scene.ambient);
     float day = (enabled & kSun) != 0 ? daylight : 0.0f;
     LightingConstants constants = {};
-    constants.targetSize[0] = mapWidth * scale;
-    constants.targetSize[1] = mapHeight * scale;
-    constants.scale = scale;
+    const int k = lightDiv(scale);
+    const bool split = k > 1;
+    constants.targetSize[0] = gState->gbuffer[0].width;
+    constants.targetSize[1] = gState->gbuffer[0].height;
+    constants.scale = static_cast<float>(scale) / k;
+    constants.split = split;
+    constants.bloomOn = s.quality > 0;
+    constants.upscale = static_cast<float>(k);
     constants.lightCount = static_cast<int>(lights.size());
     constants.groundOrigin[0] = origin[0];
     constants.groundOrigin[1] = origin[1];
@@ -302,6 +321,7 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     draw.occluderSize[1] = t.occluders.height;
     memcpy(draw.category, s.category, sizeof(draw.category));
     draw.detailScale = scale / 4.0f;
+    draw.lightDiv = k;
     if (!mapRendererDrawGbuffer(scale, palette, draw)) return lightingFail("!mapRendererDrawGbuffer(scale, palette, draw)");
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
     mapLightingTimingMark("gbuffer");
@@ -324,8 +344,11 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
         pass(1, constants, 320, 144, lights.size());
     }
     mapLightingTimingMark("shadows");
-    compute::image(0, t.sunAo);
-    pass(2, constants, t.sunAo.width, t.sunAo.height);
+    // Sun and ambient occlusion are the only readers of the sun/AO map.
+    if (enabled & (kSun | kAo)) {
+        compute::image(0, t.sunAo);
+        pass(2, constants, t.sunAo.width, t.sunAo.height);
+    }
     mapLightingTimingMark("sunAo");
     for (int i = 0; i < 6; i++)
         compute::sample(4 + i, t.gbuffer[i].id);
@@ -348,10 +371,32 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     }
     mapLightingTimingMark("gi");
     compute::sample(15, t.fluence.id);
-    glBindImageTexture(0, output, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
-    compute::image(1, t.bloom);
-    pass(6, constants, mapWidth * scale, mapHeight * scale);
-    mapLightingTimingMark("resolve");
+    if (!split) {
+        glBindImageTexture(0, output, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+        compute::image(1, t.bloom);
+        pass(6, constants, mapWidth * scale, mapHeight * scale);
+        mapLightingTimingMark("resolve");
+    } else {
+        // Light at the lower resolution, then onto the HD art at full size.
+        compute::image(0, t.lightA);
+        compute::image(1, t.lightB);
+        pass(6, constants, t.lightA.width, t.lightA.height);
+        mapLightingTimingMark("light");
+        if (!mapRendererDrawHdAlbedo(scale, palette, t.hdAlbedo.id, t.hdCover.id)) return lightingFail("!mapRendererDrawHdAlbedo(scale, palette)");
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
+        mapLightingTimingMark("hdAlbedo");
+        constants.targetSize[0] = mapWidth * scale;
+        constants.targetSize[1] = mapHeight * scale;
+        constants.split = 0;
+        compute::sample(4, t.hdAlbedo.id);
+        compute::sample(7, t.lightA.id);
+        compute::sample(8, t.lightB.id);
+        compute::sample(9, t.hdCover.id);
+        glBindImageTexture(0, output, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA16F);
+        compute::image(1, t.bloom);
+        pass(8, constants, mapWidth * scale, mapHeight * scale);
+        mapLightingTimingMark("combine");
+    }
     for (int i = 0; i < 2; i++)
         glBindImageTexture(i, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA16F);
     GLenum error = glGetError();

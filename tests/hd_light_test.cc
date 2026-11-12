@@ -42,6 +42,11 @@ namespace {
         glBindTexture(GL_TEXTURE_2D,id);
         glTexSubImage2D(GL_TEXTURE_2D,0,0,0,w,h,format,GL_FLOAT,pixels.data());
     }
+    void sizeOf(GLuint id,int* w,int* h) {
+        glBindTexture(GL_TEXTURE_2D,id);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_WIDTH,w);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_HEIGHT,h);
+    }
     std::vector<float> draw() {
         require(mapLightingDraw(W,H,1,nullptr),"lighting draw failed");
         std::vector<float> p;
@@ -111,6 +116,17 @@ namespace fallout::hd {
         fill(output.id,W,H,c);
         return true;
     }
+    bool mapRendererDrawHdAlbedo(int,const float*,GLuint albedo,GLuint coverage) {
+        const float a[]= {
+            .5,.5,.5,1
+        };
+        fill(albedo,W,H,a);
+        std::vector<unsigned char> pixels(W*H*4,0);
+        for(size_t j=0;j<pixels.size();j+=4)pixels[j]=pixels[j+3]=255;
+        glBindTexture(GL_TEXTURE_2D,coverage);
+        glTexSubImage2D(GL_TEXTURE_2D,0,0,0,W,H,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data());
+        return glGetError()==GL_NO_ERROR;
+    }
     bool mapRendererDrawGbuffer(int,const float*,const MapGbufferDraw& d) {
         const float a[]= {
             .5,.5,.5,1
@@ -127,13 +143,15 @@ namespace fallout::hd {
             a,n,n,s,m,coverage
         };
         for(int i=0;i<6;i++) {
-            if(i==0||i==3)fill(d.targets[i],W,H,values[i]);
+            int tw,th;
+            sizeOf(d.targets[i],&tw,&th);
+            if(i==0||i==3)fill(d.targets[i],tw,th,values[i]);
             else {
-                std::vector<unsigned char> pixels(W*H*4);
+                std::vector<unsigned char> pixels(tw*th*4);
                 for(size_t j=0;j<pixels.size();j++)pixels[j]=std::lround(values[i][j%4]*255);
-                if(i==5&&emissive)for(int yy=28;yy<36;yy++)for(int xx=28;xx<36;xx++)pixels[(yy*W+xx)*4+2]=255;
+                if(i==5&&emissive&&tw==W)for(int yy=28;yy<36;yy++)for(int xx=28;xx<36;xx++)pixels[(yy*W+xx)*4+2]=255;
                 glBindTexture(GL_TEXTURE_2D,d.targets[i]);
-                glTexSubImage2D(GL_TEXTURE_2D,0,0,0,W,H,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data());
+                glTexSubImage2D(GL_TEXTURE_2D,0,0,0,tw,th,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data());
             }
         }
         if(wall) {
@@ -291,11 +309,36 @@ int main() {
             settings["hd_light.quality"]=quality;
             init();
             p=draw();
-            int expected=strcmp(quality,"high")==0?11:strcmp(quality,"medium")==0?5:4;
+            int expected=strcmp(quality,"high")==0?11:strcmp(quality,"medium")==0?5:3; // low: no sun or AO, so no sun/AO pass
             require(dispatches==expected,"quality dispatch mismatch");
             require((mapLightingBloomSource()!=0)==(strcmp(quality,"low")!=0),"quality bloom mismatch");
             printf("quality %s: %d dispatches\n",quality,dispatches);
         }
+        // resolution: the light at half the 1x map's size, applied to the HD albedo.
+        settings.clear();
+        init();
+        require(mapLightingResolution()==0,"default resolution is not full");
+        auto fullRes=draw();
+        settings["hd_light.resolution"]="1x";
+        init();
+        require(mapLightingResolution()==1,"resolution 1x parse");
+        settings["hd_light.resolution"]="half";
+        init();
+        require(mapLightingResolution()==2,"resolution half parse");
+        auto halfRes=draw();
+        double resolutionDifference=0;
+        for(size_t i=0;i<fullRes.size();i++)resolutionDifference+=std::abs(fullRes[i]-halfRes[i]);
+        resolutionDifference/=fullRes.size();
+        printf("resolution half vs full: mean abs difference %.5f\n",resolutionDifference);
+        require(resolutionDifference<.02,"half resolution differs from full");
+        require((mapLightingBloomSource()!=0)==true,"half resolution bloom");
+        settings["hd_light.resolution"]="bogus";
+        init();
+        require(mapLightingResolution()==0,"unknown resolution is not full");
+        settings.clear();
+        settings["hd_light.quality"]="high";
+        init();
+        p=draw();
         auto shoulder=p;
         settings["hd_light.tonemap_curve"]="agx";
         init();

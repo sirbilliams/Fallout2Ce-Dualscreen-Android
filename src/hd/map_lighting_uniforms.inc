@@ -1,6 +1,6 @@
 static void uniforms(GLuint p, const LightingConstants& c)  {
     glUniform2iv(glGetUniformLocation(p,"gTargetSize"), 1, c.targetSize);
-    glUniform1i(glGetUniformLocation(p,"gScale"), c.scale);
+    glUniform1f(glGetUniformLocation(p,"gScale"), c.scale);
     glUniform1i(glGetUniformLocation(p,"gLightCount"), c.lightCount);
     glUniform2iv(glGetUniformLocation(p,"gGroundOrigin"), 1, c.groundOrigin);
     glUniform2iv(glGetUniformLocation(p,"gGroundSize"), 1, c.groundSize);
@@ -34,4 +34,7 @@ static void uniforms(GLuint p, const LightingConstants& c)  {
     glUniform1f(glGetUniformLocation(p,"gBloomGlow"), c.bloomGlow);
     glUniform1f(glGetUniformLocation(p,"gBloomHot"), c.bloomHot);
     glUniform1i(glGetUniformLocation(p,"gSunSteps"), c.sunSteps);
+    glUniform1i(glGetUniformLocation(p,"gSplit"), c.split);
+    glUniform1i(glGetUniformLocation(p,"gBloomOn"), c.bloomOn);
+    glUniform1f(glGetUniformLocation(p,"gUpscale"), c.upscale);
 }

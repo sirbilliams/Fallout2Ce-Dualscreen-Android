@@ -121,11 +121,19 @@ struct MapGbufferDraw {
     // Per category: detail strength, relief weight, shape weight, unused.
     float category[kLightCategoryCount][4] = {};
     float detailScale = 1.0f;
+    // Lower-resolution light: the targets are ceil(target / lightDiv) pixels
+    // and each is shaded at the middle texel of its lightDiv x lightDiv block.
+    int lightDiv = 1;
 };
 
 // Draws the built commands unlit into the G-buffer at `scale` (must equal
 // the build's HD tier) and scatters the occluder heightfield.
 bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDraw& draw);
+
+// Draws just the albedo (RGBA16F) and coverage (RGBA8) of the built commands
+// unlit at `scale`, into textures of the HD target's size: the HD art the
+// lower-resolution light is applied to (hd/map_lighting.h, resolution).
+bool mapRendererDrawHdAlbedo(int scale, const float* palette, GLuint albedo, GLuint coverage);
 
 // The HD target at `scale` for the lighting pass to write (created if
 // needed; same texture as mapRendererHdView).

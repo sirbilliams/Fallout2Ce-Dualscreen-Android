@@ -217,7 +217,7 @@ namespace {
 
     struct State {
         GLuint atlas = 0, text = 0, tables = 0, floorCells = 0, shapeAtlas = 0;
-        GLuint sprites = 0, vertexLight = 0, basePalette = 0, program = 0, gbuffer = 0, copyFbo = 0, occluderBuffer = 0, readFbo = 0;
+        GLuint sprites = 0, vertexLight = 0, basePalette = 0, program = 0, gbuffer = 0, gbufferHd = 0, copyFbo = 0, occluderBuffer = 0, readFbo = 0;
         Packer atlasPacker, textPacker;
         std::unordered_map<unsigned long long, AtlasEntry> atlasEntries;
         std::vector<unsigned char> tablesCpu, shapeScratch;
@@ -1113,6 +1113,7 @@ void mapRendererShutdown()
     glDeleteBuffers(3, buf);
     glDeleteProgram(gState->program);
     glDeleteProgram(gState->gbuffer);
+    glDeleteProgram(gState->gbufferHd);
     glDeleteFramebuffers(1, &gState->copyFbo);
     glDeleteTextures(1, &gState->coverage.texture);
     glDeleteBuffers(1, &gState->occluderBuffer);
@@ -1236,6 +1237,28 @@ static bool gbufferFail(const char* why)
     }
     return false;
 }
+// The G-buffer program. hdAlbedo: only the albedo and coverage outputs, so the
+// compiler drops the shape, relief and material work (the HD pass of lower
+// resolution light, which needs just the art).
+static GLuint buildGbufferProgram(bool hdAlbedo)
+{
+    std::string code = kShaderSource;
+    code.resize(code.find("\nvoid main()"));
+    if (hdAlbedo) code.insert(code.find('\n') + 1, "#define GBUF_HD_ALBEDO\n");
+    // GLES (Adreno, NVIDIA) allows 8 image uniforms: drop the HD target
+    // (only the main renderer's main() writes it) and move gTarget off
+    // output0's binding, leaving gTarget + gOccluders + 6 outputs.
+    auto swap = [&code](const char* from, const char* to) {
+        size_t at = code.find(from);
+        if (at != std::string::npos) code.replace(at, strlen(from), to);
+    };
+    swap("layout(rgba16f,binding=1) writeonly uniform highp image2D gHdTarget;", "");
+    swap("layout(r32ui,binding=0) uniform highp uimage2D gTarget;", "layout(r32ui,binding=7) uniform highp uimage2D gTarget;");
+    code +=
+#include "hd/map_gbuffer.inc"
+        ;
+    return glCompute(code);
+}
 // G-buffer implementation follows the same draw list and is defined below.
 bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDraw& draw)
 {
@@ -1256,6 +1279,10 @@ bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDra
     }
     GLuint& program = gState->gbuffer;
     bool redCoverage = formats[5] == GL_R8;
+    // Lower-resolution light: targets of ceil(target / k) pixels.
+    const int k = std::max(draw.lightDiv, 1);
+    const int loW = (gState->mapWidth * scale + k - 1) / k, loH = (gState->mapHeight * scale + k - 1) / k;
+    if (k > 1 && redCoverage) return gbufferFail("k > 1 && redCoverage");
     GLuint targets[6];
     std::copy(draw.targets, draw.targets + 6, targets);
     if (redCoverage) {
@@ -1266,21 +1293,7 @@ bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDra
         formats[5] = GL_RGBA8;
     }
     if (!program) {
-        std::string code = kShaderSource;
-        code.resize(code.find("\nvoid main()"));
-        // GLES (Adreno, NVIDIA) allows 8 image uniforms: drop the HD target
-        // (only the main renderer's main() writes it) and move gTarget off
-        // output0's binding, leaving gTarget + gOccluders + 6 outputs.
-        auto swap = [&code](const char* from, const char* to) {
-            size_t at = code.find(from);
-            if (at != std::string::npos) code.replace(at, strlen(from), to);
-        };
-        swap("layout(rgba16f,binding=1) writeonly uniform highp image2D gHdTarget;", "");
-        swap("layout(r32ui,binding=0) uniform highp uimage2D gTarget;", "layout(r32ui,binding=7) uniform highp uimage2D gTarget;");
-        code +=
-#include "hd/map_gbuffer.inc"
-            ;
-        program = glCompute(code);
+        program = buildGbufferProgram(false);
         if (!program) return gbufferFail("!program");
     }
     if (!uploadBasePalette(palette)) return gbufferFail("!uploadBasePalette(palette)");
@@ -1308,6 +1321,8 @@ bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDra
     glUniform2iv(glGetUniformLocation(program, "gOccluderSize"), 1, draw.occluderSize);
     glUniform2i(glGetUniformLocation(program, "gTargetSize"), gState->mapWidth * scale, gState->mapHeight * scale);
     glUniform1i(glGetUniformLocation(program, "gScale"), scale);
+    glUniform1i(glGetUniformLocation(program, "gK"), k);
+    glUniform2i(glGetUniformLocation(program, "gLoSize"), loW, loH);
     if (draw.occluders) {
         if (draw.occluderSize[0] <= 0 || draw.occluderSize[1] <= 0) return gbufferFail("draw.occluderSize[0] <= 0 || draw.occluderSize[1] <= 0");
         if (!gState->occluderBuffer) glGenBuffers(1, &gState->occluderBuffer);
@@ -1325,7 +1340,8 @@ bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDra
             if (w <= 0 || h <= 0) continue;
             glUniform1i(glGetUniformLocation(program, "gSpriteBase"), c.first + j);
             glUniform1i(glGetUniformLocation(program, "gMode"), 0);
-            glDispatchCompute((w + 7) / 8, (h + 7) / 8, 1);
+            int lw = k > 1 ? (w + k - 1) / k + 1 : w, lh = k > 1 ? (h + k - 1) / k + 1 : h;
+            glDispatchCompute((lw + 7) / 8, (lh + 7) / 8, 1);
             glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
             if (draw.occluders) {
                 glUniform1i(glGetUniformLocation(program, "gMode"), 4);
@@ -1349,6 +1365,57 @@ bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDra
         glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_FRAMEBUFFER_BARRIER_BIT);
     }
+    return glGetError() == GL_NO_ERROR;
+}
+
+bool mapRendererDrawHdAlbedo(int scale, const float* palette, GLuint albedo, GLuint coverage)
+{
+    if (!gState || !gState->built || scale < 2 || scale > 4 || scale != gState->hdTier || !palette || !albedo || !coverage) return gbufferFail("hd albedo: bad state or targets");
+    GlState saved;
+    GLuint& program = gState->gbufferHd;
+    if (!program) {
+        program = buildGbufferProgram(true);
+        if (!program) return gbufferFail("!hd albedo program");
+    }
+    if (!uploadBasePalette(palette)) return gbufferFail("!uploadBasePalette(palette)");
+    bindInputs();
+    glUseProgram(program);
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_2D, gState->shapeAtlas);
+    glBindSampler(5, 0);
+    const GLuint targets[2] = { albedo, coverage };
+    const int units[2] = { 0, 5 };
+    const GLenum formats[2] = { GL_RGBA16F, GL_RGBA8 };
+    for (int i = 0; i < 2; i++) {
+        glActiveTexture(GL_TEXTURE6 + units[i]);
+        glBindTexture(GL_TEXTURE_2D, targets[i]);
+        glBindSampler(6 + units[i], 0);
+        glBindImageTexture(units[i], targets[i], 0, GL_FALSE, 0, GL_WRITE_ONLY, formats[i]);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gState->readFbo);
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, targets[i], 0);
+        if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return gbufferFail("hd albedo: incomplete framebuffer");
+        glDisable(GL_SCISSOR_TEST);
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+        const float zero[4] = {};
+        glClearBufferfv(GL_COLOR, 0, zero);
+    }
+    glUniform2i(glGetUniformLocation(program, "gTargetSize"), gState->mapWidth * scale, gState->mapHeight * scale);
+    glUniform1i(glGetUniformLocation(program, "gScale"), scale);
+    glUniform1i(glGetUniformLocation(program, "gK"), 1);
+    glUniform2i(glGetUniformLocation(program, "gLoSize"), gState->mapWidth * scale, gState->mapHeight * scale);
+    glMemoryBarrier(GL_FRAMEBUFFER_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+    for (const Command& c : gState->commands)
+        for (int j = 0; j < c.count; j++) {
+            if (c.kind == CommandKind::Outline) continue;
+            const Sprite& s = gState->spriteList[c.first + j];
+            int w = (s.rect[2] - s.rect[0] + 1) * scale, h = (s.rect[3] - s.rect[1] + 1) * scale;
+            if (w <= 0 || h <= 0) continue;
+            glUniform1i(glGetUniformLocation(program, "gSpriteBase"), c.first + j);
+            glUniform1i(glGetUniformLocation(program, "gMode"), 0);
+            glDispatchCompute((w + 7) / 8, (h + 7) / 8, 1);
+            glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+        }
+    glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_FRAMEBUFFER_BARRIER_BIT | GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
     return glGetError() == GL_NO_ERROR;
 }
 } // namespace fallout::hd

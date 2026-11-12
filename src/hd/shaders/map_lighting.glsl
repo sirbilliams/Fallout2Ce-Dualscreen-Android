@@ -20,7 +20,7 @@ vec3 saturate(vec3 x) { return clamp(x,0.0,1.0); }
 #define F_GI 256
 
 uniform ivec2 gTargetSize;
-uniform int gScale;
+uniform float gScale; // light buffer pixels per 1x map pixel (2 = full, 1 = 1x, 0.5 = half)
 uniform int gLightCount;
 uniform ivec2 gGroundOrigin;
 uniform ivec2 gGroundSize;
@@ -55,6 +55,9 @@ uniform float gBloomGlow;
 uniform float gBloomHot;
 uniform int gSunSteps;
 uniform float gPad4;
+uniform int gSplit;      // csLight writes the light terms (resolution < full) instead of the final color
+uniform int gBloomOn;    // the bloom source is wanted (quality > low)
+uniform float gUpscale;  // csCombine: HD pixels per light-buffer pixel
 
 struct Hex {
     vec2 pos;
@@ -78,12 +81,15 @@ layout(std430, binding=0) readonly buffer BgHexes { Hex gHexes[]; };
 layout(binding=1) uniform usampler2D gOccluders;
 layout(binding=2) uniform sampler2D gOccluderMax;
 layout(std430, binding=3) readonly buffer BgLights { Light gLights[]; };
-layout(binding=4) uniform sampler2D gAlbedo;
+layout(binding=4) uniform sampler2D gAlbedo; // csCombine: the HD albedo
 layout(binding=5) uniform sampler2D gBaseNormal;
 layout(binding=6) uniform sampler2D gDetailNormal;
 layout(binding=7) uniform sampler2D gSurface;
 layout(binding=8) uniform sampler2D gMaterial;
-layout(binding=9) uniform sampler2D gCoverage; // coverage, glow, cycle-color bloom weight (both * coverage)
+// csCombine reads the light terms through the G-buffer's surface and material slots.
+#define gLightA gSurface
+#define gLightB gMaterial
+layout(binding=9) uniform sampler2D gCoverage; // csCombine: the HD coverage; coverage, glow, cycle-color bloom weight (both * coverage)
 layout(binding=10) uniform sampler2D gField;
 layout(binding=11) uniform sampler2DArray gShadows;
 layout(binding=12) uniform sampler2D gSunAo;
@@ -497,6 +503,27 @@ vec2 frontOf(vec2 ground, vec3 nRef)
     return ground + vec2(nRef.x, nRef.y * 0.5) * kFrontOffset;
 }
 
+// The art lit by `light` and tonemapped; `hot` = the light above full white.
+vec3 grade(vec3 c, vec3 light, float level, float unlit, out vec3 hot)
+{
+    vec3 result = c * light;
+    hot = max(result - 1.0, 0.0);
+    if ((gFeatures & F_TONEMAP) != 0 && gTonemapCurve == 1) {
+        result = agx(result);
+    } else if ((gFeatures & F_TONEMAP) != 0) {
+        // The shoulder per channel turns bright reds orange (green catches
+        // up); on the largest channel it keeps the hue. A share of the
+        // per-channel result lets very bright pools still whiten.
+        float peak = max(result.r, max(result.g, result.b));
+        vec3 hue = peak > gKnee ? result * (shoulder(peak) / peak) : result;
+        vec3 white = vec3(shoulder(result.r), shoulder(result.g), shoulder(result.b));
+        result = mix(hue, white, gTonemapWhite);
+    }
+    result = mix(result, litOriginal(c, level), gMix);
+    // Unlit: interface, text, and screens and alarm lights (P6.2).
+    return mix(result, c, saturate(unlit));
+}
+
 void csLight(uvec3 id)
 {
     ivec2 pix = ivec2(id.xy);
@@ -507,8 +534,10 @@ void csLight(uvec3 id)
     float coverage = cover.r;
     vec4 albedo = texelFetch(gAlbedo, pix, 0);
     if (albedo.a <= 0.0) {
-        imageStore(gOut, ivec2(pix), vec4(vec4(0.0, 0.0, 0.0, coverage)));
-        imageStore(gBloomOut, ivec2(pix), vec4(0.0));
+        imageStore(gOut, ivec2(pix), vec4(vec4(0.0, 0.0, 0.0, gSplit != 0 ? 0.0 : coverage)));
+        if (gSplit != 0 || gBloomOn != 0) {
+            imageStore(gBloomOut, ivec2(pix), vec4(0.0));
+        }
         return;
     }
     vec3 c = albedo.rgb / albedo.a;
@@ -575,26 +604,64 @@ void csLight(uvec3 id)
     // the art; they also feed the bloom.
     light = mix(light, max(light, vec3(1.0, 1.0, 1.0)), glow);
 
-    vec3 result = c * light;
-    vec3 hot = max(result - 1.0, 0.0);
-    if ((gFeatures & F_TONEMAP) != 0 && gTonemapCurve == 1) {
-        result = agx(result);
-    } else if ((gFeatures & F_TONEMAP) != 0) {
-        // The shoulder per channel turns bright reds orange (green catches
-        // up); on the largest channel it keeps the hue. A share of the
-        // per-channel result lets very bright pools still whiten.
-        float peak = max(result.r, max(result.g, result.b));
-        vec3 hue = peak > gKnee ? result * (shoulder(peak) / peak) : result;
-        vec3 white = vec3(shoulder(result.r), shoulder(result.g), shoulder(result.b));
-        result = mix(hue, white, gTonemapWhite);
+    if (gSplit != 0) {
+        // Lower-resolution light: the terms, upscaled and applied to the HD
+        // art by csCombine. Premultiplied by the pixel's validity (1) so
+        // bilinear sampling skips texels with no art.
+        imageStore(gOut, pix, vec4(light, 1.0));
+        imageStore(gBloomOut, pix, vec4(glow, emissive, saturate(unlit), level / 128.0));
+        return;
     }
-    result = mix(result, litOriginal(c, level), gMix);
-    // Unlit: interface, text, and screens and alarm lights (P6.2).
-    result = mix(result, c, saturate(unlit));
+
+    vec3 hot;
+    vec3 result = grade(c, light, level, unlit, hot);
     imageStore(gOut, ivec2(pix), vec4(vec4(result * albedo.a, coverage)));
     // Bloom source (P6.3): what glows. Palette-cycle colors at their own
     // color (screens, alarms, fire; slime at half), the glow heuristic's
     // flames and neon as lit, light above full white (hot pools) if asked for.
     vec3 bloom = c * emissive + result * glow * gBloomGlow + hot * gBloomHot;
-    imageStore(gBloomOut, ivec2(pix), vec4(vec4(bloom * albedo.a, 0.0)));
+    if (gBloomOn != 0) {
+        imageStore(gBloomOut, ivec2(pix), vec4(vec4(bloom * albedo.a, 0.0)));
+    }
+}
+
+// --- The light at a lower resolution, applied to the HD art ------------------
+// gAlbedo / gCoverage: the HD albedo and coverage at the target size; the light
+// terms from csLight (gSplit), bilinear. Texels with no art carry weight 0, so
+// the light doesn't bleed in from empty ground across a silhouette.
+void csCombine(uvec3 id)
+{
+    ivec2 pix = ivec2(id.xy);
+    if (any(greaterThanEqual(pix, gTargetSize))) {
+        return;
+    }
+    float coverage = texelFetch(gCoverage, pix, 0).r;
+    vec4 albedo = texelFetch(gAlbedo, pix, 0);
+    if (albedo.a <= 0.0) {
+        imageStore(gOut, pix, vec4(0.0, 0.0, 0.0, coverage));
+        if (gBloomOn != 0) {
+            imageStore(gBloomOut, pix, vec4(0.0));
+        }
+        return;
+    }
+    vec3 c = albedo.rgb / albedo.a;
+    vec2 uv = (vec2(pix) + 0.5) / gUpscale / vec2(textureSize(gLightA, 0));
+    vec4 la = textureLod(gLightA, uv, 0.0);
+    vec4 lb = textureLod(gLightB, uv, 0.0);
+    vec3 light = gAmbient * gAmbientColor; // no art in reach (a sliver lost in the lower resolution)
+    float glow = 0.0, emissive = 0.0, unlit = 0.0, level = 0.0;
+    if (la.a > 1e-3) {
+        light = la.rgb / la.a;
+        glow = lb.r / la.a;
+        emissive = lb.g / la.a;
+        unlit = lb.b / la.a;
+        level = lb.a / la.a * 128.0;
+    }
+    vec3 hot;
+    vec3 result = grade(c, light, level, unlit, hot);
+    imageStore(gOut, pix, vec4(result * albedo.a, coverage));
+    if (gBloomOn != 0) {
+        vec3 bloom = c * emissive + result * glow * gBloomGlow + hot * gBloomHot;
+        imageStore(gBloomOut, pix, vec4(bloom * albedo.a, 0.0));
+    }
 }

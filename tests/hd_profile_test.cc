@@ -49,6 +49,11 @@ int main()
     CHECK(o.size() == 3 && o[1].key == "mode" && o[1].value == "original");
     CHECK(o.size() == 3 && o[2].key == "quality" && o[2].value == "low");
     CHECK(parseProfileHd("[hd]\nenabled=2\n").empty());
+    for (const char* v : { "half", "1x", "full" }) {
+        auto r = parseProfileHd(std::string("[hd_light]\nresolution=") + v + "\n");
+        CHECK(r.size() == 1 && r[0].key == "resolution" && r[0].value == v);
+    }
+    CHECK(parseProfileHd("[hd_light]\nresolution=quarter\n").empty());
     CHECK(parseProfileHd("enabled=1\n").empty()); // no section
 
     Cfg on { { "hd.enabled", "1" }, { "hd_light.quality", "high" }, { "hd.hd_art_dir", "hd/2x" } };

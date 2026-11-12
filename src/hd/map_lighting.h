@@ -28,6 +28,18 @@ namespace fallout::hd {
 //   quality=high              off (original light) | low (no shadows, sun, AO,
 //                             bounce, bloom) | medium (no
 //                             bounce) | high (everything); Android default off
+//   resolution=full           full | 1x | half: size of the light buffers (the
+//                             G-buffer's normals and material, and the light
+//                             and bloom they give) relative to the 1x map.
+//                             full = the HD size (2x at tier 2; the original
+//                             look). 1x and half light at the 1x map's size
+//                             or half of it, then apply the light to the
+//                             full-size HD albedo in a cheap final pass
+//                             (bilinear, skipping texels with no art). Default
+//                             full on desktop, half on Android.
+//   timing=0                  1: log glFinish-bracketed ms per stage (G-buffer,
+//                             each light pass, resolve, post), averaged over
+//                             120 draws, once per window (developer)
 //   normals=1 colors=1 shadows=1 sun=1 ao=1 pool=1 tonemap=1 night=1 gi=1
 //                             one switch per effect (quality caps them)
 //   pool_gain=0.6             E * (1 + pool_gain * E) near strong lights
@@ -61,6 +73,9 @@ namespace fallout::hd {
 
 bool mapLightingInit();
 void mapLightingShutdown();
+
+// The light buffer size, 0 = full (the HD target's), 1 = "1x", 2 = "half".
+int mapLightingResolution();
 
 // The new light is on (mode=new) and its GPU parts are up.
 bool mapLightingActive();

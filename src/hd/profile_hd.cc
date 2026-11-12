@@ -31,6 +31,7 @@ namespace {
         if (section == "hd" && key == "enabled") return v == "0" || v == "1";
         if (section == "hd_light" && key == "mode") return v == "new" || v == "original";
         if (section == "hd_light" && key == "quality") return v == "off" || v == "low" || v == "medium" || v == "high";
+        if (section == "hd_light" && key == "resolution") return v == "full" || v == "1x" || v == "half";
         return false;
     }
 

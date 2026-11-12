@@ -13,7 +13,7 @@
 
     struct LightingConstants {
         int targetSize[2];
-        int scale;
+        float scale; // light buffer pixels per 1x map pixel
         int lightCount;
         int groundOrigin[2];
         int groundSize[2];
@@ -48,8 +48,12 @@
         float bloomHot;
         int sunSteps;
         float pad4;
+        int split; // csLight writes the light terms for csCombine
+        int bloomOn;
+        float upscale; // csCombine: HD pixels per light-buffer pixel
+        float pad5;
     };
-    static_assert(sizeof(LightingConstants) == 192, "LightingConstants must match the HLSL cbuffer");
+    static_assert(sizeof(LightingConstants) == 208, "LightingConstants must match the HLSL cbuffer");
 
     constexpr int kCascades = 4; // must match the shader
 
@@ -94,6 +98,10 @@
         bool newLight = true;
         int quality = 2; // 0 low, 1 medium, 2 high
         bool timing = false; // timing=1: per-stage timing log
+        // Light buffer size relative to the 1x map: 0 full (the HD size),
+        // 1 = "1x", 2 = "half". Lower ones light at that size and apply the
+        // light to the full-size HD albedo (csCombine).
+        int resolution = 0;
         unsigned int switches = kNormals | kColors | kShadows | kPool | kTonemap | kSun | kAo | kNight | kGi;
         int effectOff = -1; // Ctrl+F6: index into kEffects, -1 = none
         float poolGain = 0.6f;
@@ -191,6 +199,12 @@
         *switches = value != 0 ? (*switches | bit) : (*switches & ~bit);
     }
 
+    // "full" | "1x" | "half" (anything else: full) -> Settings::resolution.
+    int parseResolution(const std::string& text)
+    {
+        return text == "1x" ? 1 : (text == "half" ? 2 : 0);
+    }
+
     void loadSettings(Settings& s)
     {
         s.newLight = configString("mode", "new") != "original";
@@ -202,6 +216,11 @@
         std::string quality = configString("quality", "high");
 #endif
         s.quality = quality == "off" ? -1 : (quality == "low" ? 0 : (quality == "medium" ? 1 : 2));
+#ifdef __ANDROID__
+        s.resolution = parseResolution(configString("resolution", "half"));
+#else
+        s.resolution = parseResolution(configString("resolution", "full"));
+#endif
         int timing = 0;
         configGetInt(&gGameConfig, "hd_light", "timing", &timing, 0);
         s.timing = timing != 0;

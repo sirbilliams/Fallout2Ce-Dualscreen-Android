@@ -12,6 +12,10 @@ R"glsl(layout(binding=5)uniform highp sampler2D gShape;
 
 uniform vec4 gCategory[9];
 uniform float gDetailScale;
+// Output pixels cover gK x gK target pixels (lower-resolution light): each is
+// shaded at its block's middle texel and stored at `lo`, a gLoSize target.
+uniform int gK;
+uniform ivec2 gLoSize;
 uniform ivec2 gOccluderOrigin,gOccluderSize;
 
 struct GbufOut {
@@ -258,14 +262,20 @@ void main(){
     if(gMode==5){ivec2 q=ivec2(gl_GlobalInvocationID.xy);if(all(lessThan(q,gOccluderSize)))imageStore(gOccluders,q,uvec4(heights[q.y*gOccluderSize.x+q.x]));return;}
     Sprite s=gSprites[gSpriteBase];
     if(gMode==4){if(gl_GlobalInvocationID.y!=0u)return;csOccluders(uvec3(0),uvec3(gl_GlobalInvocationID.x,0,0));return;}
-    ivec2 pix=s.rect.xy*gScale+ivec2(gl_GlobalInvocationID.xy);
-    if(any(lessThan(pix,ivec2(0)))||any(greaterThanEqual(pix,gTargetSize))||any(greaterThanEqual(pix,(s.rect.zw+1)*gScale)))return;
+    ivec2 lo=ivec2(floor(vec2(s.rect.xy*gScale)/float(gK)))+ivec2(gl_GlobalInvocationID.xy);
+    ivec2 pix=min(lo*gK+gK/2,gTargetSize-1);
+    if(any(lessThan(lo,ivec2(0)))||any(greaterThanEqual(lo,gLoSize))||any(lessThan(pix,s.rect.xy*gScale))||any(greaterThanEqual(pix,(s.rect.zw+1)*gScale)))return;
     GbufOut o=psGbuffer(s,pix);
-    imageStore(output0,pix,o.albedo+texelFetch(previous0,pix,0)*(1.0-o.albedo.a));
-    imageStore(output1,pix,o.baseNormal+texelFetch(previous1,pix,0)*(1.0-o.baseNormal.a));
-    imageStore(output2,pix,o.detailNormal+texelFetch(previous2,pix,0)*(1.0-o.detailNormal.a));
-    imageStore(output3,pix,o.surface+texelFetch(previous3,pix,0)*(1.0-o.surface.a));
-    imageStore(output4,pix,o.material+texelFetch(previous4,pix,0)*(1.0-o.material.a));
-    imageStore(output5,pix,o.coverage+texelFetch(previous5,pix,0)*(1.0-o.coverage.a));
+#ifdef GBUF_HD_ALBEDO
+    imageStore(output0,lo,o.albedo+texelFetch(previous0,lo,0)*(1.0-o.albedo.a));
+    imageStore(output5,lo,o.coverage+texelFetch(previous5,lo,0)*(1.0-o.coverage.a));
+#else
+    imageStore(output0,lo,o.albedo+texelFetch(previous0,lo,0)*(1.0-o.albedo.a));
+    imageStore(output1,lo,o.baseNormal+texelFetch(previous1,lo,0)*(1.0-o.baseNormal.a));
+    imageStore(output2,lo,o.detailNormal+texelFetch(previous2,lo,0)*(1.0-o.detailNormal.a));
+    imageStore(output3,lo,o.surface+texelFetch(previous3,lo,0)*(1.0-o.surface.a));
+    imageStore(output4,lo,o.material+texelFetch(previous4,lo,0)*(1.0-o.material.a));
+    imageStore(output5,lo,o.coverage+texelFetch(previous5,lo,0)*(1.0-o.coverage.a));
+#endif
 }
 )glsl"
