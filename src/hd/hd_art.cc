@@ -1,4 +1,5 @@
 #include "hd/hd_art.h"
+#include "hd/art_config.h"
 
 #ifdef FALLOUT_HD
 
@@ -828,12 +829,7 @@ bool hdArtInit()
     }
 
     gState = new State();
-    char* dir = nullptr;
-    configGetString(&gGameConfig, "hd", "hd_art_dir", &dir, "hd");
-    gState->root = dir != nullptr ? dir : "hd";
-    while (!gState->root.empty() && (gState->root.back() == '/' || gState->root.back() == '/')) {
-        gState->root.pop_back();
-    }
+    gState->root = hdArtConfiguredDir();
     configGetInt(&gGameConfig, "hd", "vram_budget_mb", &gState->budgetMb, 1024);
     int force = 0;
     configGetInt(&gGameConfig, "hd_debug", "hd_force_original", &force, 0);

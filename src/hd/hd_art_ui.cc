@@ -1,4 +1,5 @@
 #include "hd_art_ui.h"
+#include "hd/art_config.h"
 
 #include "../game_config.h"
 
@@ -19,13 +20,7 @@ bool uiArtActive()
         bool enabled = false;
         configGetBool(&gGameConfig, "hd", "enabled", &enabled, false);
         if (enabled) {
-            int tier = 2;
-            configGetInt(&gGameConfig, "hd", "tier", &tier, 2);
-            char* dir = nullptr;
-            if (!configGetString(&gGameConfig, "hd", "hd_art_dir", &dir, "hd") || dir == nullptr || *dir == '\0') {
-                dir = const_cast<char*>("hd");
-            }
-            gArt.open(dir, tier);
+            gArt.open(hdArtConfiguredDir(), hdArtConfiguredTier());
         }
     }
     return gArt.isOpen();

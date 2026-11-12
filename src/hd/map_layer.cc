@@ -7,6 +7,7 @@
 #include "hd/draw_recorder.h"
 #include "hd/gl_private.h"
 #include "hd/hd_art.h"
+#include "hd/art_config.h"
 #include "hd/map_present.h"
 #include "hd/map_renderer.h"
 #include "hd/palette_fit.h"
@@ -139,9 +140,7 @@ MapComposite mapLayerPrepare(int scale, bool selfTest)
     int w = worldViewGetWidth(), h = worldViewGetHeight();
     if (w <= 0 || h <= 0) return c;
     scale = std::clamp(scale, 1, 4);
-    int tier = 2;
-    configGetInt(&gGameConfig, "hd", "tier", &tier, 2);
-    tier = std::clamp(tier, 2, 4);
+    int tier = hdArtConfiguredTier();
     bool arrived = hdArtPoll();
     bool rebuild = !g->valid || drawMapDirty() || arrived || g->tier != tier || g->width != w || g->height != h;
     if (rebuild) {

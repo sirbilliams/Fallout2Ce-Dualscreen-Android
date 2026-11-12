@@ -69,6 +69,9 @@ namespace {
 
     bool gInitialized = false;
     bool gEnabled = false;
+    // [hd] developer=1: capture/self-test/stress hotkeys. Separate from [hd] enabled
+    // (the user toggle), which Dustlight upstream also used for developer mode.
+    bool gDeveloper = false;
     std::string gCaptureDir;
     ScriptedCapture gScriptedCapture;
     std::vector<InjectedKey> gInjectedKeys;
@@ -357,6 +360,7 @@ void init(bool isMapper)
         exit();
     }
     gEnabled = !isMapper && configInt(kSection, "enabled", 0) != 0;
+    gDeveloper = gEnabled && configInt(kSection, "developer", 0) != 0;
     gCaptureDir = configString(kSection, "capture_dir", "hd_captures");
 
     if (!isMapper) {
@@ -409,6 +413,7 @@ void exit()
     gUiWalk = false;
     gInitialized = false;
     gEnabled = false;
+    gDeveloper = false;
 }
 
 bool enabled()
@@ -438,7 +443,7 @@ bool handleKey(int keyCode)
         return true;
     }
 #endif
-    if (!gEnabled) {
+    if (!gEnabled || !gDeveloper) {
         return false;
     }
 
