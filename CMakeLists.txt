@@ -1004,3 +1004,15 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
     endif()
     set_tests_properties(sfall_arrays_test PROPERTIES TIMEOUT 10)
 endif()
+
+# L1 replaces this: temporary L2 option and link scaffold, no HD renderer yet.
+option(HD "Enable Dustlight HD hooks (temporary stubs until L1 merges)" OFF)
+if(HD)
+    foreach(hd_target fallout2-ce mapper-ce)
+        if(TARGET ${hd_target})
+            target_include_directories(${hd_target} PRIVATE "src")
+            target_compile_definitions(${hd_target} PRIVATE FALLOUT_HD)
+            target_sources(${hd_target} PRIVATE "src/hd/hooks_stub.cc")
+        endif()
+    endforeach()
+endif()
