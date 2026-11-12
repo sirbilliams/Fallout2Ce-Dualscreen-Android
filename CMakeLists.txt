@@ -408,6 +408,7 @@ set(FALLOUT_PLATFORM_SOURCES
     "src/mui_options.cc"
     "src/mui_scenes.cc"
     "src/mui_worldmap.cc"
+    "src/mui_mods.cc"
     "src/mui_preferences.cc"
     "src/mui_loadsave.cc"
     "src/mui_notify.cc"

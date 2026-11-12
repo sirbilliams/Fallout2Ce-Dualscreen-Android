@@ -28,6 +28,7 @@ namespace {
     constexpr int kTextSettings = 217;
     constexpr int kTextExit = 218;
     constexpr int kTextNewGame = 290;
+    constexpr int kTextMods = 380;
     constexpr int kTextIntro = 291;
     constexpr int kTextCredits = 292;
 
@@ -142,7 +143,7 @@ namespace {
         float smallHeight = ui.dp(38.0f);
         float footerHeight = ui.dp(30.0f);
 
-        float height = (continueSlot != -1 ? continueHeight + gap : 0.0f) + (buttonHeight + gap) * 3.0f + smallHeight;
+        float height = (continueSlot != -1 ? continueHeight + gap : 0.0f) + (buttonHeight + gap) * 4.0f + smallHeight;
         float y = column.y + std::max((column.h - footerHeight - height) / 2.0f, 0.0f);
 
         if (continueSlot != -1) {
@@ -173,6 +174,7 @@ namespace {
             { "mainmenu.new", kTextNewGame, "New game", MAIN_MENU_NEW_GAME },
             { "mainmenu.load", kTextLoadGame, "Load game", MAIN_MENU_LOAD_GAME },
             { "mainmenu.settings", kTextSettings, "Settings", MAIN_MENU_OPTIONS },
+            { "mainmenu.mods", kTextMods, "Mods", MAIN_MENU_MODS },
         };
         for (const Button& button : buttons) {
             if (ui.button(button.id, { column.x, y, column.w, buttonHeight }, muiDecodeGameText(muiText(button.textId, button.fallback)))) {
