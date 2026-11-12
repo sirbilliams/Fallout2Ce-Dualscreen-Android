@@ -30,6 +30,7 @@
 #include "map.h"
 #include "mouse.h"
 #include "mui.h"
+#include "mui_game_picker.h"
 #include "object.h"
 #include "palette.h"
 #include "platform_compat.h"
@@ -123,7 +124,7 @@ int falloutMain(int argc, char** argv)
     }
 
     if (mainMenuWindowInit() == 0) {
-        bool done = false;
+        bool done = muiIsEnabled() && !muiGamePickerRun();
         while (!done) {
             keyboardReset();
             if (!backgoundSoundIsPlaying()) {

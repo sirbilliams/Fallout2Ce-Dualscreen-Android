@@ -1,0 +1,292 @@
+#include "mui_game_picker.h"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <fstream>
+#include "art.h"
+#include "color.h"
+#include "dbox.h"
+#include "debug.h"
+#include "dev_autotest.h"
+#include "fps_limiter.h"
+#include "game.h"
+#include "game_catalog.h"
+#include "input.h"
+#include "kb.h"
+#include "mui.h"
+#include "mui_pad.h"
+#include "palette.h"
+#include "svga.h"
+#include "settings.h"
+#ifdef __ANDROID__
+#include <jni.h>
+#endif
+
+namespace fallout {
+namespace {
+std::u32string text(int id, const char* fallback)
+{
+    return muiDecodeGameText(muiText(id, fallback));
+}
+unsigned long long baseFileMiB()
+{
+    unsigned long long bytes = 0;
+    for (const auto& path : {settings.system.master_dat_path, settings.system.critter_dat_path}) {
+        std::ifstream file(path, std::ios::binary | std::ios::ate);
+        if (file && file.tellg() > 0) bytes += static_cast<unsigned long long>(file.tellg());
+    }
+    return bytes / (1024 * 1024);
+}
+struct PickerState {
+    unsigned long long baseMiB = baseFileMiB();
+    int page = gamePickerLoadPage();
+    int previous = page;
+    unsigned int changed = 0;
+    bool play = false;
+    bool mods = false;
+    bool stub = false;
+    bool install = false;
+    bool quit = false;
+    // Set false while another modal owns input (Mods or notice).
+    bool interactive = true;
+    void select(int next)
+    {
+        next = (next + 8) % 8;
+        if (next == page) return;
+        previous = page;
+        page = next;
+        changed = uiTicks();
+        if (!gamePickerSavePage(page)) debugPrint("Picker selection could not be saved\n");
+    }
+};
+PickerState* active = nullptr;
+
+// Stable JNI entry points for step 3. Both are deliberately inert in Java
+// in step 1; the engine presents the same localized notice on every platform.
+void requestGameAction(const GameCatalogEntry& entry)
+{
+#ifdef __ANDROID__
+    JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+    jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+    if (!env || !activity) return;
+    jclass cls = env->GetObjectClass(activity);
+    bool project = entry.downloadKind == GameDownloadKind::ProjectPage;
+    jmethodID method = env->GetMethodID(cls,
+        project ? "openGameProjectPage" : "installGame", "(Ljava/lang/String;Ljava/lang/String;)V");
+    if (method) {
+        jstring id = env->NewStringUTF(entry.id);
+        jstring url = env->NewStringUTF(entry.projectUrl);
+        env->CallVoidMethod(activity, method, id, url);
+        env->DeleteLocalRef(id);
+        env->DeleteLocalRef(url);
+    }
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    env->DeleteLocalRef(cls);
+    env->DeleteLocalRef(activity);
+#else
+    (void)entry;
+#endif
+}
+
+class PickerScreen : public MuiScreen {
+public:
+    PickerScreen(PickerState& state, MuiSurface target) : state(state), target(target) { }
+    MuiSurface surface() override { return target; }
+    bool coversScreen() override { return true; }
+    void back() override { state.quit = true; }
+    void build(MuiContext& ui) override;
+private:
+    void artwork(MuiContext& ui, MuiRect rect, int index);
+    void controls(MuiContext& ui, MuiRect rect, int index, bool enabled);
+    PickerState& state;
+    MuiSurface target;
+    bool wasDown = false;
+    float startX = 0, startY = 0;
+};
+
+void PickerScreen::artwork(MuiContext& ui, MuiRect rect, int index)
+{
+    ui.mark("picker.swipe.art", {rect.x, rect.y, rect.w, rect.h * 0.4f});
+    const auto& entry = gameCatalog()[index];
+    const auto& theme = muiTheme();
+    muiFillGradient(rect, theme.background, theme.well, theme.panel, theme.background);
+    if (index == 0) {
+        int w = 0, h = 0;
+        SDL_Texture* image = muiPictureTexture(InterfaceFrmId("HR_MAINMENU.FRM"), &w, &h);
+        int left = 0;
+        if (!image) {
+            image = muiPictureTexture(FrmId(InterfaceFrameId::MainMenuBackgroundImage), &w, &h);
+            left = 215; // Omit the vanilla menu's baked-in button plates.
+        }
+        if (image && h > 0 && w > left) {
+            MuiRect picture = { rect.x + rect.w * 0.35f, rect.y, rect.w * 0.65f, rect.h };
+            muiDrawTexturePart(image, { left, 0, w - left, h }, muiFitRect(picture, w - left, h));
+            muiFillHorizontalGradient(rect, theme.background, theme.background.withAlpha(0));
+        }
+    }
+    MuiRect title = { rect.x + ui.dp(22), rect.y + rect.h * 0.28f, rect.w - ui.dp(44), rect.h * 0.3f };
+    auto label = muiDecodeUtf8(entry.title);
+    muiDrawTextAligned(label, title, muiFitTextSize(label, title.w, std::max(ui.dp(52), rect.w * 0.065f), ui.dp(20)), theme.accent, MuiAlign::Start, MuiAlign::Center);
+    if (entry.experimental) {
+        muiDrawTextAligned(text(405, "Experimental"), { title.x, title.bottom(), title.w, ui.dp(30) }, ui.dp(16), theme.warning, MuiAlign::Start, MuiAlign::Center);
+    }
+    auto credit = text(408, "by") + U" " + muiDecodeUtf8(entry.creator) + U" - " + muiDecodeUtf8(entry.projectUrl);
+    MuiRect footer = { title.x, rect.bottom() - ui.dp(68), title.w, ui.dp(60) };
+    float size = std::max(ui.dp(14), rect.w * 0.01f);
+    for (const auto& line : muiWrapText(credit, footer.w, size)) {
+        muiDrawText(line, footer.x, footer.y, size, theme.textDim);
+        footer.y += muiLineHeight(size);
+    }
+}
+
+void PickerScreen::controls(MuiContext& ui, MuiRect rect, int index, bool enabled)
+{
+    const auto& theme = muiTheme();
+    const auto& entry = gameCatalog()[index];
+    if (enabled) ui.mark("picker.swipe.controls", {rect.x, rect.y, rect.w, rect.h * 0.4f});
+    MuiRect inner = rect.inset(ui.dp(18));
+    auto label = muiDecodeUtf8(entry.title);
+    muiDrawTextAligned(label, {inner.x, inner.y, inner.w, inner.h * 0.16f}, muiFitTextSize(label, inner.w, ui.dp(26), ui.dp(14)), theme.accent, MuiAlign::Center, MuiAlign::Center);
+    std::u32string status = index == 0 ? text(399, "Installed") : text(400, "Not installed");
+    muiDrawTextAligned(status, {inner.x, inner.y + inner.h * 0.17f, inner.w, inner.h * 0.09f}, ui.dp(18), theme.text, MuiAlign::Center, MuiAlign::Center);
+    char installed[160];
+    std::snprintf(installed, sizeof(installed), muiText(409, "Version: unknown | Base files: %llu MiB"), state.baseMiB);
+    auto details = index == 0 ? muiDecodeGameText(installed) : text(410, "Version: not installed | Size: download pending");
+    muiDrawTextAligned(details, {inner.x, inner.y + inner.h * 0.27f, inner.w, inner.h * 0.08f}, muiFitTextSize(details, inner.w, ui.dp(13), ui.dp(9)), theme.textDim, MuiAlign::Center, MuiAlign::Center);
+    auto lang = index == 0 ? text(411, "Language: ") + muiDecodeUtf8(settings.system.language.c_str())
+                           : muiDecodeUtf8(muiText(411 + index, entry.languageNote));
+    muiDrawTextAligned(lang, {inner.x, inner.y + inner.h * 0.36f, inner.w, inner.h * 0.08f}, muiFitTextSize(lang, inner.w, ui.dp(14), ui.dp(9)), theme.textDim, MuiAlign::Center, MuiAlign::Center);
+    float height = std::min(ui.dp(56), inner.h * 0.14f);
+    MuiRect action = {inner.x, inner.y + inner.h * 0.49f, inner.w, height};
+    auto button = [&](const char* id, MuiRect r, std::u32string value, bool primary) {
+        // Outgoing pages are painted without registering interactive widgets.
+        if (!enabled) {
+            muiFillRoundRect(r, ui.dp(theme.radius), theme.button);
+            muiDrawTextAligned(value, r, ui.dp(18), theme.textDim, MuiAlign::Center, MuiAlign::Center);
+            return false;
+        }
+        return ui.button(id, r, value, primary ? MuiButtonStyle::Primary : MuiButtonStyle::Normal);
+    };
+    if (index == 0) {
+        if (button("picker.play", action, text(398, "Play"), true)) state.play = true;
+        if (enabled) ui.padPrefer("picker.play");
+    } else {
+        auto caption = entry.downloadKind == GameDownloadKind::ProjectPage ? text(402, "Open project page") : text(401, "Install");
+        if (button("picker.install", action, caption, true)) { state.stub = true; state.install = true; }
+        if (enabled) ui.padPrefer("picker.install");
+    }
+    action.y += height + ui.dp(10);
+    if (button("picker.mods", action, text(380, "Mods"), false)) {
+        if (index == 0) state.mods = true;
+        else state.stub = true;
+    }
+    // Large touch targets with small illuminated page dots.
+    float dot = std::min(inner.w / 8, ui.dp(38));
+    float x = inner.centerX() - dot * 4;
+    for (int i = 0; i < 8; ++i) {
+        MuiRect cell = { x + i * dot, inner.bottom() - ui.dp(40), dot, ui.dp(36) };
+        if (enabled && ui.touchable("picker.page." + std::to_string(i), cell)) state.select(i);
+        muiFillCircle(cell.centerX(), cell.centerY(), ui.dp(i == index ? 5 : 3), i == index ? theme.accent : theme.textDim);
+    }
+}
+
+void PickerScreen::build(MuiContext& ui)
+{
+    muiFillRect(ui.screenRect(), muiTheme().background);
+    bool down = ui.pointerDown();
+    if (ui.interactive() && state.interactive) {
+        if (down && !wasDown) { startX = ui.pointerX(); startY = ui.pointerY(); }
+        if (!down && wasDown) {
+            float dx = ui.pointerX() - startX, dy = ui.pointerY() - startY;
+            if (std::abs(dx) > ui.dp(50) && std::abs(dx) > std::abs(dy) * 1.3f) state.select(state.page + (dx < 0 ? 1 : -1));
+        }
+    }
+    wasDown = down;
+    float t = std::min(1.0f, (uiTicks() - state.changed) / 240.0f);
+    float ease = t * t * (3 - 2 * t);
+    int direction = (state.page == (state.previous + 1) % 8) ? 1 : -1;
+    MuiRect safe = ui.safeRect();
+    bool split = muiBottomActive();
+    auto draw = [&](int page, float offset, bool enabled) {
+        MuiRect area = safe; area.x += offset;
+        muiPushClip(safe);
+        if (target == MuiSurface::Bottom) controls(ui, area, page, enabled);
+        else if (split) artwork(ui, area, page);
+        else {
+            MuiRect art = {area.x, area.y, area.w * 0.57f, area.h};
+            artwork(ui, art, page);
+            controls(ui, {art.right(), area.y, area.w - art.w, area.h}, page, enabled);
+        }
+        muiPopClip();
+    };
+    if (t < 1 && state.previous != state.page) draw(state.previous, -direction * ease * safe.w, false);
+    draw(state.page, direction * (1 - ease) * safe.w, t >= 1 && state.interactive);
+}
+} // namespace
+
+bool muiGamePickerMove(int direction)
+{
+    if (!active || !active->interactive) return false;
+    active->select(active->page + direction);
+    return true;
+}
+
+bool muiGamePickerAccept(MuiSurface surface)
+{
+    if (!active || !active->interactive) return false;
+    const auto& focus = muiPadFocusId(surface);
+    // A works on the first press, including when focus was on the art surface.
+    const auto& widgets = muiPadWidgets(surface);
+    bool validFocus = std::any_of(widgets.begin(), widgets.end(), [&](const MuiPadWidget& widget) { return widget.id == focus; });
+    if (!validFocus || focus == "picker.play" || focus == "picker.install") {
+        if (active->page == 0) active->play = true;
+        else { active->stub = true; active->install = true; }
+        return true;
+    }
+    return false;
+}
+
+bool muiGamePickerRun()
+{
+    PickerState state;
+    // No initial slide; both surfaces share the same transition clock.
+    state.changed = uiTicks() - 240;
+    PickerScreen top(state, MuiSurface::Top), bottom(state, MuiSurface::Bottom);
+    active = &state;
+    muiPush(&top);
+    if (muiBottomActive()) muiPush(&bottom);
+    paletteFadeTo(_cmap);
+    while (!state.play && !state.quit && _game_user_wants_to_quit == GAME_QUIT_REQUEST_NONE) {
+        sharedFpsLimiter.mark();
+        int key = inputGetInput();
+        if (key == KEY_ESCAPE) state.quit = true;
+        if (key == KEY_ARROW_LEFT) state.select(state.page - 1);
+        if (key == KEY_ARROW_RIGHT) state.select(state.page + 1);
+        if (key == KEY_RETURN && state.page == 0) state.play = true;
+        devAutotestTick();
+        renderPresent();
+        if (state.mods || state.stub) {
+            state.interactive = false;
+            if (state.mods) {
+                state.mods = false;
+                muiModsScreenRun();
+                if (muiModsRestartRequested()) state.quit = true;
+            } else {
+                state.stub = false;
+                if (state.install) requestGameAction(gameCatalog()[state.page]);
+                state.install = false;
+                const char* body[] = { muiText(404, "Coming in the next update") };
+                showDialogBox(gameCatalog()[state.page].title, body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, 0);
+            }
+            state.interactive = true;
+        }
+        sharedFpsLimiter.throttle();
+    }
+    if (state.play && !gamePickerSavePage(state.page)) debugPrint("Picker selection could not be saved\n");
+    muiRemove(&bottom);
+    muiRemove(&top);
+    active = nullptr;
+    return state.play && !state.quit;
+}
+} // namespace fallout
