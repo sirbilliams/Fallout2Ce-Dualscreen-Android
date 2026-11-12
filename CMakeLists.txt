@@ -978,6 +978,7 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
 
     ce_add_test(save_catalog_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(suspend_slot_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
+    ce_add_test(suspend_gate_test)
     ce_add_test(sound_tempo_test "src/sound_tempo.cc")
     ce_add_test(touch_gesture_test "src/touch.cc")
     target_compile_definitions(touch_gesture_test PRIVATE FALLOUT_FORCE_TOUCH_ONLY)
