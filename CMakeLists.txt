@@ -32,6 +32,8 @@ if(CMAKE_C_COMPILER_ID MATCHES "Clang|GNU")
         "-ffile-prefix-map=${CMAKE_BINARY_DIR}/=")
 endif()
 
+option(HD "Build the Dustlight HD map modules" OFF)
+
 option(FALLOUT_VENDORED "Use vendored third-party libraries" ON)
 option(FALLOUT_AUDIO_OGG "Enable OGG decoding with stb_vorbis when available" ON)
 # The touch recorder and the game journal always on in the touch-only build
@@ -1003,4 +1005,40 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
         target_link_options(sfall_arrays_test PRIVATE -Wl,--gc-sections)
     endif()
     set_tests_properties(sfall_arrays_test PROPERTIES TIMEOUT 10)
+endif()
+
+# L1 portable core plus the GL implementation files supplied by L3/L4.
+# Unit-test sources stay in src/hd/tests to keep this lane inside src/hd.
+if(HD)
+    file(GLOB FALLOUT_HD_SOURCES CONFIGURE_DEPENDS "src/hd/*.cc")
+    target_sources(${EXECUTABLE_NAME} PRIVATE ${FALLOUT_HD_SOURCES})
+    target_compile_definitions(${EXECUTABLE_NAME} PRIVATE FALLOUT_HD)
+    target_include_directories(${EXECUTABLE_NAME} PRIVATE "src" "third_party/khronos")
+    if(ANDROID)
+        target_link_libraries(${EXECUTABLE_NAME} GLESv3)
+    else()
+        find_library(FALLOUT_GLES_LIBRARY NAMES GLESv2 REQUIRED)
+        target_link_libraries(${EXECUTABLE_NAME} ${FALLOUT_GLES_LIBRARY})
+    endif()
+    # Enable controls as their lane implementations become available, without
+    # fake GPU implementations in the portable core.
+    foreach(backend MAP_LAYER MAP_LIGHTING MAP_POST)
+        string(TOLOWER "${backend}" backend_file)
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/hd/${backend_file}.cc")
+            target_compile_definitions(${EXECUTABLE_NAME} PRIVATE HD_HAVE_${backend})
+        endif()
+    endforeach()
+    if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripten")
+        add_executable(hd_core_test
+            src/hd/tests/core_test.cc
+            src/hd/draw_recorder.cc src/hd/light_scene.cc src/hd/sprite_shape.cc
+            src/hd/cycle_scan.cc src/hd/palette_fit.cc
+            src/hd/json_reader.cc src/hd/json_writer.cc)
+        target_include_directories(hd_core_test PRIVATE src ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+        target_link_libraries(hd_core_test ${SDL2_LIBRARIES})
+        foreach(module draw_recorder light_scene sprite_shape cycle_scan palette_fit json_roundtrip)
+            add_test(NAME hd_${module} COMMAND hd_core_test ${module})
+            set_tests_properties(hd_${module} PROPERTIES TIMEOUT 10)
+        endforeach()
+    endif()
 endif()
