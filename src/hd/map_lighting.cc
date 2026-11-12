@@ -23,13 +23,15 @@ namespace {
 #include "map_lighting_uniforms.inc"
     struct State {
         Settings settings;
-        GLuint programs[9] = {}, hexes = 0, lights = 0;
+        GLuint programs[9] = {}, hexes = 0, lights = 0, fieldHexes = 0, fieldTiles = 0;
         compute::Texture gbuffer[6], lightA, lightB, hdAlbedo, hdCover, occluders, occluderMax, field, sunAo, shadows, giScene, cascades[4], fluence, bloom;
         bool bloomValid = false;
         ~State()
         {
             glDeleteBuffers(1, &hexes);
             glDeleteBuffers(1, &lights);
+            glDeleteBuffers(1, &fieldHexes);
+            glDeleteBuffers(1, &fieldTiles);
             for (auto p : programs)
                 glDeleteProgram(p);
         }
@@ -87,26 +89,79 @@ namespace {
     }
     // Replacing additive Gaussian splats with a gather avoids requiring floating
     // point blend support on GLES. Same finite 3-sigma footprint and weights.
+    // The hexes are binned on the CPU into square tiles (side >= 3 sigma, the
+    // footprint's half width), so a texel tests only the 3x3 tiles around it:
+    // the same hexes pass the footprint test as when looping over all of them.
     const char kFieldShader[] = R"glsl(#version 310 es
 precision highp float;
 precision highp int;
 layout(local_size_x=8,local_size_y=8) in;
 struct Hex {vec2 pos;float intensity;float pad;};
-layout(std430,binding=0) readonly buffer Hexes {Hex hexes[];};
+layout(std430,binding=1) readonly buffer Hexes {Hex hexes[];};
+layout(std430,binding=2) readonly buffer Tiles {uvec2 tiles[];}; // start, count per tile
 layout(rgba16f,binding=0) writeonly uniform highp image2D outputField;
-uniform ivec2 size,origin;
-uniform float sigma;
-uniform int count;
+uniform ivec2 size,origin,tileGrid;
+uniform vec2 gridMin;
+uniform float sigma,tileSize;
 void csField(uvec3 id){
  if(any(greaterThanEqual(ivec2(id.xy),size)))return;
  vec2 p=(vec2(id.xy)+0.5)*2.0-vec2(origin);vec2 sum=vec2(0.0);
- for(int i=0;i<count;i++){
-  vec2 d=(p-hexes[i].pos)*vec2(1.0,2.0);
-  if(any(greaterThan(abs(d),vec2(3.0*sigma))))continue;
-  float w=exp(-dot(d,d)/(2.0*sigma*sigma));sum+=vec2(w*hexes[i].intensity,w);
+ ivec2 t0=ivec2(floor((p-gridMin)/tileSize));
+ for(int ty=max(t0.y-1,0);ty<=min(t0.y+1,tileGrid.y-1);ty++)
+ for(int tx=max(t0.x-1,0);tx<=min(t0.x+1,tileGrid.x-1);tx++){
+  uvec2 range=tiles[ty*tileGrid.x+tx];
+  for(uint k=range.x;k<range.x+range.y;k++){
+   vec2 d=(p-hexes[k].pos)*vec2(1.0,2.0);
+   if(any(greaterThan(abs(d),vec2(3.0*sigma))))continue;
+   float w=exp(-dot(d,d)/(2.0*sigma*sigma));sum+=vec2(w*hexes[k].intensity,w);
+  }
  }
  imageStore(outputField,ivec2(id.xy),vec4(sum,0.0,0.0));
 })glsl";
+    struct FieldBins {
+        std::vector<GpuHex> hexes;
+        std::vector<unsigned> tiles; // start, count pairs
+        int grid[2] = { 1, 1 };
+        float min[2] = { 0, 0 };
+        float size = 1;
+    };
+    FieldBins binHexes(const std::vector<GpuHex>& hexes, float sigma)
+    {
+        FieldBins b;
+        b.size = std::max(3.0f * sigma * 1.01f, 4.0f);
+        if (hexes.empty()) {
+            b.tiles = { 0, 0 };
+            return b;
+        }
+        float lo[2] = { hexes[0].pos[0], hexes[0].pos[1] }, hi[2] = { lo[0], lo[1] };
+        for (const GpuHex& h : hexes)
+            for (int k = 0; k < 2; k++) {
+                lo[k] = std::min(lo[k], h.pos[k]);
+                hi[k] = std::max(hi[k], h.pos[k]);
+            }
+        for (int k = 0; k < 2; k++) {
+            b.min[k] = lo[k];
+            b.grid[k] = static_cast<int>((hi[k] - lo[k]) / b.size) + 1;
+        }
+        auto tileOf = [&](const GpuHex& h) {
+            int x = std::min(static_cast<int>((h.pos[0] - b.min[0]) / b.size), b.grid[0] - 1);
+            int y = std::min(static_cast<int>((h.pos[1] - b.min[1]) / b.size), b.grid[1] - 1);
+            return y * b.grid[0] + x;
+        };
+        b.tiles.assign(size_t(b.grid[0]) * b.grid[1] * 2, 0);
+        for (const GpuHex& h : hexes)
+            b.tiles[tileOf(h) * 2 + 1]++;
+        unsigned start = 0;
+        std::vector<unsigned> next(size_t(b.grid[0]) * b.grid[1]);
+        for (size_t t = 0; t < next.size(); t++) {
+            b.tiles[t * 2] = next[t] = start;
+            start += b.tiles[t * 2 + 1];
+        }
+        b.hexes.resize(hexes.size());
+        for (const GpuHex& h : hexes)
+            b.hexes[next[tileOf(h)]++] = h;
+        return b;
+    }
     void pass(int index, const LightingConstants& c, int w, int h, int z = 1)
     {
         GLuint p = gState->programs[index];
@@ -329,8 +384,14 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     glUseProgram(p);
     glUniform2i(glGetUniformLocation(p, "size"), t.field.width, t.field.height);
     glUniform2i(glGetUniformLocation(p, "origin"), origin[0], origin[1]);
-    glUniform1f(glGetUniformLocation(p, "sigma"), std::max(s.fieldSigma, 0.01f));
-    glUniform1i(glGetUniformLocation(p, "count"), hexes.size());
+    float sigma = std::max(s.fieldSigma, 0.01f);
+    glUniform1f(glGetUniformLocation(p, "sigma"), sigma);
+    FieldBins bins = binHexes(hexes, sigma);
+    compute::buffer(t.fieldHexes, 1, bins.hexes.empty() ? nullptr : bins.hexes.data(), bins.hexes.size() * sizeof(GpuHex));
+    compute::buffer(t.fieldTiles, 2, bins.tiles.data(), bins.tiles.size() * sizeof(unsigned));
+    glUniform2i(glGetUniformLocation(p, "tileGrid"), bins.grid[0], bins.grid[1]);
+    glUniform2fv(glGetUniformLocation(p, "gridMin"), 1, bins.min);
+    glUniform1f(glGetUniformLocation(p, "tileSize"), bins.size);
     compute::image(0, t.field);
     compute::dispatch(t.field.width, t.field.height);
     mapLightingTimingMark("field");
