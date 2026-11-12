@@ -193,7 +193,13 @@
     void loadSettings(Settings& s)
     {
         s.newLight = configString("mode", "new") != "original";
+#ifdef __ANDROID__
+        // The new light is too slow on phone GPUs at 2x (Thor, 2026-11-12:
+        // low still lags), so Android starts with the original light.
+        std::string quality = configString("quality", "off");
+#else
         std::string quality = configString("quality", "high");
+#endif
         s.quality = quality == "off" ? -1 : (quality == "low" ? 0 : (quality == "medium" ? 1 : 2));
         for (const Effect& effect : kEffects) {
             configSwitch(effect.name, effect.bit, &s.switches);
