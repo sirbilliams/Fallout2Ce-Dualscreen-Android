@@ -222,7 +222,7 @@ int main() {
         allOff();
         init();
         p=draw();
-        for(int y=0;y<H;y++)for(int x=0;x<W;x++)require(std::abs(at(p,x,y)-.25f)<.001f,"all off changed field");
+        for(int y=0;y<H;y++)for(int x=0;x<W;x++)require(at(p,x,y)==.25f,"all off changed field");
         lampField();
         init();
         wall=false;
