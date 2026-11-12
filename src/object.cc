@@ -1,5 +1,10 @@
 #include "object.h"
 
+#ifdef FALLOUT_HD
+#include "hd/draw_recorder.h"
+#include "hd/hd.h"
+#endif
+
 #include <assert.h>
 #include <string.h>
 
@@ -855,9 +860,21 @@ void _obj_render_pre_roof(Rect* rect, int elevation)
     int parity = gCenterTile & 1;
 
     outlinedObjects.clear();
+#ifdef FALLOUT_HD
+    // Emission must leave the CPU tactical coverage state untouched.
+    if (!(hd::enabled() && hd::gDrawEmitOnly)) {
+#endif
     gSeeThroughDude.clear();
     gSeeThroughMarking = false;
+#ifdef FALLOUT_HD
+    }
+#endif
 
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordPass(hd::DrawPass::FlatObjects);
+    }
+#endif
     int renderCount = 0;
     for (int i = 0; i < gObjectsUpdateAreaHexSize; i++) {
         int offsetIndex = _orderTable[parity][i];
@@ -903,11 +920,24 @@ void _obj_render_pre_roof(Rect* rect, int elevation)
 
     // CE: The tactical view: what stands on the ground covers it from now.
     if (gObjectsSeeThrough) {
+#ifdef FALLOUT_HD
+        if (!(hd::enabled() && hd::gDrawEmitOnly))
+#endif
         objectSeeThroughCoverStart(updatedRect);
     }
 
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordPass(hd::DrawPass::EdgeSquaresUnder);
+    }
+#endif
     tileRenderEdgeBlackSquares(&updatedRect, elevation, false);
 
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordPass(hd::DrawPass::Objects);
+    }
+#endif
     for (int i = 0; i < renderCount; i++) {
         int lightIntensity = ambientIntensity;
 
@@ -937,6 +967,11 @@ void _obj_render_pre_roof(Rect* rect, int elevation)
         }
     }
 
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordPass(hd::DrawPass::EdgeSquaresOver);
+    }
+#endif
     tileRenderEdgeBlackSquares(&updatedRect, elevation, true);
 }
 
@@ -952,6 +987,23 @@ void _obj_render_post_roof(Rect* rect, int elevation)
         return;
     }
 
+#ifdef FALLOUT_HD
+    if (hd::enabled() && hd::gDrawEmitOnly) {
+        hd::recordPass(hd::DrawPass::Outlines);
+        for (Object* object : outlinedObjects) {
+            objectDrawOutline(object, &updatedRect);
+        }
+        hd::recordPass(hd::DrawPass::Text);
+        textObjectsRenderInRect(&updatedRect);
+        hd::recordPass(hd::DrawPass::Overlay);
+        for (ObjectListNode* node = gObjectListHead; node != nullptr; node = node->next) {
+            if ((node->obj->flags & OBJECT_HIDDEN) == OBJECT_NONE) {
+                _obj_render_object(node->obj, &updatedRect, 0x10000);
+            }
+        }
+        return;
+    }
+#endif
     // CE: The tactical view: what covers the ground here; the dude's
     // pixels still showing stay over the outlines (and both over the view's
     // tiles, `ObjectSeeThroughCover::Top`).
@@ -969,6 +1021,11 @@ void _obj_render_post_roof(Rect* rect, int elevation)
         }
     }
 
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordPass(hd::DrawPass::Outlines);
+    }
+#endif
     for (Object* object : outlinedObjects) {
         if (!gObjectsSeeThrough || FrmId(object).objectType() != OBJ_TYPE_CRITTER) {
             objectDrawOutline(object, &updatedRect);
@@ -1062,8 +1119,18 @@ void _obj_render_post_roof(Rect* rect, int elevation)
         gSeeThroughCover[offset] = static_cast<unsigned char>(ObjectSeeThroughCover::Top);
     }
 
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordPass(hd::DrawPass::Text);
+    }
+#endif
     textObjectsRenderInRect(&updatedRect);
 
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordPass(hd::DrawPass::Overlay);
+    }
+#endif
     ObjectListNode* objectListNode = gObjectListHead;
     while (objectListNode != nullptr) {
         Object* object = objectListNode->obj;
@@ -5135,6 +5202,15 @@ static void objectDrawOutline(Object* object, Rect* rect)
     rectIntersection(&expandedRect, &gObjectsWindowRect, &expandedRect);
 
     if (rectIntersection(&objectRect, &expandedRect, &objectRect) == 0) {
+#ifdef FALLOUT_HD
+        if (hd::enabled()) {
+            hd::recordOutline(object, FrmId(object).fid(), frameWidth, frameHeight, expandedRect);
+        }
+        if (hd::enabled() && hd::gDrawEmitOnly) {
+            artUnlock(cacheEntry);
+            return;
+        }
+#endif
         visibleFrameRect.left += objectRect.left - object->sx;
         visibleFrameRect.top += objectRect.top - object->sy;
         visibleFrameRect.right = visibleFrameRect.left + (objectRect.right - objectRect.left);
@@ -5355,6 +5431,13 @@ static void objectDrawOutline(Object* object, Rect* rect)
 // remembered (`gSeeThroughDude`): what drawing it changed.
 static void objectRenderPreRoof(Object* object, Rect* rect, int light)
 {
+#ifdef FALLOUT_HD
+    if (hd::enabled() && hd::gDrawEmitOnly) {
+        _obj_render_object(object, rect, light);
+        return;
+    }
+#endif
+
     Rect dudeRect;
     if (gObjectsSeeThrough && object == gDude) {
         objectGetRect(object, &dudeRect);
@@ -5441,6 +5524,12 @@ static void _obj_render_object(Object* object, Rect* rect, int light)
         return;
     }
 
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordObject(object, frmId.fid(), frameWidth, frameHeight, *rect, light);
+    }
+#endif
+
     unsigned char* src = artGetFrameData(art, object->frame, object->rotation);
     unsigned char* src2 = src;
     int v50 = objectRect.left - object->sx;
@@ -5450,6 +5539,9 @@ static void _obj_render_object(Object* object, Rect* rect, int light)
     int objectHeight = objectRect.bottom - objectRect.top + 1;
 
     if (type == OBJ_TYPE_INTERFACE) {
+#ifdef FALLOUT_HD
+        if (!(hd::enabled() && hd::gDrawEmitOnly))
+#endif
         blitBufferToBufferTrans(src,
             objectWidth,
             objectHeight,
@@ -5525,6 +5617,16 @@ static void _obj_render_object(Object* object, Rect* rect, int light)
                 gEgg->sx = eggRect.left;
                 gEgg->sy = eggRect.top;
 
+#ifdef FALLOUT_HD
+                if (hd::enabled()) {
+                    hd::recordObjectEgg(FrmId(gEgg).fid(), eggRect);
+                }
+                if (hd::enabled() && hd::gDrawEmitOnly) {
+                    artUnlock(eggHandle);
+                    artUnlock(cacheEntry);
+                    return;
+                }
+#endif
                 Rect updatedEggRect;
                 if (rectIntersection(&eggRect, &objectRect, &updatedEggRect) == 0) {
                     Rect rects[4];
@@ -5592,6 +5694,13 @@ static void _obj_render_object(Object* object, Rect* rect, int light)
 
     // CE: The tactical view: what covers the ground - the dude over the
     // tiles, translucent objects half.
+#ifdef FALLOUT_HD
+    // HD emitter: recorded above; do not blit or mark CPU coverage.
+    if (hd::enabled() && hd::gDrawEmitOnly) {
+        artUnlock(cacheEntry);
+        return;
+    }
+#endif
     ObjectSeeThroughCover cover = ObjectSeeThroughCover::Solid;
     if (object == gDude) {
         cover = ObjectSeeThroughCover::Top;

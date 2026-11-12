@@ -1,5 +1,10 @@
 #include "text_object.h"
 
+#ifdef FALLOUT_HD
+#include "hd/draw_recorder.h"
+#include "hd/hd.h"
+#endif
+
 #include <algorithm>
 #include <string.h>
 
@@ -321,6 +326,14 @@ void textObjectsRenderInRect(Rect* rect)
         textObjectRect.right = textObject->width + textObject->x - 1;
         textObjectRect.bottom = textObject->height + textObject->y - 1;
         if (rectIntersection(&textObjectRect, rect, &textObjectRect) == 0) {
+#ifdef FALLOUT_HD
+            if (hd::enabled()) {
+                hd::recordText(textObject->x, textObject->y, textObject->width, textObject->height, textObject->data, *rect);
+            }
+            if (hd::enabled() && hd::gDrawEmitOnly) {
+                continue;
+            }
+#endif
             blitBufferToBufferTrans(textObject->data + textObject->width * (textObjectRect.top - textObject->y) + (textObjectRect.left - textObject->x),
                 textObjectRect.right - textObjectRect.left + 1,
                 textObjectRect.bottom - textObjectRect.top + 1,

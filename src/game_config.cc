@@ -1,4 +1,8 @@
 #include "game_config.h"
+
+#ifdef FALLOUT_HD
+#include "hd/hd.h"
+#endif
 #include "debug.h"
 #include "game_config_migration.h"
 #include "settings.h"
@@ -161,6 +165,15 @@ bool gameConfigInit(bool isMapper, int argc, char** argv)
         configWriteEx(&gGameConfig, gGameConfigFilePath, CONFIG_RETAIN_ALL);
     }
 
+#ifdef FALLOUT_HD
+    // HD: first-run screen setup follows migration, before command-line overrides.
+    int hdEnabled = 0;
+    configGetInt(&gGameConfig, "hd", "enabled", &hdEnabled);
+    if (!isMapper && hdEnabled != 0 && hd::firstRunScreenSetup(&gGameConfig)) {
+        configWriteEx(&gGameConfig, gGameConfigFilePath, CONFIG_RETAIN_ALL);
+    }
+
+#endif
     // Add key-values from command line, which overrides both defaults and
     // whatever was loaded from `fallout2.cfg`.
     configParseCommandLineArguments(&gGameConfig, argc, argv, gameConfigRecordCommandLineOverride);

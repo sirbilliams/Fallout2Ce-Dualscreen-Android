@@ -1,5 +1,10 @@
 #include "tile.h"
 
+#ifdef FALLOUT_HD
+#include "hd/draw_recorder.h"
+#include "hd/hd.h"
+#endif
+
 #include <assert.h>
 #include <math.h>
 #include <string.h>
@@ -830,6 +835,12 @@ static void tileRefreshGame(Rect* rect, int elevation)
 
     // HRP EdgeClipping: when clipped, clear only if CheckRect; otherwise always clear.
     if (didClear) {
+#ifdef FALLOUT_HD
+        if (hd::enabled()) {
+            hd::recordFill(rectToUpdate, COLOR_FIRST);
+        }
+        if (!(hd::enabled() && hd::gDrawEmitOnly))
+#endif
         bufferFill(gTileWindowBuffer + rectToUpdate.top * gTileWindowPitch + rectToUpdate.left,
             rectGetWidth(&rectToUpdate),
             rectGetHeight(&rectToUpdate),
@@ -838,22 +849,50 @@ static void tileRefreshGame(Rect* rect, int elevation)
     }
 
     if (hasVisArea && rectIntersection(&renderRect, &visArea, &renderRect) == -1) {
-        if (didClear) {
+        if (didClear
+#ifdef FALLOUT_HD
+            && !(hd::enabled() && hd::gDrawEmitOnly)
+#endif
+        ) {
             gTileWindowRefreshProc(&rectToUpdate);
         }
+#ifdef FALLOUT_HD
+        if (!(hd::enabled() && hd::gDrawEmitOnly))
+#endif
         worldViewRendered(&rectToUpdate);
         return;
     }
 
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordPass(hd::DrawPass::Floors);
+    }
+#endif
     tileRenderFloorsInRect(&renderRect, elevation);
     _obj_render_pre_roof(&renderRect, elevation);
+#ifdef FALLOUT_HD
+    if (hd::enabled()) {
+        hd::recordPass(hd::DrawPass::Roofs);
+    }
+#endif
     tileRenderRoofsInRect(&renderRect, elevation);
     _obj_render_post_roof(&renderRect, elevation);
 
     if (!hasVisArea) {
+#ifdef FALLOUT_HD
+        if (hd::enabled()) {
+            hd::recordPass(hd::DrawPass::Stencil);
+        }
+#endif
         tile_hires_stencil_draw(&renderRect, gTileWindowBuffer, gTileWindowWidth, gTileWindowHeight);
     }
 
+#ifdef FALLOUT_HD
+    // HD emitter: traverse without publishing a CPU frame or marking it rendered.
+    if (hd::enabled() && hd::gDrawEmitOnly) {
+        return;
+    }
+#endif
     gTileWindowRefreshProc(didClear ? &rectToUpdate : &renderRect);
     worldViewRendered(&rectToUpdate);
 }
@@ -1570,6 +1609,16 @@ static void tileRenderRoof(const TileFrmId& frmId, int x, int y, Rect* rect, int
             gEgg->sx = eggRect.left;
             gEgg->sy = eggRect.top;
 
+#ifdef FALLOUT_HD
+            if (hd::enabled()) {
+                hd::recordRoof(frmId.fid(), x, y, *rect, light, eggRect);
+            }
+            if (hd::enabled() && hd::gDrawEmitOnly) {
+                artUnlock(eggFrmHandle);
+                artUnlock(tileFrmHandle);
+                return;
+            }
+#endif
             Rect intersectedRect;
             if (rectIntersection(&eggRect, &tileRect, &intersectedRect) == 0) {
                 Rect rects[4];
@@ -1937,6 +1986,18 @@ static void tileRenderFloor(const TileFrmId& frmId, int x, int y, Rect* rect)
             _verticies[i].intensity = std::max(lightGetTileIntensity(elev, tile + _verticies[i].offsets[parity]), ambientIntensity);
         }
 
+#ifdef FALLOUT_HD
+        if (hd::enabled() && hd::gDrawRecorderActive) {
+            int vertexIntensities[10];
+            for (int i = 0; i < 10; i++) {
+                vertexIntensities[i] = _verticies[i].intensity;
+            }
+            hd::recordFloor(frmId.fid(), savedX, savedY, *rect, tile, vertexIntensities, _intensity_map, sizeof(_intensity_map) / sizeof(_intensity_map[0]));
+            if (hd::gDrawEmitOnly) {
+                goto out;
+            }
+        }
+#endif
         int v23 = 0;
         for (int i = 0; i < 9; i++) {
             if (_verticies[i + 1].intensity != _verticies[i].intensity) {

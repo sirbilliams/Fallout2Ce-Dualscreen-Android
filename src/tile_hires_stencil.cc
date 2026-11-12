@@ -1,4 +1,9 @@
 #include "tile_hires_stencil.h"
+
+#ifdef FALLOUT_HD
+#include "hd/draw_recorder.h"
+#include "hd/hd.h"
+#endif
 #include "debug.h"
 #include "draw.h"
 #include "game.h"
@@ -384,6 +389,14 @@ void tile_hires_stencil_draw(Rect* rect, unsigned char* buffer, int windowWidth,
                     continue;
                 };
 
+#ifdef FALLOUT_HD
+                if (hd::enabled()) {
+                    hd::recordFill(intersection, COLOR_FIRST);
+                }
+                if (hd::enabled() && hd::gDrawEmitOnly) {
+                    continue;
+                }
+#endif
                 bufferFill(buffer + windowWidth * intersection.top + intersection.left,
                     intersection.right - intersection.left + 1,
                     intersection.bottom - intersection.top + 1,

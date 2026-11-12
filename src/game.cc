@@ -1,4 +1,8 @@
 #include "game.h"
+
+#ifdef FALLOUT_HD
+#include "hd/hd.h"
+#endif
 #include "platform/git_version.h"
 
 #include <math.h>
@@ -431,6 +435,10 @@ int gameInitWithOptions(const char* windowTitle, bool isMapper, int font, int fl
     // SFALL: Execute all code that should be executed AFTER game init
     sfallOnAfterGameInit();
 
+#ifdef FALLOUT_HD
+    hd::init(isMapper);
+#endif
+
     return 0;
 }
 
@@ -495,6 +503,10 @@ void gameReset()
 // 0x442C34
 void gameExit()
 {
+#ifdef FALLOUT_HD
+    hd::exit();
+#endif
+
     debugPrint("\nGame Exit\n");
 
     touchLogExit();
@@ -639,6 +651,12 @@ int gameHandleKey(int eventCode, bool isInCombatMode)
     if (_gmouse_is_scrolling()) {
         return 0;
     }
+
+#ifdef FALLOUT_HD
+    if (hd::enabled() && hd::handleKey(eventCode)) {
+        return 0;
+    }
+#endif
 
     switch (eventCode) {
     case -20:
