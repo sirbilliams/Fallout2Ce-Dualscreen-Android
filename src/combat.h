@@ -105,6 +105,7 @@ void combat_reset_hit_location_penalty();
 void combatSetFo1HitChance(bool enabled);
 void combatResetFo1HitChance();
 Attack* combat_get_data();
+bool combatAnimationRunning();
 
 static inline bool isInCombat()
 {

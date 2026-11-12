@@ -3235,6 +3235,13 @@ static int _combat_input()
         GameCommand command;
         bool hasCommand = gameCommandTake(&command);
 
+        // CE: Port commands skip the vanilla UI lock: ignore the ones that end
+        // the turn or combat while an attack animation is running.
+        if (hasCommand && (command.type == GameCommandType::EndTurn || command.type == GameCommandType::EndCombat)
+            && (_combat_turn_running > 0 || gameUiIsDisabled())) {
+            hasCommand = false;
+        }
+
         if (keyCode == KEY_SPACE || (hasCommand && command.type == GameCommandType::EndTurn)) {
             break;
         }
@@ -5970,6 +5977,15 @@ void _combat_attack_this(Object* target)
         return;
     }
 
+    // CE: Vanilla locks the UI (`_combat_anim_begin`) until the attack
+    // animation is over, so a second attack cannot start. The touch map and
+    // the bottom combat panel call this directly: a second attack would
+    // re-init `_main_ctd` and wipe the first one's pending damage (the target
+    // plays its death animation but stays alive).
+    if (_combat_turn_running > 0 || gameUiIsDisabled()) {
+        return;
+    }
+
     HitMode hitMode;
     bool aiming;
     if (interfaceGetCurrentHitMode(&hitMode, &aiming) == -1) {
@@ -7105,6 +7121,12 @@ void combatSetFo1HitChance(bool enabled)
 void combatResetFo1HitChance()
 {
     fo1HitChance = false;
+}
+
+// CE: Whether an attack animation of the dude is running (the UI is locked).
+bool combatAnimationRunning()
+{
+    return _combat_turn_running > 0;
 }
 
 Attack* combat_get_data()

@@ -311,6 +311,11 @@ enum DevAutotestAction {
     // Dude steps (as walking does, the roof hides) onto the nearest tile
     // under a roof, [a] = 1 - back to where the previous one started.
     DEV_AUTOTEST_ACTION_STEP_UNDER_ROOF,
+    // Regression of the double attack: [a] 0 - the first attack on the
+    // nearest critter or the one at tile [b] (its hp set to 1), 1 - the second one while the first
+    // animates (must be ignored: `_main_ctd` stays as it is), 2 - after the
+    // animations the first hit's damage must not be lost (a hit kills it).
+    DEV_AUTOTEST_ACTION_CHECK_DOUBLE_ATTACK,
     // A finger of its own (id 7): [a] 0 - down, 1 - up, 2 - down and up at
     // once (a system edge gesture re-sends touches so), at ([b], [c]) in
     // fractions of the window.
@@ -1059,6 +1064,18 @@ static const DevAutotestStep kDevAutotestBarterTraceSteps[] = {
 
 // The game's interface bar (run with [touch] hud=0 and mobile_ui=0): hands,
 // attack modes, combat's end buttons, by the game's keys.
+// Two attacks on one critter in a row while the first animates; the second
+// must be ignored (vanilla locks the UI for it), the critter dies of the first
+// hit. Run on a new game: `--dev-new-game --dev-autotest-scenario=doubleattack`.
+static const DevAutotestStep kDevAutotestDoubleAttackSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "d00_start" },
+    { DEV_AUTOTEST_ACTION_START_COMBAT, 0, 0, 0, 60, "d01_combat" },
+    { DEV_AUTOTEST_ACTION_CHECK_DOUBLE_ATTACK, 0, 0, 0, 0, "d02_attack1" },
+    { DEV_AUTOTEST_ACTION_CHECK_DOUBLE_ATTACK, 1, 0, 0, 0, "d03_attack2_while_animating" },
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 300, "d04_animations" },
+    { DEV_AUTOTEST_ACTION_CHECK_DOUBLE_ATTACK, 2, 0, 0, 1, "d05_result" },
+};
+
 static const DevAutotestStep kDevAutotestPcBarSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "a00_start" },
     { DEV_AUTOTEST_ACTION_EQUIP_ITEM, 9, HAND_LEFT, 0, 20, "a01_smg" },
@@ -2901,6 +2918,9 @@ void devAutotestSetScenario(const char* name)
         gDevAutotestSteps = kDevAutotestCombatScreensSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestCombatScreensSteps) / sizeof(kDevAutotestCombatScreensSteps[0]);
         gDevAutotestTraceItems = true;
+    } else if (strcmp(name, "doubleattack") == 0) {
+        gDevAutotestSteps = kDevAutotestDoubleAttackSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestDoubleAttackSteps) / sizeof(kDevAutotestDoubleAttackSteps[0]);
     } else if (strcmp(name, "combatpanel") == 0) {
         gDevAutotestSteps = kDevAutotestCombatPanelSteps;
         gDevAutotestStepCount = sizeof(kDevAutotestCombatPanelSteps) / sizeof(kDevAutotestCombatPanelSteps[0]);
@@ -3368,6 +3388,53 @@ void devAutotestTick()
                 dudeMoveToTile(gDevAutotestWalkTarget, -1);
             }
             break;
+        case DEV_AUTOTEST_ACTION_CHECK_DOUBLE_ATTACK: {
+            static Object* target = nullptr;
+            static int damage = 0;
+            static int ap = 0;
+            bool ok = true;
+            if (step->a == 0) {
+                target = devAutotestFindNearestCritter();
+                if (step->b > 0) {
+                    // A given tile (a player's save).
+                    for (Object* o = objectFindFirstAtElevation(gElevation); o != nullptr; o = objectFindNextAtElevation()) {
+                        if (o->tile == step->b && FrmId(o).objectType() == OBJ_TYPE_CRITTER && !critterIsDead(o)) {
+                            target = o;
+                        }
+                    }
+                }
+                ok = target != nullptr && isInCombat();
+                if (ok && objectGetDistanceBetween(gDude, target) > 5) {
+                    // Within the reach of fists.
+                    Rect rect;
+                    objectSetLocation(gDude, tileGetTileInDirection(target->tile, ROTATION_NE, 1), gDude->elevation, &rect);
+                    ap = gDude->data.critter.combat.ap;
+                }
+                if (ok) {
+                    target->data.critter.hp = 1;
+                    _combat_attack_this(target);
+                    damage = combat_get_data()->defenderDamage;
+                    ap = gDude->data.critter.combat.ap;
+                    ok = combatAnimationRunning();
+                    devAutotestLog("  attack 1: animating %d, damage %d, ap %d\n", combatAnimationRunning() ? 1 : 0, damage, ap);
+                }
+            } else if (step->a == 1) {
+                Object* defender = combat_get_data()->defender;
+                _combat_attack_this(target);
+                ok = combat_get_data()->defender == defender && combat_get_data()->defenderDamage == damage && gDude->data.critter.combat.ap == ap;
+                devAutotestLog("  attack 2 ignored: %s\n", ok ? "PASS" : "FAIL");
+            } else {
+                // A miss leaves it alive (not a failure of the guard).
+                bool dead = critterIsDead(target);
+                ok = damage <= 0 || dead;
+                devAutotestLog("  first hit damage %d, target dead %d: %s\n", damage, dead ? 1 : 0, ok ? "PASS" : "FAIL");
+            }
+            if (!ok) {
+                devAutotestLog("autotest failed: double attack\n");
+                exit(EXIT_FAILURE);
+            }
+            break;
+        }
         case DEV_AUTOTEST_ACTION_CHECK_WALK:
             if (gDude != nullptr) {
                 devAutotestLog("  dude at %d, target %d: %s\n", gDude->tile, gDevAutotestWalkTarget, gDude->tile == gDevAutotestWalkTarget ? "ok" : "MISMATCH");
