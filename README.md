@@ -52,6 +52,7 @@ Details: [docs/dualscreen.md](docs/dualscreen.md).
 - **Touch:** tap to act, long press for the action menu, drag to move items, two fingers to zoom the map. Optionally the cursor follows your finger on the top screen (tap = click, hold = right click).
 - **Bottom-screen TOUCHPAD** (dashboard tool column): drag to move the cursor, tap to click, two-finger tap to right click, hold then drag to carry.
 - **Controller:** right stick moves a cursor (A / R3 click, B / R3 held right click), left stick and d-pad move focus on screens, and every button has a map action (inventory, Pip-Boy, sneak, quick use...).
+- **Mods (in development):** a MODS button on the main menu lists the mods in the game folder, with on/off switches and load order.
 - **Remapping:** Settings → Controls has a picker for each of the 16 buttons and a reset. Stored in `[touch] gamepad_bindings`.
 
 Details: [docs/mouse-controls.md](docs/mouse-controls.md), [docs/gamepad-stage3.md](docs/gamepad-stage3.md).

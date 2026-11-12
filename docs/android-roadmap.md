@@ -374,6 +374,19 @@ Steps, most gain first:
    re-uploading (keep uploading with the base palette, cycling entries
    included), only real palette swaps re-upload.
 
+## Mods (step 2 of the mod organizer, in progress)
+
+- **MODS button on the main menu** (not released yet): a list of the mods
+  found in the game folder, each with an on/off switch and a move up/down
+  order, saved as a profile (`profiles/`). The plain game ("Vanilla") stays
+  exactly as it is, and the saves of a profile are kept apart from it.
+  Design: `superpowers/specs/2026-11-11-mod-organizer-design.md`, plan:
+  `superpowers/plans/2026-11-11-mod-organizer-step2.md`.
+- **Later steps:** a button for the RPU pack, and a Nexus Mods browser
+  (search and download inside the app).
+- Phone check for a build: `tools/thor-mods-check.sh` (saves must come out
+  of an install unchanged).
+
 ## Future ideas (decide later)
 
 - **View rotation** (2026-10-08, postponed: one of the hardest possible
