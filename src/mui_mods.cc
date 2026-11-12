@@ -151,7 +151,9 @@ namespace {
         std::vector<std::string> names;
         int pickSelected = 0;
 
-        enum class Edit { None, New, Rename };
+        enum class Edit { None,
+            New,
+            Rename };
         Edit editing_ = Edit::None;
         bool editing = false;
         std::u32string name;

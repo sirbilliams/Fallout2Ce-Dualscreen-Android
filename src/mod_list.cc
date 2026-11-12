@@ -29,7 +29,8 @@ bool modListParse(const std::string& text, ModList* out)
 std::string modListSerialize(const ModList& list)
 {
     std::string text;
-    for (const auto& entry : list.entries) text += (entry.enabled ? "+" : "-") + entry.id + "\n";
+    for (const auto& entry : list.entries)
+        text += (entry.enabled ? "+" : "-") + entry.id + "\n";
     return text;
 }
 
@@ -50,16 +51,19 @@ std::string modListUniqueId(const ModList& store, const std::string& wanted)
     }
     if (base.empty() || base == "." || base == "..") base = "mod";
     std::unordered_set<std::string> ids;
-    for (const auto& entry : store.entries) ids.insert(entry.id);
+    for (const auto& entry : store.entries)
+        ids.insert(entry.id);
     std::string id = base;
-    for (size_t suffix = 2; ids.count(id); ++suffix) id = base + "-" + std::to_string(suffix);
+    for (size_t suffix = 2; ids.count(id); ++suffix)
+        id = base + "-" + std::to_string(suffix);
     return id;
 }
 
 std::vector<std::string> modListEnabledIds(const ModList& list)
 {
     std::vector<std::string> ids;
-    for (const auto& entry : list.entries) if (entry.enabled) ids.push_back(entry.id);
+    for (const auto& entry : list.entries)
+        if (entry.enabled) ids.push_back(entry.id);
     return ids;
 }
 

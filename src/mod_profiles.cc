@@ -13,98 +13,99 @@ namespace fs = std::filesystem;
 const char* const kModProfileVanilla = "Vanilla";
 
 namespace {
-fs::path root;
-std::string active = kModProfileVanilla;
+    fs::path root;
+    std::string active = kModProfileVanilla;
 
-bool validName(const std::string& name)
-{
-    return !name.empty() && name != "active.txt" && name != "profiles.txt"
-        && name != "." && name != ".." && name.front() != '.'
-        && name.front() != ' ' && name.back() != ' ' && name.back() != '.'
-        && name.find_first_of("/\\:*?\"<>|\r\n\t") == std::string::npos
-        && std::none_of(name.begin(), name.end(), [](unsigned char ch) { return ch < 32; });
-}
-
-fs::path profilePath(const std::string& name) { return root / "profiles" / name; }
-
-bool readText(const fs::path& path, std::string* text)
-{
-    std::ifstream input(path, std::ios::binary);
-    if (!input) return false;
-    text->assign(std::istreambuf_iterator<char>(input), {});
-    return !input.bad();
-}
-
-bool writeText(const fs::path& path, const std::string& text)
-{
-    std::error_code ec;
-    fs::create_directories(path.parent_path(), ec);
-    if (ec) return false;
-    fs::path temp = path;
-    temp += ".tmp";
-    std::ofstream output(temp, std::ios::binary | std::ios::trunc);
-    output << text;
-    output.close();
-    if (!output) return false;
-    fs::rename(temp, path, ec);
-    if (ec) {
-        std::error_code ignored;
-        fs::remove(temp, ignored);
+    bool validName(const std::string& name)
+    {
+        return !name.empty() && name != "active.txt" && name != "profiles.txt"
+            && name != "." && name != ".." && name.front() != '.'
+            && name.front() != ' ' && name.back() != ' ' && name.back() != '.'
+            && name.find_first_of("/\\:*?\"<>|\r\n\t") == std::string::npos
+            && std::none_of(name.begin(), name.end(), [](unsigned char ch) { return ch < 32; });
     }
-    return !ec;
-}
 
-bool profileExists(const std::string& name)
-{
-    if (name == kModProfileVanilla) return true;
-    std::error_code ec;
-    auto status = fs::symlink_status(profilePath(name), ec);
-    return validName(name) && !ec && fs::is_directory(status);
-}
+    fs::path profilePath(const std::string& name) { return root / "profiles" / name; }
 
-std::vector<std::string> directories(const fs::path& path)
-{
-    std::vector<std::string> names;
-    std::error_code ec;
-    fs::directory_iterator it(path, ec), end;
-    while (!ec && it != end) {
-        auto name = it->path().filename().string();
-        auto status = it->symlink_status(ec);
-        if (!ec && fs::is_directory(status) && name.compare(0, 5, ".tmp-") != 0) names.push_back(name);
-        it.increment(ec);
+    bool readText(const fs::path& path, std::string* text)
+    {
+        std::ifstream input(path, std::ios::binary);
+        if (!input) return false;
+        text->assign(std::istreambuf_iterator<char>(input), {});
+        return !input.bad();
     }
-    std::sort(names.begin(), names.end());
-    return names;
-}
 
-bool saveNames()
-{
-    std::string text;
-    for (const auto& name : modProfileNames()) text += name + "\n";
-    return writeText(root / "profiles/profiles.txt", text);
-}
-
-bool copySettings(const fs::path& source, const fs::path& dest)
-{
-    std::error_code ec;
-    if (fs::exists(source / "ddraw.ini", ec)) {
-        fs::copy_file(source / "ddraw.ini", dest / "ddraw.ini", ec);
+    bool writeText(const fs::path& path, const std::string& text)
+    {
+        std::error_code ec;
+        fs::create_directories(path.parent_path(), ec);
         if (ec) return false;
-    }
-    if (ec) return false;
-    if (!fs::exists(source / "mods", ec)) return !ec;
-    fs::recursive_directory_iterator it(source / "mods", ec), end;
-    while (!ec && it != end) {
-        if (it->is_regular_file(ec) && it->path().extension() == ".ini") {
-            auto target = dest / "mods" / it->path().lexically_relative(source / "mods");
-            fs::create_directories(target.parent_path(), ec);
-            if (ec) return false;
-            fs::copy_file(it->path(), target, ec);
+        fs::path temp = path;
+        temp += ".tmp";
+        std::ofstream output(temp, std::ios::binary | std::ios::trunc);
+        output << text;
+        output.close();
+        if (!output) return false;
+        fs::rename(temp, path, ec);
+        if (ec) {
+            std::error_code ignored;
+            fs::remove(temp, ignored);
         }
-        if (!ec) it.increment(ec);
+        return !ec;
     }
-    return !ec;
-}
+
+    bool profileExists(const std::string& name)
+    {
+        if (name == kModProfileVanilla) return true;
+        std::error_code ec;
+        auto status = fs::symlink_status(profilePath(name), ec);
+        return validName(name) && !ec && fs::is_directory(status);
+    }
+
+    std::vector<std::string> directories(const fs::path& path)
+    {
+        std::vector<std::string> names;
+        std::error_code ec;
+        fs::directory_iterator it(path, ec), end;
+        while (!ec && it != end) {
+            auto name = it->path().filename().string();
+            auto status = it->symlink_status(ec);
+            if (!ec && fs::is_directory(status) && name.compare(0, 5, ".tmp-") != 0) names.push_back(name);
+            it.increment(ec);
+        }
+        std::sort(names.begin(), names.end());
+        return names;
+    }
+
+    bool saveNames()
+    {
+        std::string text;
+        for (const auto& name : modProfileNames())
+            text += name + "\n";
+        return writeText(root / "profiles/profiles.txt", text);
+    }
+
+    bool copySettings(const fs::path& source, const fs::path& dest)
+    {
+        std::error_code ec;
+        if (fs::exists(source / "ddraw.ini", ec)) {
+            fs::copy_file(source / "ddraw.ini", dest / "ddraw.ini", ec);
+            if (ec) return false;
+        }
+        if (ec) return false;
+        if (!fs::exists(source / "mods", ec)) return !ec;
+        fs::recursive_directory_iterator it(source / "mods", ec), end;
+        while (!ec && it != end) {
+            if (it->is_regular_file(ec) && it->path().extension() == ".ini") {
+                auto target = dest / "mods" / it->path().lexically_relative(source / "mods");
+                fs::create_directories(target.parent_path(), ec);
+                if (ec) return false;
+                fs::copy_file(it->path(), target, ec);
+            }
+            if (!ec) it.increment(ec);
+        }
+        return !ec;
+    }
 } // namespace
 
 void modProfileSetRoot(const std::string& path)
@@ -118,7 +119,8 @@ std::vector<std::string> modProfileNames()
     auto names = directories(root / "profiles");
     names.erase(std::remove_if(names.begin(), names.end(), [](const std::string& name) {
         return name == kModProfileVanilla || !validName(name);
-    }), names.end());
+    }),
+        names.end());
     names.insert(names.begin(), kModProfileVanilla);
     return names;
 }
@@ -234,7 +236,8 @@ bool modProfileSaveList(const ModList& list)
     if (!modListParse(modListSerialize(list), &checked) || checked.entries.size() != list.entries.size()) return false;
     if (!modProfileIsVanilla()) return writeText(profilePath(active) / "modlist.txt", modListSerialize(list));
     std::string text;
-    for (const auto& entry : list.entries) text += (entry.enabled ? "" : "#") + entry.id + "\n";
+    for (const auto& entry : list.entries)
+        text += (entry.enabled ? "" : "#") + entry.id + "\n";
     return writeText(root / "mods/mods_order.txt", text);
 }
 
