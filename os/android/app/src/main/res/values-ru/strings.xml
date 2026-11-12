@@ -67,4 +67,13 @@
     <string name="saves_exported">Готово, экспортировано сохранений: %d.</string>
     <string name="import_removed_from">Удалятся из: %s</string>
     <string name="import_back_to_game">Вернуться в игру</string>
+    <string name="mod_title">Моды</string>
+    <string name="mod_welcome">Выберите zip с модом для установки в активный профиль.</string>
+    <string name="mod_installing">Устанавливаю мод…</string>
+    <string name="mod_installed">Установлен %s.</string>
+    <string name="mod_skipped">Пропущенные файлы:\n%s</string>
+    <string name="mod_no_files">В этом zip нет файлов мода Fallout 2</string>
+    <string name="mod_unreadable">Не удалось прочитать архив (.7z и .rar не поддерживаются)</string>
+    <string name="mod_no_space">Недостаточно места: нужно %d МБ свободного места</string>
+    <string name="mod_vanilla_dat_only">Vanilla поддерживает только DAT-моды. Для отдельных файлов data создайте профиль.</string>
 </resources>

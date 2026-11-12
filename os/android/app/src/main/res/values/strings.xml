@@ -104,4 +104,13 @@
     <string name="guide_off">Off</string>
     <string name="guide_controls_again_title">Again</string>
     <string name="guide_controls_again">This guide is shown once. Open it again in the game\'s Settings, Setup guide.</string>
+    <string name="mod_title">Mods</string>
+    <string name="mod_welcome">Choose a mod zip to install into the active profile.</string>
+    <string name="mod_installing">Installing mod…</string>
+    <string name="mod_installed">Installed %s.</string>
+    <string name="mod_skipped">Skipped files:\n%s</string>
+    <string name="mod_no_files">This zip has no Fallout 2 mod files</string>
+    <string name="mod_unreadable">Can\'t read this archive (.7z and .rar aren\'t supported)</string>
+    <string name="mod_no_space">Not enough space: needs %d MB free</string>
+    <string name="mod_vanilla_dat_only">Vanilla supports DAT mods only. Create a profile to install loose data files.</string>
 </resources>

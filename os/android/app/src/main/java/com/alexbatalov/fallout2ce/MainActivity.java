@@ -45,6 +45,11 @@ public class MainActivity extends SDLActivity {
                 e.printStackTrace();
             }
         }
+        try {
+            ModInstall.cleanup(externalFilesDir);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         installBundledFiles(externalFilesDir);
 
         super.onCreate(savedInstanceState);
@@ -213,7 +218,7 @@ public class MainActivity extends SDLActivity {
                 intent.putExtra(ImportActivity.MODE, mode);
             }
             startActivity(intent);
-            if (mode == null) {
+            if (mode == null || ImportActivity.MODE_MOD.equals(mode)) {
                 finish();
             }
         });

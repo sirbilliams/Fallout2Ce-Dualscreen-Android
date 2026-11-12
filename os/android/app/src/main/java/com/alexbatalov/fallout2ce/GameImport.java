@@ -235,6 +235,8 @@ final class GameImport {
         // Without Fallout 2's own files (master.dat, critter.dat): its mods
         // and configs only, for "Replace game" (the original files stay).
         boolean modsOnly;
+        final List<String> skipped = new ArrayList<>();
+        final Map<Entry, String> destinations = new HashMap<>();
     }
 
     // More than one game at the same depth: which one is meant isn't known.
@@ -321,6 +323,58 @@ final class GameImport {
 
         found.language = readLanguage(source, found);
         return found;
+    }
+
+    // Mod archives use the shallowest DAT/data/mods folder, rather than
+    // requiring the original game's master.dat and critter.dat pair.
+    static Found findMod(Source source) throws IOException {
+        List<Entry> entries = source.list();
+        String root = ModInstall.detectRoot(entries);
+        if (root == null) {
+            return null;
+        }
+        Found found = new Found();
+        found.root = root;
+        found.modsOnly = true;
+        Set<String> destinations = new HashSet<>();
+        for (Entry entry : entries) {
+            if (!entry.path.startsWith(root)) {
+                continue;
+            }
+            String path = entry.path.substring(root.length());
+            if (isSkipped(path) || path.toLowerCase(Locale.ROOT).startsWith("data/savegame/")) {
+                found.skipped.add(path);
+                continue;
+            }
+            if (entry.encrypted || entry.unsupported) {
+                throw new NativeArchive.Failure(entry.encrypted ? NativeArchive.ENCRYPTED : NativeArchive.UNSUPPORTED, path);
+            }
+            // Linux paths are case sensitive. The native mount expects data/
+            // and DATs directly in modstore/<id>/ (including mods/*.dat).
+            path = path.toLowerCase(Locale.ROOT);
+            if (path.startsWith("mods/") && path.endsWith(".dat") && path.indexOf('/', 5) == -1) {
+                path = path.substring(5);
+            }
+            if (!destinations.add(path)) {
+                throw new IOException("duplicate mod path: " + path);
+            }
+            if (entry.size < 0 || entry.size > Long.MAX_VALUE / 2 - found.size) {
+                throw new IOException("invalid archive size");
+            }
+            found.files.add(entry);
+            found.destinations.put(entry, path);
+            found.size += entry.size;
+        }
+        boolean mountable = false;
+        for (String path : found.destinations.values()) {
+            if (path.startsWith("data/") || path.indexOf('/') == -1 && path.endsWith(".dat")) mountable = true;
+        }
+        return mountable ? found : null;
+    }
+
+    private static String relativePath(Found found, Entry entry) {
+        String destination = found.destinations.get(entry);
+        return destination != null ? destination : entry.path.substring(found.root.length());
     }
 
     // The least deep of [folders], each once.
@@ -435,7 +489,7 @@ final class GameImport {
         List<String> paths = new ArrayList<>();
         List<Long> sizes = new ArrayList<>();
         for (Entry entry : wanted(found, withSaves)) {
-            paths.add(entry.path.substring(found.root.length()));
+            paths.add(relativePath(found, entry));
             sizes.add(entry.size);
         }
         return GameFiles.plan(paths, sizes, target, GameFiles.installedGameFiles(target), found.modsOnly);
@@ -444,7 +498,7 @@ final class GameImport {
     private static List<Entry> wanted(Found found, boolean withSaves) {
         List<Entry> wanted = new ArrayList<>();
         for (Entry entry : found.files) {
-            String path = entry.path.substring(found.root.length()).toLowerCase(Locale.ROOT);
+            String path = relativePath(found, entry).toLowerCase(Locale.ROOT);
             if (withSaves || !path.startsWith("data/savegame/")) {
                 wanted.add(entry);
             }
@@ -466,7 +520,7 @@ final class GameImport {
         List<Entry> wanted = wanted(found, withSaves);
         Map<Entry, String> pathOf = new HashMap<>();
         for (Entry entry : wanted) {
-            pathOf.put(entry, entry.path.substring(found.root.length()));
+            pathOf.put(entry, relativePath(found, entry));
         }
 
         GameFiles.StagingSink sink = new GameFiles.StagingSink(target, installed, pathOf, plan.bytesToRead, (done, total, path) -> {
