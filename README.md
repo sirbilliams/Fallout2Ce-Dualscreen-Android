@@ -2,13 +2,13 @@
 
 [Русская версия](README.ru.md)
 
-A fork of [Fallout 2: Community Engine](https://github.com/fallout2-ce/fallout2-ce) made for Android phones: every screen of the game rebuilt for a touch screen, in landscape, plus a **bottom-screen companion for dual-screen handhelds like the AYN Thor**. **Version 2.0** ([download](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.0.0), [release notes](docs/release-notes/v2.0.0.md)).
+A fork of [Fallout 2: Community Engine](https://github.com/fallout2-ce/fallout2-ce) made for Android phones: every screen of the game rebuilt for a touch screen, in landscape, plus a **bottom-screen companion for dual-screen handhelds like the AYN Thor**. **Version 2.0.1** ([download](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.0.1), [release notes](docs/release-notes/v2.0.1.md)).
 
 This is an **unofficial, fan-made, modified version** of Fallout 2 CE. It is not affiliated with or endorsed by Bethesda Softworks, ZeniMax Media or Interplay. Fallout is a trademark of its owners. The app contains **no game data**: you need your own copy of Fallout 2 ([GOG](https://www.gog.com/game/fallout_2), [Steam](https://store.steampowered.com/app/38410), [Epic Games](https://store.epicgames.com/p/fallout-2)).
 
 ## Status
 
-**Status: v2.0, fully playable.**
+**Status: v2.0.1, fully playable.**
 - The whole game plays on the Fallout 2 CE engine, with a touch UI for every screen.
 - Bottom-screen companion on dual-screen devices: live map, HUD, inventory, character, Pip-Boy, dialogue and barter.
 - Pip-Boy 2000 theme by default (Classic in Settings → Display).
@@ -73,7 +73,7 @@ The full list of changes is the git history over upstream.
 
 ## Install on Android
 
-1. Download the APK ([v2.0](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.0.0), `Fallout2-Dualscreen.apk`; the newest development build is always at [latest](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/latest)) and install it. Updates install over it and keep your saves.
+1. Download the APK ([v2.0.1](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.0.1), `Fallout2-Dualscreen.apk`; the newest development build is always at [latest](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/latest)) and install it. Updates install over it and keep your saves.
 2. Copy your Fallout 2 folder from a computer to the phone: as is, or as one archive (cable, cloud drive, messenger). Mods installed there (for example [RPU](https://github.com/BGforgeNet/Fallout2_Restoration_Project)) and saves come along.
 3. Start the app and choose that folder or archive.
 

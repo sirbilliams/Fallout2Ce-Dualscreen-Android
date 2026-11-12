@@ -2,11 +2,11 @@
 
 [English version](README.md)
 
-Форк [Fallout 2: Community Engine](https://github.com/fallout2-ce/fallout2-ce) для телефонов на Android: все экраны игры переделаны под сенсорный экран, в альбомной ориентации, плюс **нижний экран-компаньон для двухэкранных консолей вроде AYN Thor**. **Версия 2.0** ([скачать](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.0.0), [что нового, англ.](docs/release-notes/v2.0.0.md)).
+Форк [Fallout 2: Community Engine](https://github.com/fallout2-ce/fallout2-ce) для телефонов на Android: все экраны игры переделаны под сенсорный экран, в альбомной ориентации, плюс **нижний экран-компаньон для двухэкранных консолей вроде AYN Thor**. **Версия 2.0.1** ([скачать](https://github.com/sirbilliams/Fallout2Ce-Dualscreen-Android/releases/tag/v2.0.1), [что нового, англ.](docs/release-notes/v2.0.1.md)).
 
 Это **неофициальная любительская изменённая версия** Fallout 2 CE. Она не связана с Bethesda Softworks, ZeniMax Media и Interplay и не одобрена ими. Fallout — товарный знак его владельцев. В приложении **нет данных игры**: нужна ваша собственная копия Fallout 2 ([GOG](https://www.gog.com/game/fallout_2), [Steam](https://store.steampowered.com/app/38410), [Epic Games](https://store.epicgames.com/p/fallout-2)).
 
-## Версия 2.0
+## Версия 2.0.1
 
 - Тема Pip-Boy 2000 по умолчанию (классическая — в Настройки → Экран).
 - Управление мышью: курсор под пальцем, тачпад на нижнем экране, курсор правым стиком.
