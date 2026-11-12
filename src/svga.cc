@@ -27,6 +27,10 @@
 #include "win32.h"
 #include "window_manager_private.h"
 #include "world_view.h"
+#ifdef FALLOUT_HD
+#include "game_config.h"
+#include "hd/map_layer.h"
+#endif
 
 namespace fallout {
 
@@ -201,6 +205,16 @@ int _init_vesa_mode(int width, int height)
 int _GNW95_init_window(int width, int height, WindowMode mode, int scale)
 {
     if (gSdlWindow == nullptr) {
+#ifdef FALLOUT_HD
+        int hdEnabled = 0;
+        configGetInt(&gGameConfig, "hd", "enabled", &hdEnabled, 0);
+        if (hdEnabled) {
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+            SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+            SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengles2");
+        } else
+#endif
         SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
 
         // CE: Naming a driver turns SDL's command batching off; the mobile UI
@@ -545,6 +559,13 @@ static bool createRenderer(int width, int height)
         return false;
     }
 
+#ifdef FALLOUT_HD
+    // SDL owns this context; HD only borrows it between flushed batches.
+    if (hd::mapLayerRequested() && !hd::mapLayerInit()) {
+        SDL_Log("HD map unavailable; retaining CE map");
+    }
+#endif
+
     // CE: UI texture has alpha channel to let world layer show through.
     gSdlTexture = SDL_CreateTexture(gSdlRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, width, height);
     if (gSdlTexture == nullptr) {
@@ -570,6 +591,12 @@ static bool createRenderer(int width, int height)
 
 static void destroyRenderer()
 {
+#ifdef FALLOUT_HD
+    if (gSdlRenderer != nullptr) {
+        SDL_RenderFlush(gSdlRenderer);
+        hd::mapLayerShutdown();
+    }
+#endif
     worldViewResetRenderer();
     muiResetRenderer();
 

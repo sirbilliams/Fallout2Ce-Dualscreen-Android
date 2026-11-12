@@ -37,6 +37,7 @@ option(FALLOUT_AUDIO_OGG "Enable OGG decoding with stb_vorbis when available" ON
 # The touch recorder and the game journal always on in the touch-only build
 # (the test builds); off, the config's `[debug] touch_log` / `action_log`
 # decide (the release).
+option(HD "Enable Dustlight OpenGL ES 3.1 map renderer" OFF)
 option(FALLOUT_DIAGNOSTICS "Touch-only build: touch recorder and game journal always on" ON)
 
 set(FALLOUT_STB_VORBIS_DIR "" CACHE PATH "Directory containing stb_vorbis.c")
@@ -1003,4 +1004,47 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
         target_link_options(sfall_arrays_test PRIVATE -Wl,--gc-sections)
     endif()
     set_tests_properties(sfall_arrays_test PROPERTIES TIMEOUT 10)
+endif()
+
+# Lane L3: shares SDL's GLES context. L1 implementations supersede local
+# portable copies/fixtures automatically when the lanes are merged.
+if(HD)
+    find_package(Threads REQUIRED)
+    if(ANDROID)
+        set(HD_GLES_LIBRARY GLESv3)
+    else()
+        find_library(HD_GLES_LIBRARY GLESv2 REQUIRED)
+    endif()
+    set(HD_MAP_SOURCES src/hd/gl.cc src/hd/gl_private.cc src/hd/bc7.cc
+        src/hd/hd_art.cc src/hd/map_renderer.cc src/hd/map_layer.cc)
+    foreach(module json_reader sprite_shape palette_fit)
+        if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/hd/${module}.cc")
+            list(APPEND HD_MAP_SOURCES "src/hd/${module}.cc")
+        else()
+            list(APPEND HD_MAP_SOURCES "src/hd/l3_${module}.cc")
+        endif()
+    endforeach()
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/hd/draw_recorder.cc")
+        # L1 adds its recorder and control modules in its own HD block.
+    else()
+        list(APPEND HD_MAP_SOURCES src/hd/l3_draw_fixture.cc)
+    endif()
+    foreach(hd_target ${EXECUTABLE_NAME} mapper-ce)
+        if(TARGET ${hd_target})
+            target_sources(${hd_target} PRIVATE ${HD_MAP_SOURCES})
+            target_compile_definitions(${hd_target} PRIVATE FALLOUT_HD)
+            target_include_directories(${hd_target} PRIVATE src third_party/khronos)
+            target_link_libraries(${hd_target} ${HD_GLES_LIBRARY} Threads::Threads)
+        endif()
+    endforeach()
+endif()
+if(HD AND UNIX AND NOT ANDROID AND NOT APPLE)
+    set(HD_TEST_SOURCES ${HD_MAP_SOURCES})
+    list(REMOVE_ITEM HD_TEST_SOURCES src/hd/l3_draw_fixture.cc)
+    add_executable(hd_map_test EXCLUDE_FROM_ALL tests/hd_map_test.cc ${HD_TEST_SOURCES})
+    target_compile_definitions(hd_map_test PRIVATE FALLOUT_HD FALLOUT_HD_LIGHTING)
+    target_include_directories(hd_map_test PRIVATE src third_party/khronos ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(hd_map_test ${HD_GLES_LIBRARY} ${SDL2_LIBRARIES} Threads::Threads)
+    add_test(NAME hd_map_test COMMAND hd_map_test "${CMAKE_BINARY_DIR}/synthetic-hd-pack")
+    set_tests_properties(hd_map_test PROPERTIES TIMEOUT 60 ENVIRONMENT "SDL_VIDEODRIVER=offscreen;SDL_AUDIODRIVER=dummy;LIBGL_ALWAYS_SOFTWARE=1;EGL_PLATFORM=surfaceless")
 endif()
