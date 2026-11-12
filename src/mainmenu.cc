@@ -68,6 +68,8 @@ typedef enum MainMenuButton {
     MAIN_MENU_BUTTON_OPTIONS,
     MAIN_MENU_BUTTON_CREDITS,
     MAIN_MENU_BUTTON_EXIT,
+    // CE: mod organizer, below the game's buttons (label in ce.msg).
+    MAIN_MENU_BUTTON_MODS,
     MAIN_MENU_BUTTON_COUNT,
 } MainMenuButton;
 
@@ -110,6 +112,7 @@ static const MainMenuButtonSpec mainMenuButtonSpecs[MAIN_MENU_BUTTON_COUNT] = {
     { KEY_LOWERCASE_O, MAIN_MENU_OPTIONS, 12 },
     { KEY_LOWERCASE_C, MAIN_MENU_CREDITS, 13 },
     { KEY_LOWERCASE_E, MAIN_MENU_EXIT, 14 },
+    { KEY_LOWERCASE_M, MAIN_MENU_MODS, -1 },
 };
 
 // 0x614840 buttons
@@ -494,7 +497,9 @@ static void mainMenuDrawButtonLabels(const MainMenuLayout& layout, const MainMen
 
     for (int index = 0; index < MAIN_MENU_BUTTON_COUNT; index++) {
         msg.num = mainMenuButtonSpecs[index].labelMessage;
-        if (!messageListGetItem(&gMiscMessageList, &msg)) {
+        if (msg.num == -1) {
+            msg.text = const_cast<char*>(muiText(380, "Mods"));
+        } else if (!messageListGetItem(&gMiscMessageList, &msg)) {
             continue;
         }
 

@@ -406,6 +406,13 @@ int muiOptionsScreenRun();
 // opened from the game (the map previews brightness), not the main menu.
 void muiPreferencesScreenRun(bool inGame);
 
+// Mods screen (mui_mods.cc): the mod list (switch, order), profiles, add
+// from a zip. Leaving with changes saves the list and restarts the game.
+void muiModsScreenRun();
+// True once the Mods screen was left with changes (the game restart was
+// requested; autotests check it).
+bool muiModsRestartRequested();
+
 // Save / load screen (mui_loadsave.cc, loadsave.cc `lsgSaveGame` /
 // `lsgLoadGame`), [fromMainMenu] - load only. 1 - saved or loaded, 0 -
 // closed, -1 - loading failed.

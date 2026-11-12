@@ -16,6 +16,8 @@ typedef enum MainMenuOption {
     MAIN_MENU_OPTIONS,
     // CE: mobile main menu, loads the save made last.
     MAIN_MENU_CONTINUE,
+    // CE: mod organizer (mobile main menu and the classic one).
+    MAIN_MENU_MODS,
 } MainMenuOption;
 
 int mainMenuWindowInit();

@@ -283,6 +283,20 @@
 {372}{}{Licenses}
 {373}{}{Tactical view}
 {374}{}{Combat button: see-through figures, tiles and where you can walk}
+{380}{}{Mods}
+{381}{}{Profile}
+{382}{}{New}
+{383}{}{Rename}
+{384}{}{Delete}
+{385}{}{Add from zip}
+{386}{}{Back}
+{387}{}{No mods installed yet. Add one from a zip.}
+{388}{}{Switch}
+{389}{}{Profile name}
+{390}{}{Done}
+{391}{}{The game restarts when you leave.}
+{392}{}{Delete this profile with its saves?}
+{393}{}{The profile could not be changed.}
 {900}{}{Dual screen}
 {901}{}{On two-screen devices: the HUD, map and game screens on the bottom screen, the world on top}
 {902}{}{Game paused: continue on the bottom screen}

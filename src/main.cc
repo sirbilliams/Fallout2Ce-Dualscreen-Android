@@ -245,6 +245,11 @@ int falloutMain(int argc, char** argv)
                 mainMenuCancelSubscreen();
                 break;
             }
+            case MAIN_MENU_MODS:
+                mainMenuBeginSubscreen();
+                muiModsScreenRun();
+                mainMenuCancelSubscreen();
+                break;
             case MAIN_MENU_CREDITS:
                 mainMenuWindowHide(true);
                 creditsOpen("credits.txt", InterfaceFrameId::Invalid, false);
