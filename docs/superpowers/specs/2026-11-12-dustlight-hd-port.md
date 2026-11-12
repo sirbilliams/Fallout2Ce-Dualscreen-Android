@@ -62,3 +62,26 @@ Date: 2026-11-12
 - The real art pack (Nexus mod 193) isn't on this PC yet. Tests use tiny synthetic packs written in Dustlight's format (`art/<type>/<name>/pack.json` + `albedo_<tier>x.dds`, BC7/DX10, mip 0), made by a test helper, never by downloading.
 - Game data for headless runs: copy (never link or edit) from the rig the earlier tests used; see ~/Projects/f2ds-tc-research/sonora-report.md for how the base-game control run was set up.
 - CMake: every lane adds its own files to the HD option block; merge conflicts there are expected and fine. L2's stub file is `src/hd/hooks_stub.cc`, dropped when L1 merges.
+
+## Config keys (integration decision, 2026-11-12)
+
+The Android pack lane writes these; the engine reads exactly these.
+
+- `[hd] enabled=0|1`: the user's HD toggle (hooks record, GL map renderer runs,
+  UI art swaps). Default 0; 0 is inert.
+- `[hd] developer=0|1`: Dustlight's developer mode (capture, self-test, stress
+  hotkeys Ctrl+F9..F12). Separate key; only effective with `enabled=1`.
+  Ctrl+F7/F8 (light/HD compare) stay available to players when HD is on.
+- `[hd] hd_art_dir=hd/<N>x`: pack root relative to the game dir (default `hd`),
+  holding `art/<folder>/<name>/pack.json + albedo_<N>x.dds`. A trailing `<N>x`
+  component (N=2..4) IS the tier. Without that suffix, `[hd] tier` (default 2)
+  gives the tier. One reader for all three consumers: `src/hd/art_config.h`
+  (hd_art.cc GL store, map_layer.cc, hd_art_ui.cc CPU/mui reader).
+- `[hd_light] mode=original|new` and `quality=off|low|medium|high`: read by
+  map_lighting (default new/high).
+- Debug keys stay in `[hd_debug]`.
+
+Integration state: HD block in CMake is a single `option(HD)`; BC7 decoding lives
+only in `src/hd/bc7.cc` (`hd_art_cpu.cc` calls it). L3's `l3_*.cc` fallback
+fixtures were removed. Header changes: none beyond L1's `fallout::MapElevation`
+and L4's `compute.h`/shader headers; new `src/hd/art_config.h`.
