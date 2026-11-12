@@ -1226,23 +1226,33 @@ GLuint mapRendererHdUav(int scale)
     GlState saved;
     return ensure(gState->hdTargets[scale], scale, GL_RGBA16F) ? gState->hdTargets[scale].texture : 0;
 }
+// Logs each new reason once: on-device evidence when HD lighting falls back.
+static bool gbufferFail(const char* why)
+{
+    static const char* last = nullptr;
+    if (why != last) {
+        last = why;
+        debugPrint("HD: G-buffer draw failed: %s (GL error 0x%x)\n", why, glGetError());
+    }
+    return false;
+}
 // G-buffer implementation follows the same draw list and is defined below.
 bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDraw& draw)
 {
-    if (!gState || !gState->built || scale < 2 || scale > 4 || scale != gState->hdTier || !palette) return false;
+    if (!gState || !gState->built || scale < 2 || scale > 4 || scale != gState->hdTier || !palette) return gbufferFail("!gState || !gState->built || scale < 2 || scale > 4 || scale != gState");
     GlState saved;
     GLint maxImages;
     glGetIntegerv(GL_MAX_COMPUTE_IMAGE_UNIFORMS, &maxImages);
-    if (maxImages < 7) return false;
+    if (maxImages < 7) return gbufferFail("maxImages < 7");
     const GLenum defaultFormats[] = { GL_RGBA16F, GL_RGBA8, GL_RGBA8, GL_RGBA16F, GL_RGBA8, GL_RGBA8 };
     GLenum formats[6];
     for (int i = 0; i < 6; i++) {
-        if (!draw.targets[i]) return false;
+        if (!draw.targets[i]) return gbufferFail("!draw.targets[i]");
         glBindTexture(GL_TEXTURE_2D, draw.targets[i]);
         GLint f = 0;
         glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &f);
         formats[i] = f;
-        if (formats[i] != defaultFormats[i] && !(i == 5 && formats[i] == GL_R8)) return false;
+        if (formats[i] != defaultFormats[i] && !(i == 5 && formats[i] == GL_R8)) return gbufferFail("formats[i] != defaultFormats[i] && !(i == 5 && formats[i] == GL_R8)");
     }
     GLuint& program = gState->gbuffer;
     bool redCoverage = formats[5] == GL_R8;
@@ -1251,20 +1261,29 @@ bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDra
     if (redCoverage) {
         // R8 is color-renderable in ES, but has no core image-store
         // qualifier. Accumulate coverage in RGBA8, then blit its red channel.
-        if (!ensure(gState->coverage, scale, GL_RGBA8)) return false;
+        if (!ensure(gState->coverage, scale, GL_RGBA8)) return gbufferFail("!ensure(gState->coverage, scale, GL_RGBA8)");
         targets[5] = gState->coverage.texture;
         formats[5] = GL_RGBA8;
     }
     if (!program) {
         std::string code = kShaderSource;
         code.resize(code.find("\nvoid main()"));
+        // GLES (Adreno, NVIDIA) allows 8 image uniforms: drop the HD target
+        // (only the main renderer's main() writes it) and move gTarget off
+        // output0's binding, leaving gTarget + gOccluders + 6 outputs.
+        auto swap = [&code](const char* from, const char* to) {
+            size_t at = code.find(from);
+            if (at != std::string::npos) code.replace(at, strlen(from), to);
+        };
+        swap("layout(rgba16f,binding=1) writeonly uniform highp image2D gHdTarget;", "");
+        swap("layout(r32ui,binding=0) uniform highp uimage2D gTarget;", "layout(r32ui,binding=7) uniform highp uimage2D gTarget;");
         code +=
 #include "hd/map_gbuffer.inc"
             ;
         program = glCompute(code);
-        if (!program) return false;
+        if (!program) return gbufferFail("!program");
     }
-    if (!uploadBasePalette(palette)) return false;
+    if (!uploadBasePalette(palette)) return gbufferFail("!uploadBasePalette(palette)");
     bindInputs();
     glUseProgram(program);
     glActiveTexture(GL_TEXTURE5);
@@ -1277,7 +1296,7 @@ bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDra
         glBindImageTexture(i, targets[i], 0, GL_FALSE, 0, GL_WRITE_ONLY, formats[i]);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gState->readFbo);
         glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, targets[i], 0);
-        if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return false;
+        if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return gbufferFail("glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLE");
         glDisable(GL_SCISSOR_TEST);
         glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
         const float zero[4] = {};
@@ -1290,7 +1309,7 @@ bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDra
     glUniform2i(glGetUniformLocation(program, "gTargetSize"), gState->mapWidth * scale, gState->mapHeight * scale);
     glUniform1i(glGetUniformLocation(program, "gScale"), scale);
     if (draw.occluders) {
-        if (draw.occluderSize[0] <= 0 || draw.occluderSize[1] <= 0) return false;
+        if (draw.occluderSize[0] <= 0 || draw.occluderSize[1] <= 0) return gbufferFail("draw.occluderSize[0] <= 0 || draw.occluderSize[1] <= 0");
         if (!gState->occluderBuffer) glGenBuffers(1, &gState->occluderBuffer);
         std::vector<GLuint> zero(size_t(draw.occluderSize[0]) * draw.occluderSize[1]);
         glBuffer(gState->occluderBuffer, zero.data(), zero.size() * sizeof(GLuint));
@@ -1325,7 +1344,7 @@ bool mapRendererDrawGbuffer(int scale, const float* palette, const MapGbufferDra
         glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, targets[5], 0);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, gState->copyFbo);
         glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, draw.targets[5], 0);
-        if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return false;
+        if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) return gbufferFail("glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLE");
         int w = gState->mapWidth * scale, h = gState->mapHeight * scale;
         glBlitFramebuffer(0, 0, w, h, 0, 0, w, h, GL_COLOR_BUFFER_BIT, GL_NEAREST);
         glMemoryBarrier(GL_TEXTURE_FETCH_BARRIER_BIT | GL_FRAMEBUFFER_BARRIER_BIT);

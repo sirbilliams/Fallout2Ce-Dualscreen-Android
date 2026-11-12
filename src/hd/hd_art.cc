@@ -959,6 +959,17 @@ void hdArtEndBuild()
     }
     trimRam();
     countPacks();
+    // Settled counts, once per change: the shutdown stats never print where
+    // the process just ends (Android), so this is the on-device evidence.
+    static int loggedKnown = -1, loggedLoaded = -1, loggedHd = -1;
+    if (gState->building == HdArtClient::Map && s.packsLoading == 0 && gState->inFlight == 0
+        && (s.packsKnown != loggedKnown || s.packsLoaded != loggedLoaded || s.buildHd != loggedHd)) {
+        loggedKnown = s.packsKnown;
+        loggedLoaded = s.packsLoaded;
+        loggedHd = s.buildHd;
+        debugPrint("HD: art packs: %d known, %d loaded, %d missing, %d failed; map frames %d, HD %d; pages %d/%d\n",
+            s.packsKnown, s.packsLoaded, s.packsMissing, s.packsFailed, s.buildFrames, s.buildHd, s.pagesUsed, s.pages);
+    }
 }
 
 bool hdArtFrame(int fid, int rotation, int frame, unsigned int hash, int width, int height, HdFrame* out)

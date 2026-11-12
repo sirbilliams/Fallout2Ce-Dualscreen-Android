@@ -57,6 +57,8 @@ if(hasHd!=0&&(index&256u)==0u&&grain>0.)color.rgb+=grain*(fract(sin(dot(gl_FragC
 if(tint!=0)color.rgb=mix(color.rgb,vec3(0.,1.,1.),.25);
 }
 )glsl";
+    bool gFitOk = true; // last palette fit, for the art-state log line
+    bool gDrawOk = true; // last HD draw
     void palette(MapComposite& c)
     {
         PaletteFit fit = paletteFit();
@@ -75,6 +77,7 @@ if(tint!=0)color.rgb=mix(color.rgb,vec3(0.,1.,1.),.25);
                 }
                 g->palette[i * 4 + k] = v;
             }
+        gFitOk = fit.ok;
         if (!fit.ok) c.hd = 0; // unrelated palettes: the exact CE colors are authoritative
     }
 } // namespace
@@ -186,6 +189,7 @@ MapComposite mapLayerPrepare(int scale, bool selfTest)
         else
 #endif
             drawn = mapRendererDrawHd(tier, g->palette);
+        gDrawOk = drawn;
         if (drawn) {
             g->scale = tier;
             std::memcpy(g->cycles, &_systemCmap[229 * 3], 78);
@@ -200,6 +204,20 @@ MapComposite mapLayerPrepare(int scale, bool selfTest)
             c.hd = 0;
     }
     if (!hdArtActive() || hdArtStats().buildHd == 0) c.hd = 0;
+    {
+        // One line whenever the map switches between HD and original art.
+        static int logged = -1;
+        int state = c.hd ? 0 : !hdArtActive() ? 1
+            : hdArtStats().buildHd == 0       ? 2
+            : !gDrawOk                        ? 3
+            : !gFitOk                         ? 4
+                                              : 5;
+        if (state != logged) {
+            logged = state;
+            static const char* const kWhy[] = { "HD art", "original art (store off)", "original art (no HD frames)", "original art (HD draw failed)", "original art (palette fit failed)", "original art (no HD image yet)" };
+            debugPrint("HD: map shows %s, tier %d, view %dx%d\n", kWhy[state], tier, w, h);
+        }
+    }
     if (c.hd) {
         c.scale = tier;
         c.scaled = mapRendererView(1);

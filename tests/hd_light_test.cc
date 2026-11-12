@@ -77,6 +77,7 @@ namespace {
     }
 }
 namespace fallout {
+    int debugPrint(const char*, ...) { return 0; }
     Config gGameConfig= {
     };
     bool configGetString(Config*,const char* section,const char* key,char** value,const char* fallback) {

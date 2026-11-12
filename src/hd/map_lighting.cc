@@ -1,4 +1,6 @@
 #include "hd/map_lighting.h"
+
+#include "debug.h"
 #ifdef FALLOUT_HD
 #include "config.h"
 #include "game_config.h"
@@ -127,13 +129,23 @@ const char* mapLightingCycleEffect()
     snprintf(name, sizeof(name), off < 0 ? "all effects" : "no %s", off < 0 ? "" : kEffects[off].name);
     return name;
 }
+// Logs each new reason once: on-device evidence when HD lighting falls back.
+static bool lightingFail(const char* why)
+{
+    static const char* last = nullptr;
+    if (why != last) {
+        last = why;
+        debugPrint("HD: lighting draw failed: %s (GL error 0x%x)\n", why, glGetError());
+    }
+    return false;
+}
 bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palette)
 {
-    if (!gState || mapWidth <= 0 || mapHeight <= 0 || scale < 1 || scale > 4) return false;
+    if (!gState || mapWidth <= 0 || mapHeight <= 0 || scale < 1 || scale > 4) return lightingFail("!gState || mapWidth <= 0 || mapHeight <= 0 || scale < 1 || scale > 4");
     gState->bloomValid = false;
     if (!mapLightingActive()) return mapRendererDrawHd(scale, palette);
     GLuint output = mapRendererHdUav(scale);
-    if (!output || !ensureTargets(mapWidth, mapHeight, scale)) return false;
+    if (!output || !ensureTargets(mapWidth, mapHeight, scale)) return lightingFail("!output || !ensureTargets(mapWidth, mapHeight, scale)");
     const Settings& s = gState->settings;
     unsigned enabled = features();
     // Inputs from CE.
@@ -236,7 +248,7 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     draw.occluderSize[1] = t.occluders.height;
     memcpy(draw.category, s.category, sizeof(draw.category));
     draw.detailScale = scale / 4.0f;
-    if (!mapRendererDrawGbuffer(scale, palette, draw)) return false;
+    if (!mapRendererDrawGbuffer(scale, palette, draw)) return lightingFail("!mapRendererDrawGbuffer(scale, palette, draw)");
     glMemoryBarrier(GL_ALL_BARRIER_BITS);
     GLuint p = t.programs[7];
     glUseProgram(p);
@@ -281,7 +293,15 @@ bool mapLightingDraw(int mapWidth, int mapHeight, int scale, const float* palett
     pass(6, constants, mapWidth * scale, mapHeight * scale);
     for (int i = 0; i < 2; i++)
         glBindImageTexture(i, 0, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA16F);
-    t.bloomValid = glGetError() == GL_NO_ERROR;
+    GLenum error = glGetError();
+    t.bloomValid = error == GL_NO_ERROR;
+    if (!t.bloomValid) {
+        static GLenum logged = GL_NO_ERROR;
+        if (error != logged) {
+            logged = error;
+            debugPrint("HD: lighting draw failed: GL error 0x%x after the passes\n", error);
+        }
+    }
     return t.bloomValid;
 }
 GLuint mapLightingBloomSource()
