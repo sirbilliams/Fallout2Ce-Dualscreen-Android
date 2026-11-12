@@ -1,4 +1,5 @@
 #include "loadsave.h"
+#include "suspend_gate.h"
 
 #include <assert.h>
 #include <stdio.h>
@@ -44,6 +45,7 @@
 #include "item.h"
 #include "kb.h"
 #include "mainmenu.h"
+#include "main.h"
 #include "map.h"
 #include "memory.h"
 #include "message.h"
@@ -625,12 +627,23 @@ void _ResetLoadSave()
 bool lsgCanSuspendSave()
 {
     // Ordinary saves are reached through game input, after the combat loop's
-    // animation wait. System events also arrive inside nested modal loops.
-    return gLoadSaveReady && gDude != nullptr && gMapHeader.name[0] != '\0'
-        && gameGetState() == GameState::Normal
-        && (GameMode::getCurrentGameMode() & ~(GameMode::kCombat | GameMode::kPlayerTurn)) == GameMode::kNone
-        && interfaceBarEnabled() && !gameUiIsDisabled() && combatSaveIsSafe()
-        && animationIsBusy(gDude) == 0 && !_isLoadingGame();
+    // animation wait. System events also arrive inside nested modal loops,
+    // and at the title screen or while a map loads, where the engine holds a
+    // map without objects (see suspend_gate.h).
+    SuspendGateState state {};
+    state.saveSystemReady = gLoadSaveReady;
+    state.dudeExists = gDude != nullptr;
+    state.dudeOnMap = state.dudeExists && gDude->tile != -1;
+    state.mapNamed = gMapHeader.name[0] != '\0';
+    state.gameLoopRunning = mainIsPlaying();
+    state.mapLoading = mapIsLoading();
+    state.loadingGame = _isLoadingGame();
+    state.stateNormal = gameGetState() == GameState::Normal;
+    state.onlyCombatModes = (GameMode::getCurrentGameMode() & ~(GameMode::kCombat | GameMode::kPlayerTurn)) == GameMode::kNone;
+    state.interfaceUsable = interfaceBarEnabled() && !gameUiIsDisabled();
+    state.combatSafe = state.dudeExists && combatSaveIsSafe();
+    state.dudeIdle = state.dudeExists && animationIsBusy(gDude) == 0;
+    return suspendSaveAllowed(state);
 }
 
 bool lsgSuspendSave()
