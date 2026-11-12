@@ -1,5 +1,9 @@
 #include "pipboy.h"
 
+#ifdef FALLOUT_HD
+#include "hd/hd.h"
+#endif
+
 #include <algorithm>
 #include <assert.h>
 #include <ctype.h>
@@ -509,7 +513,11 @@ static void renderNavigationButtons(int _view_page, int totalPages, bool isSubPa
 // 0x497004
 static bool pipboyIsWorn()
 {
-    return wmMapPipboyActive() || pipboy_available_at_game_start;
+    return wmMapPipboyActive() || pipboy_available_at_game_start
+#ifdef FALLOUT_HD
+        || (hd::enabled() && hd::uiWalk())
+#endif
+        ;
 }
 
 PipboyUnavailable pipboyUnavailableReason()
