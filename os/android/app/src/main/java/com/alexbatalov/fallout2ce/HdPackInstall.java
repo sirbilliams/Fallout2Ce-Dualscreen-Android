@@ -35,6 +35,9 @@ final class HdPackInstall {
     private static final long MARGIN = 64L << 20;
     private static final Pattern ALBEDO = Pattern.compile("albedo_(\\d)x\\.dds");
     private static final Pattern MARKER = Pattern.compile("pack_(\\d)x\\.json");
+    // hd/fonts/font<N>-<style>-<tier>x.png: one font atlas per scale, so they
+    // belong to the tier in their name. hd/fonts/fonts.json is the shared index.
+    private static final Pattern FONT_PNG = Pattern.compile("[A-Za-z0-9_.-]+-(\\d)x\\.png");
     private static final Pattern PART = Pattern.compile("-part\\d+(?=[-_.]|$)", Pattern.CASE_INSENSITIVE);
 
     private HdPackInstall() { }
@@ -87,6 +90,9 @@ final class HdPackInstall {
         int tier;
         int packs;
         long bytes;
+        // The zip holds only hd/fonts/ (the last part of a split tier): merged
+        // into the tier folder, no pack.json.
+        boolean fontsOnly;
         final List<GameImport.Entry> files = new ArrayList<>();
         final Map<GameImport.Entry, String> dest = new HashMap<>();
     }
@@ -101,6 +107,28 @@ final class HdPackInstall {
         StringBuilder out = new StringBuilder();
         for (int i = at; i < parts.length; i++) out.append(i > at ? "/" : "").append(parts[i]);
         return out.toString();
+    }
+
+    // The tier in the name of a font atlas ("font0-model-2x.png" -> 2), 0 when
+    // [rel] (path below hd/) is not one.
+    static int fontTier(String rel) {
+        if (!rel.startsWith("fonts/") || rel.indexOf('/', 6) >= 0) return 0;
+        Matcher m = FONT_PNG.matcher(rel.substring(6));
+        return m.matches() ? Integer.parseInt(m.group(1)) : 0;
+    }
+
+    // A part that carries only hd/fonts/ (atlases of one tier, optionally
+    // fonts.json): Dustlight's release.py appends the fonts after the art packs,
+    // so the last part of a split tier can hold nothing else.
+    static boolean looksLikeFontsPart(List<GameImport.Entry> entries) {
+        int atlases = 0;
+        for (GameImport.Entry entry : entries) {
+            String rel = hdRelative(entry.path);
+            if (rel == null) continue;
+            if (fontTier(rel) != 0) atlases++;
+            else if (!rel.equals("fonts/fonts.json")) return false;
+        }
+        return atlases > 0;
     }
 
     // Cheap test on the listing alone: a pack.json next to an albedo_<N>x.dds
@@ -134,6 +162,12 @@ final class HdPackInstall {
     // Checks the zip's listing and every pack.json (read through [source]).
     // Throws Invalid / IOException for a bad path or schema; nothing is written.
     static Plan validate(GameImport.Source source) throws IOException {
+        return validate(source, null);
+    }
+
+    // [name] is the zip's file name; when it says "-art-<N>x", the tier must
+    // match what the zip holds.
+    static Plan validate(GameImport.Source source, String name) throws IOException {
         List<GameImport.Entry> entries = source.list();
         // Same path rules as a mod zip (absolute, "..", "\\", ":" ... rejected).
         ModInstall.detectRoot(entries);
@@ -141,6 +175,7 @@ final class HdPackInstall {
         Map<String, GameImport.Entry> byRel = new HashMap<>();
         List<GameImport.Entry> packJson = new ArrayList<>();
         Set<Integer> tiers = new HashSet<>();
+        Set<Integer> fontTiers = new HashSet<>();
         for (GameImport.Entry entry : entries) {
             if (entry.encrypted || entry.unsupported) throw new Invalid("unreadable entry " + entry.path);
             if (entry.size < 0) throw new IOException("invalid archive size");
@@ -151,17 +186,35 @@ final class HdPackInstall {
             plan.dest.put(entry, rel);
             if (plan.bytes > Long.MAX_VALUE / 2 - entry.size) throw new IOException("invalid archive size");
             plan.bytes += entry.size;
-            String name = rel.substring(rel.lastIndexOf('/') + 1);
-            Matcher albedo = ALBEDO.matcher(name);
+            int fontTier = fontTier(rel);
+            if (fontTier != 0) fontTiers.add(fontTier);
+            String leaf = rel.substring(rel.lastIndexOf('/') + 1);
+            Matcher albedo = ALBEDO.matcher(leaf);
             if (albedo.matches() && rel.indexOf('/') > 0) tiers.add(Integer.parseInt(albedo.group(1)));
-            Matcher marker = MARKER.matcher(name);
+            Matcher marker = MARKER.matcher(leaf);
             if (marker.matches() && rel.indexOf('/') < 0) tiers.add(Integer.parseInt(marker.group(1)));
-            if (name.equals("pack.json") && rel.indexOf('/') > 0) packJson.add(entry);
+            if (leaf.equals("pack.json") && rel.indexOf('/') > 0) packJson.add(entry);
         }
-        if (packJson.isEmpty()) throw new Invalid("no pack.json");
+        if (packJson.isEmpty()) {
+            if (!looksLikeFontsPart(entries)) throw new Invalid("no pack.json");
+            // A fonts-only part: one tier of atlases, nothing else.
+            if (fontTiers.size() != 1) throw new Invalid("a fonts part holds exactly one tier, found " + fontTiers);
+            plan.tier = fontTiers.iterator().next();
+            if (plan.tier < 2 || plan.tier > 4) throw new Invalid("tier " + plan.tier);
+            DustlightHd.Name named = DustlightHd.classify(name);
+            if (named.kind == DustlightHd.Kind.ART && named.tier != plan.tier) {
+                throw new Invalid("fonts for " + plan.tier + "x in a zip named " + named.tier + "x");
+            }
+            plan.fontsOnly = true;
+            return plan;
+        }
         if (tiers.size() != 1) throw new Invalid("a pack zip holds exactly one tier, found " + tiers);
         plan.tier = tiers.iterator().next();
         if (plan.tier < 2 || plan.tier > 4) throw new Invalid("tier " + plan.tier);
+        // Font atlases come per scale: those riding with the art are its tier's.
+        for (int fontTier : fontTiers) {
+            if (fontTier != plan.tier) throw new Invalid("fonts for " + fontTier + "x in a " + plan.tier + "x pack");
+        }
 
         final Map<GameImport.Entry, ByteArrayOutputStream> bodies = new HashMap<>();
         source.read(packJson, new GameImport.EntrySink() {
@@ -270,7 +323,7 @@ final class HdPackInstall {
     // TierMismatch (nothing written) instead of replacing that tier.
     static Result install(GameImport.Source source, String name, File gameDir, Progress progress, boolean allowSwitch) throws IOException {
         if (gameDir == null) throw new IOException("game storage unavailable");
-        Plan plan = validate(source);
+        Plan plan = validate(source, name);
         int have = installedTier(gameDir);
         if (!allowSwitch && have != 0 && have != plan.tier) throw new TierMismatch(have, plan.tier);
         File root = new File(gameDir, DIR);
@@ -283,7 +336,7 @@ final class HdPackInstall {
         File target = tierDir(gameDir, plan.tier);
         File temp = GameImport.targetFile(root, TMP + plan.tier + "x");
         if (temp.exists()) throw new IOException("can't clean interrupted hd install");
-        boolean merge = (isPart(name) || DustlightHd.classify(name).kind == DustlightHd.Kind.ART) && target.isDirectory();
+        boolean merge = (plan.fontsOnly || isPart(name) || DustlightHd.classify(name).kind == DustlightHd.Kind.ART) && target.isDirectory();
         try {
             if (!temp.mkdir()) throw new IOException("can't create " + temp);
             unpack(source, plan, temp, progress);
@@ -300,7 +353,7 @@ final class HdPackInstall {
                 }
                 GameFiles.deleteRecursively(old);
             }
-            DustlightHd.record(target, name, merge);
+            DustlightHd.record(target, name, merge, plan.fontsOnly);
             // One tier at a time.
             for (int other = 2; other <= 4; other++) {
                 if (other != plan.tier) GameFiles.deleteRecursively(tierDir(gameDir, other));
@@ -318,6 +371,7 @@ final class HdPackInstall {
             FileOutputStream out;
             boolean first;
             boolean dds;
+            boolean png;
 
             public void begin(GameImport.Entry entry) throws IOException {
                 if (progress.isCancelled()) throw new GameImport.CancelledException();
@@ -328,12 +382,18 @@ final class HdPackInstall {
                 out = new FileOutputStream(file);
                 first = true;
                 dds = rel.toLowerCase(Locale.ROOT).endsWith(".dds");
+                png = fontTier(rel) != 0;
             }
 
             public void data(byte[] buffer, int length) throws IOException {
                 if (first && dds) {
                     if (length < 4 || buffer[0] != 'D' || buffer[1] != 'D' || buffer[2] != 'S' || buffer[3] != ' ') {
                         throw new Invalid("not a DDS file");
+                    }
+                }
+                if (first && png) {
+                    if (length < 4 || buffer[0] != (byte) 0x89 || buffer[1] != 'P' || buffer[2] != 'N' || buffer[3] != 'G') {
+                        throw new Invalid("not a PNG file");
                     }
                 }
                 first = false;

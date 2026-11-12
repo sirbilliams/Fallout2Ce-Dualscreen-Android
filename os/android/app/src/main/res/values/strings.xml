@@ -144,6 +144,9 @@
     <string name="hd_guide_packs_unknown">Art packs installed (%1$dx): %2$d</string>
     <string name="hd_guide_need_part1">Part 1 has the pack list; the total shows once it is in.</string>
     <string name="hd_guide_more">%d more part(s) to download</string>
+    <string name="hd_guide_fonts">HD fonts installed (%1$dx): %2$d atlas(es)</string>
+    <string name="hd_profile">HD for profile: %s</string>
+    <string name="hd_profile_vanilla">Vanilla</string>
     <string name="hd_guide_ready">Dustlight HD is ready</string>
     <string name="hd_guide_state_engine">skipped (Windows only)</string>
     <string name="hd_guide_state_blocked">%dx: waiting for your answer</string>

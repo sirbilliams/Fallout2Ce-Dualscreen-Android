@@ -27,6 +27,8 @@ final class DustlightHd {
     // Written next to the art in the tier folder: scanned pack count and the
     // part zips merged so far.
     static final String PARTS_FILE = ".dustlight-parts";
+    // Marks a fonts-only part in that file (it is not an art part: it adds no packs).
+    static final String FONTS_PREFIX = "fonts ";
 
     // Nexus may append "-<mod id>-<version>-<time>" after the uploaded name.
     private static final Pattern ART = Pattern.compile("-art-(\\d)x(?:-part(\\d+))?(?=[-_.]|$)", Pattern.CASE_INSENSITIVE);
@@ -74,7 +76,7 @@ final class DustlightHd {
             String rel = HdPackInstall.hdRelative(entry.path);
             if (rel != null && rel.indexOf('/') < 0 && MARKER.matcher(rel).matches()) return true;
         }
-        return false;
+        return HdPackInstall.looksLikeFontsPart(entries);
     }
 
     // What is on disk now.
@@ -82,7 +84,9 @@ final class DustlightHd {
         final int tier;            // 0 = nothing installed
         final int packs;           // pack.json files installed
         final int totalPacks;      // from pack_<N>x.json, -1 until part 1 is in
-        final List<String> parts;  // zips merged so far
+        final List<String> parts;  // art zips merged so far
+        final List<String> fontParts = new ArrayList<>();  // fonts-only zips merged so far
+        int fontFiles;             // font atlases (hd/<N>x/fonts/*-<N>x.png) on disk
 
         Status(int tier, int packs, int totalPacks, List<String> parts) {
             this.tier = tier;
@@ -122,11 +126,13 @@ final class DustlightHd {
         }
         int packs = -1;
         List<String> parts = new ArrayList<>();
+        List<String> fontParts = new ArrayList<>();
         File list = new File(dir, PARTS_FILE);
         if (list.isFile()) {
             try {
                 for (String line : Files.readAllLines(list.toPath(), StandardCharsets.UTF_8)) {
                     if (line.startsWith("packs ")) packs = Integer.parseInt(line.substring(6).trim());
+                    else if (line.startsWith(FONTS_PREFIX)) fontParts.add(line.substring(FONTS_PREFIX.length()));
                     else if (!line.isEmpty()) parts.add(line);
                 }
             } catch (IOException | NumberFormatException e) {
@@ -134,7 +140,20 @@ final class DustlightHd {
             }
         }
         if (packs < 0) packs = countPacks(dir);
-        return new Status(tier, packs, total, parts);
+        Status status = new Status(tier, packs, total, parts);
+        status.fontParts.addAll(fontParts);
+        status.fontFiles = countFonts(dir);
+        return status;
+    }
+
+    static int countFonts(File dir) {
+        int count = 0;
+        File[] children = new File(dir, "fonts").listFiles();
+        if (children == null) return 0;
+        for (File child : children) {
+            if (child.isFile() && HdPackInstall.fontTier("fonts/" + child.getName()) != 0) count++;
+        }
+        return count;
     }
 
     static int countPacks(File dir) {
@@ -151,6 +170,10 @@ final class DustlightHd {
     // Called by HdPackInstall after a zip is published into [tierDir]: rescans
     // the pack count and records the zip (a fresh install starts the list).
     static void record(File tierDir, String name, boolean merged) {
+        record(tierDir, name, merged, false);
+    }
+
+    static void record(File tierDir, String name, boolean merged, boolean fontsOnly) {
         Map<String, Boolean> parts = new LinkedHashMap<>();
         File list = new File(tierDir, PARTS_FILE);
         if (merged && list.isFile()) {
@@ -161,7 +184,9 @@ final class DustlightHd {
             } catch (IOException ignored) {
             }
         }
-        if (name != null && !name.trim().isEmpty()) parts.put(name.replace('\n', ' ').trim(), true);
+        if (name != null && !name.trim().isEmpty()) {
+            parts.put((fontsOnly ? FONTS_PREFIX : "") + name.replace('\n', ' ').trim(), true);
+        }
         StringBuilder text = new StringBuilder("packs ").append(countPacks(tierDir)).append('\n');
         for (String part : parts.keySet()) text.append(part).append('\n');
         try {

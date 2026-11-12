@@ -211,4 +211,123 @@ public class DustlightHdTest {
         assertEquals(2, plan.packs);
         assertTrue(plan.bytes >= 400);
     }
+
+    // --- fonts-only last part (release.py appends hd/fonts after the art packs) ---
+
+    static final String PF = "Dustlight HD-193-1-0-art-2x-part4.zip";
+
+    static GameFilesTest.MemorySource fonts(int tier, boolean index, String... atlases) {
+        GameFilesTest.MemorySource zip = new GameFilesTest.MemorySource();
+        if (index) zip.put("hd/fonts/fonts.json", "{\"fonts\":[]}");
+        for (String atlas : atlases) zip.put("hd/fonts/" + atlas + "-" + tier + "x.png", "\u0089PNG\r\n\u001a\n0000");
+        return zip;
+    }
+
+    @Test public void fontsOnlyPartMergesIntoItsTierAndIsCounted() throws IOException {
+        File game = temporary.newFolder("game");
+        HdPackInstall.install(p1(), P1, game, PROGRESS, false);
+        HdPackInstall.install(p2(), P2, game, PROGRESS, false);
+        HdPackInstall.install(p3(), P3, game, PROGRESS, false);
+        assertTrue(DustlightHd.status(game).complete());
+        assertEquals(0, DustlightHd.status(game).fontFiles);
+
+        HdPackInstall.Result r = HdPackInstall.install(fonts(2, true, "font0-model", "font1-model"), PF, game, PROGRESS, false);
+        assertEquals(2, r.tier);
+        assertEquals(0, r.packs);
+        assertTrue(new File(game, "hd/2x/fonts/font0-model-2x.png").isFile());
+        assertTrue(new File(game, "hd/2x/fonts/fonts.json").isFile());
+        DustlightHd.Status s = DustlightHd.status(game);
+        assertEquals(5, s.packs);                  // fonts add no packs
+        assertEquals(3, s.parts.size());           // art parts only
+        assertEquals(1, s.fontParts.size());
+        assertEquals(PF, s.fontParts.get(0));
+        assertEquals(2, s.fontFiles);
+        assertTrue(s.complete());
+        assertTrue(new File(game, "hd/2x/art/critters/e/albedo_2x.dds").isFile());
+        assertFalse(new File(game, "hd/2x/pack.json").exists());
+    }
+
+    @Test public void fontsPartMayComeFirstAndKeepsTheOtherPartsOut() throws IOException {
+        File game = temporary.newFolder("game");
+        HdPackInstall.install(fonts(2, false, "font0-model"), PF, game, PROGRESS, false);
+        assertEquals(2, DustlightHd.status(game).tier);
+        assertEquals(0, DustlightHd.status(game).packs);
+        HdPackInstall.install(p1(), P1, game, PROGRESS, false);
+        assertEquals(1, DustlightHd.status(game).fontFiles);
+        assertEquals(2, DustlightHd.status(game).packs);
+        assertEquals(1, DustlightHd.status(game).fontParts.size());
+    }
+
+    @Test public void fontsOfAnotherTierAreBlockedLikeArtAndNothingIsWritten() throws IOException {
+        File game = temporary.newFolder("game");
+        HdPackInstall.install(p1(), P1, game, PROGRESS, false);
+        try {
+            HdPackInstall.install(fonts(3, false, "font0-model"), "Dustlight HD-193-1-0-art-3x-part4.zip", game, PROGRESS, false);
+            fail("expected a tier mismatch");
+        } catch (HdPackInstall.TierMismatch m) {
+            assertEquals(3, m.incoming);
+        }
+        assertFalse(new File(game, "hd/3x").exists());
+        assertEquals(0, DustlightHd.status(game).fontFiles);
+    }
+
+    @Test public void fontsNamedForAnotherTierThanTheyHoldAreInvalid() throws IOException {
+        try {
+            HdPackInstall.validate(fonts(3, false, "font0-model"), "Dustlight HD-193-1-0-art-2x-part4.zip");
+            fail("expected Invalid");
+        } catch (HdPackInstall.Invalid expected) { }
+    }
+
+    @Test public void fontsOfTwoTiersInOneZipAreInvalid() throws IOException {
+        GameFilesTest.MemorySource zip = fonts(2, false, "font0-model");
+        zip.put("hd/fonts/font0-model-3x.png", "\u0089PNG0000");
+        try {
+            HdPackInstall.validate(zip, PF);
+            fail("expected Invalid");
+        } catch (HdPackInstall.Invalid expected) { }
+    }
+
+    @Test public void artPartWithFontsOfItsOwnTierInstallsThemAndOtherTierFontsAreInvalid() throws IOException {
+        File game = temporary.newFolder("game");
+        GameFilesTest.MemorySource mixed = part(2, 5, "a");
+        mixed.put("hd/fonts/fonts.json", "{}").put("hd/fonts/font0-model-2x.png", "\u0089PNG0000");
+        HdPackInstall.install(mixed, P1, game, PROGRESS, false);
+        assertEquals(1, DustlightHd.status(game).fontFiles);
+        GameFilesTest.MemorySource wrong = part(2, 5, "b");
+        wrong.put("hd/fonts/font0-model-3x.png", "\u0089PNG0000");
+        try {
+            HdPackInstall.validate(wrong, P2);
+            fail("expected Invalid");
+        } catch (HdPackInstall.Invalid expected) { }
+    }
+
+    @Test public void zipWithNeitherArtNorFontsIsRejected() throws IOException {
+        File game = temporary.newFolder("game");
+        for (GameFilesTest.MemorySource zip : new GameFilesTest.MemorySource[] {
+            new GameFilesTest.MemorySource().put("hd/readme.txt", "x"),
+            new GameFilesTest.MemorySource().put("hd/fonts/fonts.json", "{}"),               // index alone is not a part
+            new GameFilesTest.MemorySource().put("hd/fonts/notes.txt", "x"),
+            fonts(2, false, "font0-model").put("hd/other/stuff.bin", "x") }) {
+            try {
+                HdPackInstall.install(zip, PF, game, PROGRESS, false);
+                fail("expected Invalid");
+            } catch (HdPackInstall.Invalid expected) { }
+        }
+        assertEquals(0, HdPackInstall.installedTier(game));
+    }
+
+    @Test public void fontAtlasMustBeAPng() throws IOException {
+        File game = temporary.newFolder("game");
+        GameFilesTest.MemorySource zip = new GameFilesTest.MemorySource().put("hd/fonts/font0-model-2x.png", "not a png at all");
+        try {
+            HdPackInstall.install(zip, PF, game, PROGRESS, false);
+            fail("expected Invalid");
+        } catch (HdPackInstall.Invalid expected) { }
+        assertEquals(0, HdPackInstall.installedTier(game));
+    }
+
+    @Test public void fontsPartIsRecognisedByContentToo() {
+        assertTrue(DustlightHd.isHdContent(fonts(2, true, "font0-model").list()));
+        assertFalse(DustlightHd.isHdContent(new GameFilesTest.MemorySource().put("hd/fonts/fonts.json", "{}").list()));
+    }
 }

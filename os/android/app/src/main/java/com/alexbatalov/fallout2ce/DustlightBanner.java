@@ -205,6 +205,7 @@ final class DustlightBanner extends LinearLayout {
             if (s.complete()) list.addView(text(activity.getString(R.string.hd_guide_ready), Color.rgb(140, 210, 140), 14));
             else if (s.totalPacks >= 0) list.addView(text(activity.getString(R.string.hd_guide_more, s.moreParts()), Color.rgb(200, 200, 120), 14));
             else list.addView(text(activity.getString(R.string.hd_guide_need_part1), Color.rgb(200, 200, 120), 14));
+            if (s.fontFiles > 0) list.addView(text(activity.getString(R.string.hd_guide_fonts, s.tier, s.fontFiles), Color.LTGRAY, 13));
         }
         LinearLayout actions = new LinearLayout(activity);
         if (r.blockedTier != 0) {
