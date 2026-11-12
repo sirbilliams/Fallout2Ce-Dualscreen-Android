@@ -1298,6 +1298,31 @@ static const DevAutotestStep kDevAutotestGamePickerSteps[] = {
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp14_main_menu", "mainmenu.new" },
 };
 
+// Intro button: opens the movies, a tap skips each, back on the same page.
+// Needs the game's three opening movies (IPLOGO, INTRO, CREDITS).
+static const DevAutotestStep kDevAutotestGamePickerIntroSteps[] = {
+    { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "gi00_picker" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi01_intro_shown", "picker.intro" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi02_intro_tap", "picker.intro" },
+    { DEV_AUTOTEST_ACTION_CHECK_MOVIE, 0, 0, 0, 1, "gi03_first_movie" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi04_skip_first", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_CHECK_MOVIE, 0, 0, 0, 1, "gi05_second_movie" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi06_skip_second", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_CHECK_MOVIE, 0, 0, 0, 1, "gi06a_third_movie" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 80, "gi06b_skip_third", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi07_back_intro", "picker.intro" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi08_back_play", "picker.play" },
+    // X on a pad does the same.
+    { DEV_AUTOTEST_ACTION_PAD, 2, 0, 0, 40, "gi10_pad_x" },
+    { DEV_AUTOTEST_ACTION_CHECK_MOVIE, 0, 0, 0, 1, "gi11_pad_movie" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi12_skip_first", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "gi13_skip_second", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 80, "gi13b_skip_third", "movie.screen" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi14_back_again", "picker.intro" },
+    { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 40, "gi15_play" },
+    { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gi16_main_menu", "mainmenu.new" },
+};
+
 static const DevAutotestStep* gDevAutotestSteps = kDevAutotestSteps;
 static int gDevAutotestStepCount = sizeof(kDevAutotestSteps) / sizeof(kDevAutotestSteps[0]);
 
@@ -3040,6 +3065,12 @@ void devAutotestSetScenario(const char* name)
         gDevAutotestStepCount = sizeof(kDevAutotestGamePickerSteps) / sizeof(kDevAutotestGamePickerSteps[0]);
 #ifndef __ANDROID__
         if (strcmp(name, "gamepickerphone") != 0) bottomScreenSetTest(1240, 1080, 2.6f);
+#endif
+    } else if (strcmp(name, "gamepickerintro") == 0) {
+        gDevAutotestSteps = kDevAutotestGamePickerIntroSteps;
+        gDevAutotestStepCount = sizeof(kDevAutotestGamePickerIntroSteps) / sizeof(kDevAutotestGamePickerIntroSteps[0]);
+#ifndef __ANDROID__
+        bottomScreenSetTest(1240, 1080, 2.6f);
 #endif
     } else if (strcmp(name, "modsui") == 0) {
         gDevAutotestSteps = kDevAutotestModsUiSteps;

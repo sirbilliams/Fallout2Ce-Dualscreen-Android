@@ -1,4 +1,5 @@
 #include "game_catalog.h"
+#include "game_movie.h"
 #include "save_storage.h"
 #include <cstdio>
 #include <cstdlib>
@@ -22,6 +23,14 @@ int main()
         auto expected = i == 1 || i == 2 ? GameDownloadKind::GithubRelease : i == 3 ? GameDownloadKind::Direct : GameDownloadKind::ProjectPage;
         CHECK(game.downloadKind == expected);
     }
+    // Fallout 2 plays the boot movies in the boot order; others list none.
+    CHECK(gameCatalogIntroCount(0) == 3);
+    CHECK(gameCatalog()[0].introMovies[0] == MOVIE_IPLOGO);
+    CHECK(gameCatalog()[0].introMovies[1] == MOVIE_INTRO);
+    CHECK(gameCatalog()[0].introMovies[2] == MOVIE_CREDITS);
+    for (int i = 1; i < 8; ++i) CHECK(gameCatalogIntroCount(i) == 0);
+    CHECK(gameCatalogIntroCount(-1) == 0);
+    CHECK(gameCatalogIntroCount(8) == 0);
     CHECK(gameCatalogIndex("../../bad") == 0);
     char temp[] = "/tmp/game-catalog-XXXXXX";
     CHECK(mkdtemp(temp));

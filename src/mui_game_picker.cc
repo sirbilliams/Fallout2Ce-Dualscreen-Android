@@ -12,6 +12,7 @@
 #include "fps_limiter.h"
 #include "game.h"
 #include "game_catalog.h"
+#include "game_movie.h"
 #include "input.h"
 #include "kb.h"
 #include "mui.h"
@@ -45,6 +46,7 @@ struct PickerState {
     unsigned int changed = 0;
     bool play = false;
     bool mods = false;
+    bool intro = false;
     bool stub = false;
     bool install = false;
     bool quit = false;
@@ -169,7 +171,16 @@ void PickerScreen::controls(MuiContext& ui, MuiRect rect, int index, bool enable
         return ui.button(id, r, value, primary ? MuiButtonStyle::Primary : MuiButtonStyle::Normal);
     };
     if (index == 0) {
-        if (button("picker.play", action, text(398, "Play"), true)) state.play = true;
+        bool hasIntro = gameCatalogIntroCount(index) > 0;
+        MuiRect playRect = action;
+        if (hasIntro) {
+            // Intro sits beside Play.
+            float gap = ui.dp(10);
+            playRect.w = (action.w - gap) * 0.62f;
+            MuiRect introRect = { playRect.right() + gap, action.y, action.w - playRect.w - gap, action.h };
+            if (button("picker.intro", introRect, text(419, "Intro"), false)) state.intro = true;
+        }
+        if (button("picker.play", playRect, text(398, "Play"), true)) state.play = true;
         if (enabled) ui.padPrefer("picker.play");
     } else {
         auto caption = entry.downloadKind == GameDownloadKind::ProjectPage ? text(402, "Open project page") : text(401, "Install");
@@ -247,6 +258,25 @@ bool muiGamePickerAccept(MuiSurface surface)
     return false;
 }
 
+bool muiGamePickerIntro()
+{
+    if (!active || !active->interactive || gameCatalogIntroCount(active->page) == 0 || active->page != 0) return false;
+    active->intro = true;
+    return true;
+}
+
+// Plays the game's opening movies (a tap or a key skips each), then the
+// picker is shown again as it was.
+static void playIntro(int index)
+{
+    const auto& entry = gameCatalog()[index];
+    int count = gameCatalogIntroCount(index);
+    for (int i = 0; i < count && _game_user_wants_to_quit == GAME_QUIT_REQUEST_NONE; ++i) {
+        gameMoviePlay(entry.introMovies[i], i == 0 ? GAME_MOVIE_FADE_IN : 0);
+    }
+    paletteFadeTo(_cmap);
+}
+
 bool muiGamePickerRun()
 {
     PickerState state;
@@ -266,6 +296,12 @@ bool muiGamePickerRun()
         if (key == KEY_RETURN && state.page == 0) state.play = true;
         devAutotestTick();
         renderPresent();
+        if (state.intro) {
+            state.interactive = false;
+            state.intro = false;
+            playIntro(state.page);
+            state.interactive = true;
+        }
         if (state.mods || state.stub) {
             state.interactive = false;
             if (state.mods) {

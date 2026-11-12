@@ -416,6 +416,10 @@ void muiPadMove(MuiSurface surface, MuiPadDir direction)
 
 void muiPadActivate(MuiSurface surface, bool longPress)
 {
+    if (longPress && muiGamePickerIntro()) {
+        muiPadTouch();
+        return;
+    }
     if (!longPress && muiGamePickerAccept(surface)) {
         muiPadTouch();
         return;

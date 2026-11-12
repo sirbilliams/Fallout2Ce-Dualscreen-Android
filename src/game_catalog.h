@@ -12,7 +12,12 @@ struct GameCatalogEntry {
     GameDownloadKind downloadKind;
     bool experimental;
     const char* languageNote;
+    // Opening movies (GameMovie ids), -1 terminated; the picker's Intro
+    // button plays them in order. Empty when the game's data is unknown.
+    std::array<int, 4> introMovies;
 };
+// Number of intro movies of a catalog entry.
+int gameCatalogIntroCount(int index);
 const std::array<GameCatalogEntry, 8>& gameCatalog();
 // Unknown or malformed selections fall back to Fallout 2.
 int gameCatalogIndex(const std::string& id);
