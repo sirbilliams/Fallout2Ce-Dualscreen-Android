@@ -100,7 +100,11 @@ namespace {
         }
         MuiSurface surface() override { return target; }
         bool coversScreen() override { return true; }
-        void back() override { state.quit = true; }
+        void back() override
+        {
+            debugPrint("Picker: back on %s screen\n", target == MuiSurface::Top ? "top" : "bottom");
+            state.quit = true;
+        }
         void build(MuiContext& ui) override;
 
     private:
@@ -310,7 +314,10 @@ bool muiGamePickerRun()
     while (!state.play && !state.quit && _game_user_wants_to_quit == GAME_QUIT_REQUEST_NONE) {
         sharedFpsLimiter.mark();
         int key = inputGetInput();
-        if (key == KEY_ESCAPE) state.quit = true;
+        if (key == KEY_ESCAPE) {
+            debugPrint("Picker: Escape key, quitting\n");
+            state.quit = true;
+        }
         if (key == KEY_ARROW_LEFT) state.select(state.page - 1);
         if (key == KEY_ARROW_RIGHT) state.select(state.page + 1);
         if (key == KEY_RETURN && state.page == 0) state.play = true;
@@ -327,7 +334,10 @@ bool muiGamePickerRun()
             if (state.mods) {
                 state.mods = false;
                 muiModsScreenRun();
-                if (muiModsRestartRequested()) state.quit = true;
+                if (muiModsRestartRequested()) {
+                    debugPrint("Picker: mods asked for a restart\n");
+                    state.quit = true;
+                }
             } else {
                 state.stub = false;
                 if (state.install) requestGameAction(gameCatalog()[state.page]);
@@ -339,6 +349,7 @@ bool muiGamePickerRun()
         }
         sharedFpsLimiter.throttle();
     }
+    debugPrint("Picker: done play=%d quit=%d wantsQuit=%d\n", state.play ? 1 : 0, state.quit ? 1 : 0, _game_user_wants_to_quit);
     if (state.play && !gamePickerSavePage(state.page)) debugPrint("Picker selection could not be saved\n");
     muiRemove(&bottom);
     muiRemove(&top);
