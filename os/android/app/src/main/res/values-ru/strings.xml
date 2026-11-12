@@ -76,4 +76,21 @@
     <string name="mod_unreadable">Не удалось прочитать архив (.7z и .rar не поддерживаются)</string>
     <string name="mod_no_space">Недостаточно места: нужно %d МБ свободного места</string>
     <string name="mod_vanilla_dat_only">Vanilla поддерживает только DAT-моды. Для отдельных файлов data создайте профиль.</string>
+    <string name="rpu_title">Restoration Project</string>
+    <string name="rpu_checking">Проверяю последний релиз…</string>
+    <string name="rpu_offline">Нет связи с GitHub: %s</string>
+    <string name="rpu_no_zip">В последнем релизе нет zip для загрузки.</string>
+    <string name="rpu_info">%1$s\nРазмер: %2$d МБ\nНужна новая игра: старые сохранения с ним не работают.</string>
+    <string name="rpu_info_vanilla">\nАктивный профиль Vanilla: в папку модов игры добавятся только DAT-файлы, без музыки. Для полной установки сначала создайте профиль в Модах.</string>
+    <string name="rpu_download">Скачать</string>
+    <string name="rpu_resume">Продолжить загрузку (%1$d из %2$d МБ)</string>
+    <string name="rpu_no_wifi">Нет безлимитного Wi-Fi. Загрузка около %d МБ. Всё равно продолжить?</string>
+    <string name="rpu_continue">Продолжить</string>
+    <string name="rpu_no_space">Недостаточно места: нужно %d МБ свободно</string>
+    <string name="rpu_downloading">Загрузка: %1$d из %2$d МБ</string>
+    <string name="rpu_paused">Загрузка остановлена. В следующий раз она продолжится с этого места.</string>
+    <string name="rpu_download_failed">Не удалось скачать: %s</string>
+    <string name="rpu_retry">Повторить</string>
+    <string name="rpu_bad_zip">Скачанный файл повреждён и удалён. Скачайте его снова.</string>
+    <string name="rpu_installed">Установлено: %s.\nRPU требует новой игры: начните её в главном меню.</string>
 </resources>

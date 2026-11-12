@@ -213,12 +213,13 @@ public class MainActivity extends SDLActivity {
     // starts it again when done.
     public void openGameFiles(String mode) {
         runOnUiThread(() -> {
-            Intent intent = new Intent(this, ImportActivity.class);
-            if (mode != null) {
+            boolean rpu = RpuActivity.MODE.equals(mode);
+            Intent intent = new Intent(this, rpu ? RpuActivity.class : ImportActivity.class);
+            if (mode != null && !rpu) {
                 intent.putExtra(ImportActivity.MODE, mode);
             }
             startActivity(intent);
-            if (mode == null || ImportActivity.MODE_MOD.equals(mode)) {
+            if (mode == null || rpu || ImportActivity.MODE_MOD.equals(mode)) {
                 finish();
             }
         });

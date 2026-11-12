@@ -113,4 +113,21 @@
     <string name="mod_unreadable">Can\'t read this archive (.7z and .rar aren\'t supported)</string>
     <string name="mod_no_space">Not enough space: needs %d MB free</string>
     <string name="mod_vanilla_dat_only">Vanilla supports DAT mods only. Create a profile to install loose data files.</string>
+    <string name="rpu_title">Restoration Project</string>
+    <string name="rpu_checking">Checking the latest release…</string>
+    <string name="rpu_offline">Can\'t reach GitHub: %s</string>
+    <string name="rpu_no_zip">The latest release has no zip to download.</string>
+    <string name="rpu_info">%1$s\nSize: %2$d MB\nIt needs a new game: old saves won\'t work with it.</string>
+    <string name="rpu_info_vanilla">\nThe active profile is Vanilla: only its DAT files will be added to the game\'s mods folder, and the music is left out. Create a profile in Mods first for the full install.</string>
+    <string name="rpu_download">Download</string>
+    <string name="rpu_resume">Continue download (%1$d of %2$d MB)</string>
+    <string name="rpu_no_wifi">You\'re not on an unmetered Wi-Fi connection. The download is about %d MB. Continue anyway?</string>
+    <string name="rpu_continue">Continue</string>
+    <string name="rpu_no_space">Not enough space: needs %d MB free</string>
+    <string name="rpu_downloading">Downloading %1$d of %2$d MB</string>
+    <string name="rpu_paused">Download stopped. It continues from here next time.</string>
+    <string name="rpu_download_failed">Download failed: %s</string>
+    <string name="rpu_retry">Try again</string>
+    <string name="rpu_bad_zip">The downloaded file is damaged and was removed. Download it again.</string>
+    <string name="rpu_installed">Installed %s.\nRPU needs a new game: start one from the main menu.</string>
 </resources>

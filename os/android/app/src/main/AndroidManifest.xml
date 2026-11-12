@@ -40,6 +40,10 @@
     <!-- <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" /> -->
     <!-- <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" /> -->
 
+    <!-- Install RPU downloads the release from GitHub (RpuActivity) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <!-- Allow access to the vibrator -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
@@ -100,6 +104,14 @@
         <!-- Its own process: "Replace game" chosen in the game closes the
              game's (MainActivity exits the process), the import goes on. -->
         <activity android:name=".ImportActivity"
+            android:process=":import"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
+        </activity>
+
+        <!-- Install RPU: the same process as ImportActivity (the game exits). -->
+        <activity android:name=".RpuActivity"
             android:process=":import"
             android:theme="@style/AppTheme"
             android:screenOrientation="landscape"

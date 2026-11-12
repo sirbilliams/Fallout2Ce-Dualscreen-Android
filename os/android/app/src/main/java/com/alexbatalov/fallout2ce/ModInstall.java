@@ -111,6 +111,12 @@ final class ModInstall {
             new String[] { OpenableColumns.DISPLAY_NAME }, null, null, null)) {
             if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0)) name = cursor.getString(0);
         }
+        return install(context, zip, name, gameDir, progress);
+    }
+
+    // [name]: the mod's name (its id is made from it), e.g. for the RPU zip
+    // downloaded into the app's own folder.
+    static Result install(Context context, Uri zip, String name, File gameDir, Progress progress) throws IOException {
         // NativeArchive also supports RAR/7z, but the mod picker promises ZIP.
         try (InputStream in = context.getContentResolver().openInputStream(zip)) {
             if (in == null || in.read() != 'P' || in.read() != 'K') throw new Problem(R.string.mod_unreadable);
