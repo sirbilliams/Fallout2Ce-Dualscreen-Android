@@ -10,7 +10,8 @@
 namespace fallout::hd {
 
 // Minimal JSON reader for pipeline output (pack.json). Whole document in
-// memory; numbers are doubles; no \u escapes beyond ASCII.
+// memory; numbers are doubles; byte-valued \u00XX escapes preserve capture
+// code-page strings.
 struct JsonValue {
     enum class Type {
         Null,

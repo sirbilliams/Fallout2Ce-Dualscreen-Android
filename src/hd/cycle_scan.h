@@ -5,6 +5,11 @@
 
 #include "map_defs.h"
 
+// This CE fork represents elevations as int (Dustlight uses an enum).
+namespace fallout {
+using MapElevation = int;
+}
+
 namespace fallout::hd {
 
 // Palette-cycle scan (PLAN.md P6.0), part of the scripted capture mode:
