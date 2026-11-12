@@ -125,6 +125,27 @@ static void op_read_byte(Program* program)
     programStackPushInteger(program, value);
 }
 
+// write_byte/write_short/write_int: CE has a different address space, so
+// writes to original EXE memory are ignored (logged), like read_byte.
+static void op_write_memory(Program* program)
+{
+    int value = programStackPopInteger(program);
+    int addr = programStackPopInteger(program);
+    debugPrint("%s: ignored memory write 0x%x at 0x%x", program->name, value, addr);
+}
+
+// eax_available: deprecated in sfall (always 0 there too).
+static void op_eax_available(Program* program)
+{
+    programStackPushInteger(program, 0);
+}
+
+// set_eax_environment: deprecated in sfall, no-op.
+static void op_set_eax_environment(Program* program)
+{
+    programStackPopInteger(program);
+}
+
 // set_pc_base_stat
 static void op_set_pc_base_stat(Program* program)
 {
@@ -2271,9 +2292,12 @@ void sfallOpcodesInit()
     // 0x8158 - int   read_int(int address)
     // 0x8159 - string read_string(int address)
 
-    // ^ 0x81cf - void  write_byte(int address, int value)
-    // ^ 0x81d0 - void  write_short(int address, int value)
-    // ^ 0x81d1 - void  write_int(int address, int value)
+    // 0x81cf - void  write_byte(int address, int value)
+    interpreterRegisterOpcode(0x81CF, op_write_memory);
+    // 0x81d0 - void  write_short(int address, int value)
+    interpreterRegisterOpcode(0x81D0, op_write_memory);
+    // 0x81d1 - void  write_int(int address, int value)
+    interpreterRegisterOpcode(0x81D1, op_write_memory);
     // ^ 0x821b - void  write_string(int address, string value)
 
     // ^ 0x81d2 - void  call_offset_v0(int address)
@@ -2506,9 +2530,11 @@ void sfallOpcodesInit()
     // 0x81c9 - void set_critter_pickpocket_mod(object, int max, int mod)
     // 0x81ca - void set_base_pickpocket_mod(int max, int mod)
 
-    // note: these are deprecated; do not implement
+    // note: these are deprecated; registered as no-ops (Sonora calls them)
     // 0x81a3 - int  eax_available()
+    interpreterRegisterOpcode(0x81A3, op_eax_available);
     // 0x81a4 - void set_eax_environment(int environment)
+    interpreterRegisterOpcode(0x81A4, op_set_eax_environment);
 
     // 0x81a5 - void inc_npc_level(int pid/string name)
     // 0x8241 - int  get_npc_level(int pid/string name)
