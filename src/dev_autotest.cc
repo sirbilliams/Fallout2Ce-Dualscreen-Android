@@ -2489,7 +2489,9 @@ static const DevAutotestStep kDevAutotestCombatPanelSteps[] = {
         { DEV_AUTOTEST_ACTION_TIME_DUDE_ANIMATION, 0, 4, ROTATION_SW, 200, prefix "_walk" },       \
         { DEV_AUTOTEST_ACTION_TIME_DUDE_ANIMATION, 1, 4, ROTATION_NE, 200, prefix "_run" },        \
         { DEV_AUTOTEST_ACTION_TIME_DUDE_ANIMATION, 2, ANIM_THROW_PUNCH, 0, 120, prefix "_punch" }, \
-        { DEV_AUTOTEST_ACTION_LOG_ANIMATION_SOUND, 0, 0, 0, 1, prefix "_burst_sound", "WAH2XXX2" }
+    {                                                                                              \
+        DEV_AUTOTEST_ACTION_LOG_ANIMATION_SOUND, 0, 0, 0, 1, prefix "_burst_sound", "WAH2XXX2"     \
+    }
 
 static const DevAutotestStep kDevAutotestCombatSpeedSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "v00_start" },

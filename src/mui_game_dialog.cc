@@ -392,7 +392,7 @@ namespace {
             std::u32string number = muiDecodeUtf8((std::to_string(index + 1) + (settings.touch.colour_blind_safe && reaction != -1 ? (reaction == 0 ? "+" : reaction == 2 ? "!"
                                                                                                                                                                           : "=")
                                                                                                                                    : ""))
-                    .c_str());
+                                                      .c_str());
             muiDrawTextAligned(number, badgeRect, muiFitTextSize(number, badge - ui.dp(6.0f), ui.dp(17.0f), ui.dp(10.0f)), dimmed(tint, mirror), MuiAlign::Center, MuiAlign::Center);
 
             float textX = badgeRect.right() + padding;
