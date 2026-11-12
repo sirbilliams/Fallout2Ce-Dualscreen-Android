@@ -22,10 +22,15 @@ import android.widget.TextView;
 // are queued in ModDownloads (system DownloadManager, with the WebView's
 // cookies); the Downloads screen lists and installs them.
 public class NexusActivity extends Activity {
+    // Optional start page (HdPackActivity: Nexus mod 193).
+    static final String EXTRA_URL = "url";
+    // "dustlight": show the Dustlight HD guide banner under the page.
+    static final String EXTRA_GUIDE = "guide";
     private static final String START = "https://www.nexusmods.com/fallout2/mods/";
 
     private WebView web;
     private TextView status;
+    private DustlightBanner banner;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -86,16 +91,23 @@ public class NexusActivity extends Activity {
         web.setDownloadListener((url, userAgent, contentDisposition, mimeType, length) ->
             download(url, contentDisposition, mimeType, web.getTitle()));
         root.addView(web, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+        if (DustlightHd.GUIDE.equals(getIntent().getStringExtra(EXTRA_GUIDE))) {
+            // Below the page, never over it: the Nexus download buttons stay reachable.
+            banner = new DustlightBanner(this);
+            if (savedInstanceState != null) banner.setExpanded(savedInstanceState.getBoolean("guideOpen", true));
+            root.addView(banner, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
         setContentView(root);
 
         if (savedInstanceState != null) web.restoreState(savedInstanceState);
-        else web.loadUrl(START);
+        else web.loadUrl(startUrl());
     }
 
     @Override
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
         web.saveState(out);
+        if (banner != null) out.putBoolean("guideOpen", banner.isExpanded());
     }
 
     @Override
@@ -105,13 +117,21 @@ public class NexusActivity extends Activity {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        if (banner != null) banner.start();
+    }
+
+    @Override
     protected void onPause() {
+        if (banner != null) banner.stop();
         super.onPause();
         CookieManager.getInstance().flush();
     }
 
     @Override
     protected void onDestroy() {
+        if (banner != null) banner.destroy();
         web.destroy();
         super.onDestroy();
     }
@@ -134,5 +154,11 @@ public class NexusActivity extends Activity {
     private void leave() {
         startActivity(new Intent(this, MainActivity.class));
         finish();
+    }
+
+    private String startUrl() {
+        String url = getIntent().getStringExtra(EXTRA_URL);
+        // Only Nexus pages; anything else opens the mod list.
+        return url != null && url.startsWith("https://www.nexusmods.com/") ? url : START;
     }
 }

@@ -132,6 +132,9 @@ namespace {
     constexpr int kTextSetupGuide = 1100;
     constexpr int kTextSetupGuideNote = 1101;
     constexpr int kTextSetupGuideButton = 1102;
+    constexpr int kTextHdPack = 1110;
+    constexpr int kTextHdPackNote = 1111;
+    constexpr int kTextHdPackButton = 1112;
     constexpr int kTextExportButton = 354;
     constexpr int kTextDeleteButton = 355;
     constexpr int kTextKarmaChanges = 356;
@@ -473,6 +476,7 @@ namespace {
         ExportSaves,
         DeleteSaves,
         SetupGuide,
+        HdPack,
     };
 
     // The section is there on Android (the app's import screen does the
@@ -1368,6 +1372,7 @@ namespace {
             { FilesAction::ImportSaves, "prefs.files.import", kTextImportSaves, "Import saves", kTextImportSavesNote, "From a folder or an archive: add or replace all", kTextImportButton, "Import" },
             { FilesAction::ExportSaves, "prefs.files.export", kTextExportSaves, "Export saves", kTextExportSavesNote, "All saves in one archive", kTextExportButton, "Export" },
             { FilesAction::SetupGuide, "prefs.files.guide", kTextSetupGuide, "Setup guide", kTextSetupGuideNote, "Game files, layout, theme and controls, step by step", kTextSetupGuideButton, "Open" },
+            { FilesAction::HdPack, "prefs.files.hdpack", kTextHdPack, "HD pack", kTextHdPackNote, "Install or remove the HD art, HD and lighting settings", kTextHdPackButton, "Open" },
             { FilesAction::DeleteSaves, "prefs.files.delete", kTextDeleteSaves, "Delete all saves", kTextDeleteSavesNote, "Export them first if they may be needed", kTextDeleteButton, "Delete" },
         };
         constexpr int kActionCount = sizeof(kActions) / sizeof(kActions[0]);
@@ -1453,6 +1458,11 @@ namespace {
 
         if (action == FilesAction::SetupGuide) {
             openSetupGuide();
+            return;
+        }
+        if (action == FilesAction::HdPack) {
+            // The app's HD pack screen (HdPackActivity); the game closes behind it.
+            openGameFiles("hdpack");
             return;
         }
 
