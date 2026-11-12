@@ -67,7 +67,12 @@ final class GuideSettings {
 
     // `[section] key` as text, [fallback] when there is none.
     static String getString(File game, String section, String key, String fallback) {
-        List<String> lines = read(new File(game, CONFIG));
+        return getStringIn(new File(game, CONFIG), section, key, fallback);
+    }
+
+    // The same, in any ini-style file (a profile's hd.ini).
+    static String getStringIn(File config, String section, String key, String fallback) {
+        List<String> lines = read(config);
         boolean inside = false;
         for (String line : lines) {
             String trimmed = line.trim();
@@ -88,7 +93,11 @@ final class GuideSettings {
 
     // Sets `[section] key=value` the same way.
     static void setString(File game, String section, String key, String value) throws IOException {
-        File config = new File(game, CONFIG);
+        setStringIn(new File(game, CONFIG), section, key, value);
+    }
+
+    // The same, in any ini-style file (created when missing).
+    static void setStringIn(File config, String section, String key, String value) throws IOException {
         List<String> lines = read(config);
         String entry = key + "=" + value;
 

@@ -2,6 +2,7 @@
 
 #ifdef FALLOUT_HD
 #include "hd/hd.h"
+#include "hd/profile_hd.h"
 #endif
 #include "debug.h"
 #include "game_config_migration.h"
@@ -73,6 +74,36 @@ static void gameConfigRecordCommandLineOverride(const char* section, const char*
         override.originalValue = originalValue;
     }
     commandLineOverrides.push_back(std::move(override));
+}
+
+// Writes the config with process overrides (command line, profile hd.ini)
+// replaced by the values loaded from the file.
+static bool gameConfigWriteStripped()
+{
+    // Strip process overrides from a copy so saving cannot alter active values
+    // or invalidate strings held by config readers.
+    ScopedConfig savedConfig;
+    if (!savedConfig || !configCopy(savedConfig.get(), &gGameConfig)) {
+        return false;
+    }
+
+    for (const auto& override : commandLineOverrides) {
+        if (override.originalValue.has_value()) {
+            if (!configSetString(savedConfig.get(), override.section.c_str(), override.key.c_str(), override.originalValue->c_str())) {
+                return false;
+            }
+        } else {
+            if (!configRemoveKey(savedConfig.get(), override.section.c_str(), override.key.c_str())) {
+                return false;
+            }
+        }
+    }
+
+    if (!configWriteEx(savedConfig.get(), gGameConfigFilePath, CONFIG_RETAIN_ALL)) {
+        return false;
+    }
+
+    return true;
 }
 
 // Inits main game config.
@@ -166,11 +197,28 @@ bool gameConfigInit(bool isMapper, int argc, char** argv)
     }
 
 #ifdef FALLOUT_HD
+    // HD: the active mod profile's hd.ini replaces [hd]/[hd_light] keys in
+    // memory only (recorded like command-line overrides, so saving restores
+    // the fallout2.cfg values).
+    if (!isMapper) {
+        hd::profileHdApply("", [](const hd::ProfileOverride& o) {
+            CommandLineOverride saved;
+            saved.section = o.section;
+            saved.key = o.key;
+            char* originalValue = nullptr;
+            if (configGetString(&gGameConfig, o.section.c_str(), o.key.c_str(), &originalValue)) {
+                saved.originalValue = originalValue;
+            }
+            commandLineOverrides.push_back(std::move(saved));
+            configSetString(&gGameConfig, o.section.c_str(), o.key.c_str(), o.value.c_str());
+        });
+    }
+
     // HD: first-run screen setup follows migration, before command-line overrides.
     int hdEnabled = 0;
     configGetInt(&gGameConfig, "hd", "enabled", &hdEnabled);
     if (!isMapper && hdEnabled != 0 && hd::firstRunScreenSetup(&gGameConfig)) {
-        configWriteEx(&gGameConfig, gGameConfigFilePath, CONFIG_RETAIN_ALL);
+        gameConfigWriteStripped();
     }
 
 #endif
@@ -203,26 +251,7 @@ bool gameConfigSave()
         return false;
     }
 
-    // Strip process overrides from a copy so saving cannot alter active values
-    // or invalidate strings held by config readers.
-    ScopedConfig savedConfig;
-    if (!savedConfig || !configCopy(savedConfig.get(), &gGameConfig)) {
-        return false;
-    }
-
-    for (const auto& override : commandLineOverrides) {
-        if (override.originalValue.has_value()) {
-            if (!configSetString(savedConfig.get(), override.section.c_str(), override.key.c_str(), override.originalValue->c_str())) {
-                return false;
-            }
-        } else {
-            if (!configRemoveKey(savedConfig.get(), override.section.c_str(), override.key.c_str())) {
-                return false;
-            }
-        }
-    }
-
-    if (!configWriteEx(savedConfig.get(), gGameConfigFilePath, CONFIG_RETAIN_ALL)) {
+    if (!gameConfigWriteStripped()) {
         return false;
     }
 

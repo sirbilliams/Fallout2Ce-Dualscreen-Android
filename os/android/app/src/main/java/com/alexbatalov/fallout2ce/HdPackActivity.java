@@ -28,6 +28,8 @@ public class HdPackActivity extends Activity {
 
     private File game;
     private TextView status;
+    private TextView profile;
+    private boolean refreshing;
     private CheckBox enabled;
     private Button quality;
     private Button remove;
@@ -55,10 +57,16 @@ public class HdPackActivity extends Activity {
         status.setPadding(0, 16, 0, 16);
         root.addView(status);
 
+        profile = new TextView(this);
+        profile.setTextColor(Color.rgb(140, 190, 230));
+        profile.setPadding(0, 0, 0, 8);
+        root.addView(profile);
+
         enabled = new CheckBox(this);
         enabled.setText(R.string.hd_enable);
         enabled.setTextColor(Color.WHITE);
         enabled.setOnCheckedChangeListener((b, on) -> {
+            if (refreshing) return;
             try {
                 HdSettings.setEnabled(game, on);
             } catch (IOException e) {
@@ -159,7 +167,11 @@ public class HdPackActivity extends Activity {
             status.setText(getString(R.string.hd_installed, tier, mb) + "\n" + getString(R.string.hd_shared, mb) + more);
         }
         remove.setEnabled(tier != 0);
+        String active = HdSettings.activeProfile(game);
+        profile.setText(getString(R.string.hd_profile, active.isEmpty() ? getString(R.string.hd_profile_vanilla) : active));
+        refreshing = true;
         enabled.setChecked(HdSettings.isEnabled(game));
+        refreshing = false;
         quality.setText(getString(R.string.hd_quality, HdSettings.quality(game)));
     }
 
