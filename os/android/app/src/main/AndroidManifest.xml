@@ -114,6 +114,22 @@
             android:theme="@style/AppTheme"
             android:screenOrientation="landscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+        <!-- Downloads screen: same process as the Nexus browser. -->
+        <activity android:name=".DownloadsActivity"
+            android:process=":import"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+
+        <!-- System download broadcasts (finished, notification tapped). -->
+        <receiver android:name=".ModDownloadReceiver"
+            android:process=":import"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.DOWNLOAD_COMPLETE" />
+                <action android:name="android.intent.action.DOWNLOAD_NOTIFICATION_CLICKED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

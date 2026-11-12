@@ -213,8 +213,8 @@ public class MainActivity extends SDLActivity {
     // starts it again when done.
     public void openGameFiles(String mode) {
         runOnUiThread(() -> {
-            if ("nexus".equals(mode)) {
-                startActivity(new Intent(this, NexusActivity.class));
+            if ("nexus".equals(mode) || "downloads".equals(mode)) {
+                startActivity(new Intent(this, "nexus".equals(mode) ? NexusActivity.class : DownloadsActivity.class));
                 finish();
                 return;
             }
@@ -227,6 +227,12 @@ public class MainActivity extends SDLActivity {
                 finish();
             }
         });
+    }
+
+    // Called from native code (mui_mods.cc) when the Mods screen opens: how
+    // many downloads are finished and not installed yet.
+    public int downloadsReady() {
+        return ModDownloads.readyCount(this);
     }
 
     // Called from native code (mui_preferences.cc, "Setup guide"): the

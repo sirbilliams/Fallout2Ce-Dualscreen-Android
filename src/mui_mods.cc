@@ -44,6 +44,8 @@ namespace {
     constexpr int kTextProfileFailed = 393;
     constexpr int kTextInstallRpu = 394;
     constexpr int kTextBrowseNexus = 395;
+    constexpr int kTextDownloads = 396;
+    constexpr int kTextDownloadsReady = 397;
 
     constexpr size_t kNameLength = 24;
 
@@ -84,6 +86,38 @@ namespace {
         }
 #endif
     }
+
+    // Downloads finished and not installed yet (the app's download index);
+    // asked of the activity, 0 on desktop.
+    int downloadsReady()
+    {
+#ifdef __ANDROID__
+        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+        if (env == nullptr || activity == nullptr) {
+            return 0;
+        }
+        int count = 0;
+        jclass activityClass = env->GetObjectClass(activity);
+        jmethodID method = env->GetMethodID(activityClass, "downloadsReady", "()I");
+        if (method != nullptr) {
+            count = env->CallIntMethod(activity, method);
+        }
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            count = 0;
+        }
+        env->DeleteLocalRef(activityClass);
+        env->DeleteLocalRef(activity);
+        return count;
+#else
+        return 0;
+#endif
+    }
+
+    // Asked once per count: later opens of the Mods screen stay quiet until
+    // more downloads are ready.
+    int gDownloadsPrompted = 0;
 
     std::u32string text(int id, const char* fallback)
     {
@@ -164,6 +198,8 @@ namespace {
         bool pendingAdd = false;
         bool pendingRpu = false;
         bool pendingNexus = false;
+        bool pendingDownloads = false;
+        bool promptChecked = false;
         bool pendingSwitch = false;
         bool pendingDelete = false;
         bool pendingCreate = false;
@@ -220,21 +256,39 @@ namespace {
             }
         }
 
-        // Footer: add from zip, install RPU, browse Nexus, back.
-        MuiRect footer = { safe.x, safe.bottom() - footerHeight, safe.w, footerHeight };
-        float quarter = (footer.w - gap * 3.0f) / 4.0f;
-        if (ui.button("mods.add", { footer.x, footer.y, quarter, footer.h }, text(kTextAddZip, "Add from zip"))) {
-            pendingAdd = true;
+        // Footer: add from zip, install RPU, browse Nexus, downloads, back.
+        // One row when the five buttons stay wide enough, else two rows.
+        const std::u32string labels[5] = {
+            text(kTextAddZip, "Add from zip"),
+            text(kTextInstallRpu, "Install RPU"),
+            text(kTextBrowseNexus, "Browse Nexus"),
+            text(kTextDownloads, "Downloads"),
+            text(kTextBack, "Back"),
+        };
+        const char* ids[5] = { "mods.add", "mods.rpu", "mods.nexus", "mods.downloads", "mods.back" };
+        bool pressed[5] = { false, false, false, false, false };
+        float fifth = (safe.w - gap * 4.0f) / 5.0f;
+        bool twoRows = fifth < ui.dp(130.0f);
+        float footerTotal = twoRows ? footerHeight * 2.0f + gap : footerHeight;
+        MuiRect footer = { safe.x, safe.bottom() - footerTotal, safe.w, footerTotal };
+        for (int i = 0; i < 5; i++) {
+            MuiRect cell;
+            if (!twoRows) {
+                cell = { footer.x + (fifth + gap) * i, footer.y, fifth, footerHeight };
+            } else if (i < 3) {
+                float third = (footer.w - gap * 2.0f) / 3.0f;
+                cell = { footer.x + (third + gap) * i, footer.y, third, footerHeight };
+            } else {
+                float half = (footer.w - gap) / 2.0f;
+                cell = { footer.x + (half + gap) * (i - 3), footer.y + footerHeight + gap, half, footerHeight };
+            }
+            pressed[i] = ui.button(ids[i], cell, labels[i], i == 4 ? MuiButtonStyle::Primary : MuiButtonStyle::Normal);
         }
-        if (ui.button("mods.rpu", { footer.x + (quarter + gap), footer.y, quarter, footer.h }, text(kTextInstallRpu, "Install RPU"))) {
-            pendingRpu = true;
-        }
-        if (ui.button("mods.nexus", { footer.x + (quarter + gap) * 2.0f, footer.y, quarter, footer.h }, text(kTextBrowseNexus, "Browse Nexus"))) {
-            pendingNexus = true;
-        }
-        if (ui.button("mods.back", { footer.x + (quarter + gap) * 3.0f, footer.y, quarter, footer.h }, text(kTextBack, "Back"), MuiButtonStyle::Primary)) {
-            pendingBack = true;
-        }
+        pendingAdd |= pressed[0];
+        pendingRpu |= pressed[1];
+        pendingNexus |= pressed[2];
+        pendingDownloads |= pressed[3];
+        pendingBack |= pressed[4];
 
         float noteHeight = ui.dp(18.0f);
         MuiRect note = { safe.x, footer.y - noteHeight - gap, safe.w, noteHeight };
@@ -516,12 +570,28 @@ namespace {
             requestRestart("mod");
         }
 
-        if (pendingRpu || pendingNexus) {
-            // The app's RPU download (mode "rpu") or Nexus browser (mode
-            // "nexus") screen installs into the saved list.
-            const char* mode = pendingRpu ? "rpu" : "nexus";
+        if (!promptChecked) {
+            promptChecked = true;
+            int ready = downloadsReady();
+            if (ready > 0 && ready != gDownloadsPrompted) {
+                gDownloadsPrompted = ready;
+                char line[160];
+                std::snprintf(line, sizeof(line), muiText(kTextDownloadsReady, "%d downloads ready to install. Open Downloads?"), ready);
+                const char* body[] = { line };
+                if (showDialogBox(muiText(kTextDownloads, "Downloads"), body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, DIALOG_BOX_YES_NO) != 0) {
+                    pendingDownloads = true;
+                }
+            }
+        }
+
+        if (pendingRpu || pendingNexus || pendingDownloads) {
+            // The app's RPU download (mode "rpu"), Nexus browser (mode
+            // "nexus") or Downloads (mode "downloads") screen installs into
+            // the saved list.
+            const char* mode = pendingRpu ? "rpu" : pendingNexus ? "nexus" : "downloads";
             pendingRpu = false;
             pendingNexus = false;
+            pendingDownloads = false;
             save();
             if (changed) {
                 finished = true;

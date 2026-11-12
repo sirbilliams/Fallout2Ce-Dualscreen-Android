@@ -42,25 +42,4 @@ public class NexusDownloadsTest {
         assertEquals("Cool Mod", NexusDownloads.modName("Cool Mod at Fallout 2 Nexus - Mods and community", "x.zip"));
         assertEquals("x", NexusDownloads.modName("", "x.zip"));
     }
-
-    @Test public void indexRoundTripAndPending() throws Exception {
-        File dir = temporary.newFolder();
-        assertTrue(NexusDownloads.pending(dir).isEmpty());
-        new File(dir, "a.zip").createNewFile();
-        new File(dir, "b.zip").createNewFile();
-        NexusDownloads.add(dir, "a.zip", "Mod A");
-        NexusDownloads.add(dir, "b.zip", "Mod B");
-        NexusDownloads.add(dir, "gone.zip", "Missing");
-        assertEquals(3, NexusDownloads.read(dir).size());
-        List<NexusDownloads.Entry> pending = NexusDownloads.pending(dir);
-        assertEquals(2, pending.size());
-        assertEquals("Mod A", pending.get(0).title);
-        NexusDownloads.remove(dir, "a.zip");
-        pending = NexusDownloads.pending(dir);
-        assertEquals(1, pending.size());
-        assertEquals("b.zip", pending.get(0).file);
-        // re-adding the same file replaces, not duplicates
-        NexusDownloads.add(dir, "b.zip", "Mod B2");
-        assertEquals("Mod B2", NexusDownloads.read(dir).get(NexusDownloads.read(dir).size() - 1).title);
-    }
 }

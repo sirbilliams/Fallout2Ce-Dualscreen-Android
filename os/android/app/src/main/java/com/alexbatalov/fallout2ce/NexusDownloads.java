@@ -1,29 +1,12 @@
 package com.alexbatalov.fallout2ce;
 
-import java.io.File;
-import java.io.IOException;
 import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-// Pure logic of the Nexus browser's downloads: file names, the index of
-// "Downloaded, not installed" files and which of them to ask about.
+// Pure helpers of the Nexus browser's downloads: file names and titles. The
+// download index lives in DownloadIndex.
 final class NexusDownloads {
-    static final String INDEX = "downloads.tsv";
-
-    static final class Entry {
-        final String file;   // name inside the downloads folder
-        final String title;  // mod name shown in the question
-
-        Entry(String file, String title) {
-            this.file = file;
-            this.title = title;
-        }
-    }
-
     // True for a URL whose path is an archive (CDN redirects).
     static boolean isArchiveUrl(String url) {
         if (url == null) return false;
@@ -123,52 +106,5 @@ final class NexusDownloads {
             t = dot > 0 ? fileName.substring(0, dot) : fileName;
         }
         return t;
-    }
-
-    // One line per entry: file TAB title.
-    static List<Entry> read(File folder) throws IOException {
-        List<Entry> entries = new ArrayList<>();
-        File index = new File(folder, INDEX);
-        if (!index.isFile()) return entries;
-        for (String line : Files.readAllLines(index.toPath(), StandardCharsets.UTF_8)) {
-            int tab = line.indexOf('\t');
-            if (tab <= 0) continue;
-            String file = sanitize(line.substring(0, tab));
-            entries.add(new Entry(file, line.substring(tab + 1)));
-        }
-        return entries;
-    }
-
-    static void write(File folder, List<Entry> entries) throws IOException {
-        StringBuilder text = new StringBuilder();
-        for (Entry e : entries) {
-            text.append(e.file).append('\t').append(e.title.replace('\t', ' ').replace('\n', ' ')).append('\n');
-        }
-        File temp = new File(folder, INDEX + ".tmp");
-        Files.write(temp.toPath(), text.toString().getBytes(StandardCharsets.UTF_8));
-        Files.move(temp.toPath(), new File(folder, INDEX).toPath(),
-            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-    }
-
-    // Entries to ask about: indexed and the file is still there.
-    static List<Entry> pending(File folder) throws IOException {
-        List<Entry> asked = new ArrayList<>();
-        for (Entry e : read(folder)) {
-            if (new File(folder, e.file).isFile()) asked.add(e);
-        }
-        return asked;
-    }
-
-    static void add(File folder, String file, String title) throws IOException {
-        List<Entry> entries = read(folder);
-        entries.removeIf(e -> e.file.equals(file));
-        entries.add(new Entry(file, title));
-        write(folder, entries);
-    }
-
-    static void remove(File folder, String file) throws IOException {
-        List<Entry> entries = read(folder);
-        entries.removeIf(e -> e.file.equals(file));
-        write(folder, entries);
     }
 }
