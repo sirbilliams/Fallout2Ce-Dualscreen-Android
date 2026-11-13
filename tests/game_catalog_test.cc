@@ -109,5 +109,42 @@ int main()
     free(now);
     free(cwd);
     CHECK(saveStorage::removeTree(base));
+
+    // Shared vanilla base files.
+    const char* bases[] = { "", "fallout1", "fallout2", "fallout2", "fallout2", "fallout2", "fallout2", "fallout2" };
+    for (int i = 0; i < 8; ++i)
+        CHECK(std::string(gameCatalog()[i].baseGame) == bases[i]);
+    char sh[] = "/tmp/game-base-XXXXXX";
+    CHECK(mkdtemp(sh));
+    std::string tp(sh);
+    CHECK(gameBasePath(tp, 0).empty() && gameBasePath(tp, 99).empty());
+    CHECK(gameBasePath(tp, 2) == tp && gameBasePath(tp, 1) == tp + "/base/fallout1");
+    CHECK(saveStorage::makeDirectory(tp + "/games") && saveStorage::makeDirectory(tp + "/games/sonora"));
+    CHECK(saveStorage::makeDirectory(tp + "/games/ettu") && saveStorage::makeDirectory(tp + "/base"));
+    CHECK(saveStorage::makeDirectory(tp + "/base/fallout1"));
+    CHECK(saveStorage::writeFile(tp + "/master.dat", "f2"));
+    CHECK(saveStorage::writeFile(tp + "/base/fallout1/master.dat", "f1"));
+    // Index 0: unchanged, even when a base file exists.
+    CHECK(gameResolveBaseFile(tp, 0, "master.dat") == "master.dat");
+    // Sonora (Fallout 2 based): no local file -> top root; the path is relative to the game folder.
+    char* cw = getcwd(nullptr, 0);
+    CHECK(cw);
+    CHECK(chdir((tp + "/games/sonora").c_str()) == 0);
+    CHECK(gameResolveBaseFile(tp, 2, "master.dat") == tp + "/master.dat");
+    CHECK(gameResolveBaseFile(tp, 2, "critter.dat") == "critter.dat"); // in no base: unchanged
+    CHECK(gameResolveBaseFile(tp, 2, "") == "");
+    CHECK(gameResolveBaseFile(tp, 2, "/abs/master.dat") == "/abs/master.dat");
+    // Write paths (master/critter patches) are never passed to the resolver; a
+    // game-folder 'data' that exists locally always stays as configured.
+    CHECK(saveStorage::makeDirectory("data"));
+    CHECK(gameResolveBaseFile(tp, 2, "data") == "data");
+    CHECK(saveStorage::writeFile("master.dat", "own"));
+    CHECK(gameResolveBaseFile(tp, 2, "master.dat") == "master.dat"); // local wins
+    CHECK(chdir((tp + "/games/ettu").c_str()) == 0);
+    CHECK(gameResolveBaseFile(tp, 1, "master.dat") == tp + "/base/fallout1/master.dat");
+    CHECK(gameResolveBaseFile(tp, 1, "sound\\music\\") == "sound\\music\\");
+    CHECK(chdir(cw) == 0);
+    free(cw);
+    CHECK(saveStorage::removeTree(tp));
     return 0;
 }

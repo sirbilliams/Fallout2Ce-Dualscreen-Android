@@ -7,14 +7,14 @@ namespace fallout {
 const std::array<GameCatalogEntry, 8>& gameCatalog()
 {
     static const std::array<GameCatalogEntry, 8> entries = { {
-        { "fallout2", "Fallout 2", "Black Isle Studios", "https://www.gog.com/en/game/fallout_2", GameDownloadKind::ProjectPage, false, "Language: installed game data", { MOVIE_IPLOGO, MOVIE_INTRO, MOVIE_CREDITS, -1 } },
-        { "ettu", "Fallout 1 (Et Tu)", "rotators", "https://github.com/rotators/Fo1in2/releases", GameDownloadKind::GithubRelease, true, "English; requires Fallout 1 files", { -1, -1, -1, -1 } },
-        { "sonora", "Fallout: Sonora", "Nevada Band / Cambragol / NovaRain", "https://github.com/NovaRain/Fallout-Sonora-English/releases", GameDownloadKind::GithubRelease, true, "English, Russian, Spanish", { -1, -1, -1, -1 } },
-        { "resurrection", "Fallout 1.5: Resurrection", "Resurrection Team", "https://resurrection.cz/en/download/", GameDownloadKind::Direct, true, "English; Polish patch available", { -1, -1, -1, -1 } },
-        { "nevada", "Fallout: Nevada", "Nevada Band", "https://www.nma-fallout.com/threads/fallout-nevada-extended.207311/", GameDownloadKind::ProjectPage, true, "Russian; English Fixed edition", { -1, -1, -1, -1 } },
-        { "olympus2207", "Olympus 2207", "Nebesa Games / Dieselship Studio", "https://olympus2207.com/", GameDownloadKind::ProjectPage, true, "Russian, English", { -1, -1, -1, -1 } },
-        { "megamod", "Fallout 2 Megamod", "MIB88 and contributors", "https://www.moddb.com/mods/mib88-megamod", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 } },
-        { "yesterday", "Fallout: Yesterday", "PJ Hexer and contributors", "https://gitlab.com/falloutfans/fallouty", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 } },
+        { "fallout2", "Fallout 2", "Black Isle Studios", "https://www.gog.com/en/game/fallout_2", GameDownloadKind::ProjectPage, false, "Language: installed game data", { MOVIE_IPLOGO, MOVIE_INTRO, MOVIE_CREDITS, -1 }, "" },
+        { "ettu", "Fallout 1 (Et Tu)", "rotators", "https://github.com/rotators/Fo1in2/releases", GameDownloadKind::GithubRelease, true, "English; requires Fallout 1 files", { -1, -1, -1, -1 }, "fallout1" },
+        { "sonora", "Fallout: Sonora", "Nevada Band / Cambragol / NovaRain", "https://github.com/NovaRain/Fallout-Sonora-English/releases", GameDownloadKind::GithubRelease, true, "English, Russian, Spanish", { -1, -1, -1, -1 }, "fallout2" },
+        { "resurrection", "Fallout 1.5: Resurrection", "Resurrection Team", "https://resurrection.cz/en/download/", GameDownloadKind::Direct, true, "English; Polish patch available", { -1, -1, -1, -1 }, "fallout2" },
+        { "nevada", "Fallout: Nevada", "Nevada Band", "https://www.nma-fallout.com/threads/fallout-nevada-extended.207311/", GameDownloadKind::ProjectPage, true, "Russian; English Fixed edition", { -1, -1, -1, -1 }, "fallout2" },
+        { "olympus2207", "Olympus 2207", "Nebesa Games / Dieselship Studio", "https://olympus2207.com/", GameDownloadKind::ProjectPage, true, "Russian, English", { -1, -1, -1, -1 }, "fallout2" },
+        { "megamod", "Fallout 2 Megamod", "MIB88 and contributors", "https://www.moddb.com/mods/mib88-megamod", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 }, "fallout2" },
+        { "yesterday", "Fallout: Yesterday", "PJ Hexer and contributors", "https://gitlab.com/falloutfans/fallouty", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 }, "fallout2" },
     } };
     return entries;
 }
@@ -68,6 +68,31 @@ int gameRootActivate(const std::string& topRoot)
     gTopRoot = top.string();
     gActive = index;
     return index;
+}
+std::string gameBasePath(const std::string& topRoot, int index)
+{
+    if (index <= 0 || index >= static_cast<int>(gameCatalog().size())) return "";
+    std::string base = gameCatalog()[index].baseGame;
+    if (base == "fallout2") return topRoot;
+    if (base == "fallout1") return topRoot.empty() ? "base/fallout1" : topRoot + "/base/fallout1";
+    return "";
+}
+std::string gameResolveBaseFile(const std::string& topRoot, int index, const std::string& configured)
+{
+    namespace fs = std::filesystem;
+    if (index <= 0 || configured.empty() || configured[0] == '/' || configured[0] == '\\') return configured;
+    if (configured.size() > 1 && configured[1] == ':') return configured;
+    std::string rel = configured;
+    for (char& c : rel)
+        if (c == '\\') c = '/';
+    while (!rel.empty() && rel.back() == '/')
+        rel.pop_back();
+    std::error_code ec;
+    if (rel.empty() || fs::exists(rel, ec)) return configured;
+    std::string base = gameBasePath(topRoot, index);
+    if (base.empty()) return configured;
+    std::string candidate = base + "/" + rel;
+    return fs::exists(candidate, ec) ? candidate : configured;
 }
 int gameActiveIndex() { return gActive; }
 const std::string& gameTopRoot() { return gTopRoot; }

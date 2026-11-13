@@ -17,6 +17,9 @@ struct GameCatalogEntry {
     // Opening movies (GameMovie ids), -1 terminated; the picker's Intro
     // button plays them in order. Empty when the game's data is unknown.
     std::array<int, 4> introMovies;
+    // Vanilla game whose base files (master.dat, critter.dat, patches, music)
+    // this game shares: "fallout1", "fallout2" or "" (none; Fallout 2 is a base).
+    const char* baseGame;
 };
 // Number of intro movies of a catalog entry.
 int gameCatalogIntroCount(int index);
@@ -38,6 +41,16 @@ int gameActiveIndex();
 // Top app data root while a game folder is the working dir, else "".
 // The selection file always lives here.
 const std::string& gameTopRoot();
+// Shared vanilla base files. One copy per vanilla game: Fallout 2's is the top
+// root itself, Fallout 1's is "<top>/base/fallout1". Pure (strings and file
+// existence only); never creates, copies or modifies anything.
+// Base directory of a game, or "" when it has none (Fallout 2, bad index).
+std::string gameBasePath(const std::string& topRoot, int index);
+// For a read-only base file/dir setting [configured] (relative to the game's
+// folder): the configured path when index is 0, it is absolute/empty, or it
+// exists in the game folder (its own file always wins) or in no base; else the
+// same name under the game's base dir. "\\" separators are accepted.
+std::string gameResolveBaseFile(const std::string& topRoot, int index, const std::string& configured);
 int gamePickerLoadPage(const std::string& root = "");
 bool gamePickerSavePage(int page, const std::string& root = "");
 } // namespace fallout
