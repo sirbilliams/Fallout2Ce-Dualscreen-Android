@@ -33,7 +33,7 @@ int main()
     CHECK(!pickerPictureLoad(path, picture));
     CHECK(!pickerPictureLoad(path + ".missing", picture));
     CHECK(pickerPicturePath("/top", "ettu", true) == "/top/games/ettu/picker/art.rgba");
-    CHECK(pickerPicturePath("", "sonora", false) == "picker-cache/sonora/art.rgba");
+    CHECK(pickerPicturePath("", "sonora", false) == "picker-preview/sonora/art.rgba");
     CHECK(pickerPicturePath("/top", "../bad", true).empty());
     std::filesystem::remove_all(dir);
     return 0;

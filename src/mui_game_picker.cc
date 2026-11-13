@@ -311,8 +311,10 @@ namespace {
         SDL_Texture* downloaded = pixels.rgba.empty() ? nullptr
                                                       : muiRgbaTexture(std::string("picker.") + entry.id, pixels.rgba.data(), pixels.width, pixels.height, cached.version);
         if (downloaded) {
-            muiDrawTexture(downloaded, muiFitRect(rect, pixels.width, pixels.height));
-            muiFillHorizontalGradient(rect, theme.background, theme.background.withAlpha(0));
+            // Art sits right of the title column so the title never overlaps it.
+            MuiRect picture = { rect.x + rect.w * 0.4f, rect.y, rect.w * 0.6f, rect.h };
+            muiDrawTexture(downloaded, muiFitRect(picture, pixels.width, pixels.height));
+            muiFillHorizontalGradient({ rect.x, rect.y, rect.w * 0.6f, rect.h }, theme.background, theme.background.withAlpha(0));
         }
         if (!downloaded && index == 0) {
             int w = 0, h = 0;

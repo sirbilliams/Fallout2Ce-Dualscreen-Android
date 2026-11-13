@@ -19,7 +19,9 @@ public class PickerPicturesTest {
         assertEquals("https://raw.githubusercontent.com/rotators/Fo1in2/master/README.md", raw);
         assertEquals("https://raw.githubusercontent.com/rotators/Fo1in2/master/images/title.png", PickerPictures.imageUrl(raw, fixture("readme.md")));
         assertEquals("https://olympus2207.com/images/title.jpg?size=small&lang=en", PickerPictures.imageUrl("https://olympus2207.com/", fixture("project.html")));
-        assertEquals("https://opengraph.githubassets.com/hash/rotators/Fo1in2", PickerPictures.imageUrl("https://github.com/rotators/Fo1in2", "<meta property='og:image' content='https://opengraph.githubassets.com/hash/rotators/Fo1in2'>"));
+        assertNull(PickerPictures.imageUrl("https://github.com/rotators/Fo1in2", "<meta property='og:image' content='https://opengraph.githubassets.com/hash/rotators/Fo1in2'>"));
+        assertTrue(PickerPictures.isSocialCard("https://opengraph.githubassets.com/hash/rotators/Fo1in2"));
+        assertFalse(PickerPictures.isSocialCard("https://raw.githubusercontent.com/rotators/Fo1in2/master/images/title.png"));
         assertNull(PickerPictures.imageUrl("https://resurrection.cz/", "<html>No image</html>"));
         assertNull(PickerPictures.readmeUrl("{\"download_url\":null}"));
         assertNull(PickerPictures.safeUrl("https://example.com", "http://example.com/image"));
@@ -30,7 +32,7 @@ public class PickerPicturesTest {
         File top = Files.createTempDirectory("picker-cache-test").toFile();
         File preview = new File(PickerPictures.directory(top, "sonora", false), "art.rgba");
         File full = new File(PickerPictures.directory(top, "sonora", true), "art.rgba");
-        assertEquals(new File(top, "picker-cache/sonora/art.rgba"), preview);
+        assertEquals(new File(top, "picker-preview/sonora/art.rgba"), preview);
         assertEquals(new File(top, "games/sonora/picker/art.rgba"), full);
         assertNull(PickerPictures.cached(top, "sonora")); // Styled title, no network required.
         assertTrue(preview.getParentFile().mkdirs());

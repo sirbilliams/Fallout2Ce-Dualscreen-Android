@@ -66,15 +66,19 @@ public final class GamePictures {
                 // The project's OG image is usually a useful, small banner. GitHub's
                 // social preview also avoids selecting README badges as game artwork.
                 String image = null;
-                try {
-                    image = PickerPictures.imageUrl(source,
-                            PickerPictures.utf8(fetch(source, PickerPictures.PAGE_CAP, deadline)));
-                } catch (IOException ignored) { /* Try the creator's README API next. */ }
                 String api = PickerPictures.readmeApi(source);
+                // GitHub pages only offer a generated social card: use the README's own image instead.
+                if (api == null) {
+                    try {
+                        image = PickerPictures.imageUrl(source,
+                                PickerPictures.utf8(fetch(source, PickerPictures.PAGE_CAP, deadline)));
+                    } catch (IOException ignored) { /* No page art. */ }
+                }
                 if (image == null && api != null) {
                     String raw = PickerPictures.readmeUrl(PickerPictures.utf8(fetch(api, PickerPictures.PAGE_CAP, deadline)));
                     if (raw != null) image = PickerPictures.imageUrl(raw,
                             PickerPictures.utf8(fetch(raw, PickerPictures.PAGE_CAP, deadline)));
+                    if (image != null && PickerPictures.isSocialCard(image)) image = null;
                 }
                 if (image == null) return;
                 byte[] data = fetch(image, installed ? PickerPictures.FULL_CAP : PickerPictures.PREVIEW_CAP, deadline);

@@ -10,9 +10,9 @@ GamePictures.afterInstall(context, gameId, creator, pictureSource);
 
 Call this with the catalog's descriptor, not an archive URL or a user-supplied URL. The installer lane owns that call. The picker also recognizes existing game data (`master.dat`, `mods/`, `data/`) when revisiting a page, so an older install can acquire its artwork. Fallout 2 artwork is stored in `games/fallout2/picker/` as required even though its game files remain at the top root.
 
-- Preview: `<top>/picker-cache/<id>/art.rgba`, 512 KiB response limit and 480-pixel decoded edge.
+- Preview: `<top>/picker-preview/<id>/art.rgba`, 512 KiB response limit and 480-pixel decoded edge.
 - Installed: `<top>/games/<id>/picker/art.rgba`, 8 MiB response limit and 1920-pixel decoded edge; `credit.txt` includes creator, project source and resolved image URL.
-- Page/README metadata: 1 MiB limit. Resolve OG image first; GitHub README API + README images are a fallback. No external search or mirror is used.
+- Page/README metadata: 1 MiB limit. Non-GitHub pages: OG image. GitHub sources: README API + README images only; GitHub's generated social cards (opengraph.githubassets.com, avatars) are never used as art. Without art the picker shows the plain themed panel. No external search or mirror is used.
 - Only unmetered Wi-Fi/Ethernet automatically fetches. Offline/cellular visits retain the existing cache; later visits retry. Failures back off for a minute. Each request has a 25-second overall network budget, 6-second connection/read timeout and at most four redirects. HTTPS is required throughout.
 - Decode PNG/JPEG with Android BitmapFactory, rejecting huge dimensions before allocating pixels. PRAW cache format: four bytes `PRAW`, big-endian unsigned 32-bit width/height, straight RGBA bytes. Native rejects malformed dimensions, missing/truncated/extra bytes and files exceeding the maximum size, then tries preview/original art.
 - Writes publish with atomic renames in the destination directory. Credit is committed before artwork. Partial files are ignored; failed downloads do not replace an existing picture.

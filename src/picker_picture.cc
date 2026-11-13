@@ -5,7 +5,7 @@ namespace fallout {
 std::string pickerPicturePath(const std::string& top, const std::string& id, bool installed)
 {
     if (id.empty() || id.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789") != std::string::npos) return "";
-    return (top.empty() ? "" : top + "/") + (installed ? "games/" + id + "/picker" : "picker-cache/" + id) + "/art.rgba";
+    return (top.empty() ? "" : top + "/") + (installed ? "games/" + id + "/picker" : "picker-preview/" + id) + "/art.rgba";
 }
 bool pickerPictureLoad(const std::string& path, PickerPicture& picture)
 {

@@ -14,7 +14,7 @@ final class PickerPictures {
     static File directory(File top, String id, boolean installed) {
         if (top == null || !id.matches("fallout2|ettu|sonora|resurrection|nevada|olympus2207|megamod|yesterday"))
             throw new IllegalArgumentException("unknown game");
-        return new File(top, installed ? "games/" + id + "/picker" : "picker-cache/" + id);
+        return new File(top, installed ? "games/" + id + "/picker" : "picker-preview/" + id);
     }
 
     static File cached(File top, String id) {
@@ -43,6 +43,16 @@ final class PickerPictures {
         return safeUrl("https://github.com/", value);
     }
 
+    /** GitHub's generated repository social cards and avatars are not game art. */
+    static boolean isSocialCard(String url) {
+        try {
+            String host = URI.create(url).getHost();
+            return host != null && (host.equalsIgnoreCase("opengraph.githubassets.com")
+                || host.equalsIgnoreCase("repository-images.githubusercontent.com")
+                || host.equalsIgnoreCase("avatars.githubusercontent.com"));
+        } catch (IllegalArgumentException e) { return true; }
+    }
+
     static String safeUrl(String page, String value) {
         try {
             URI uri = URI.create(page).resolve(value.trim());
@@ -64,8 +74,10 @@ final class PickerPictures {
                 if (attrs.group(1).equalsIgnoreCase("property") || attrs.group(1).equalsIgnoreCase("name")) property = attrs.group(3);
                 if (attrs.group(1).equalsIgnoreCase("content")) content = attrs.group(3);
             }
-            if ("og:image".equalsIgnoreCase(property) && content != null)
-                return safeUrl(page, content.replace("&amp;", "&").replace("&#38;", "&"));
+            if ("og:image".equalsIgnoreCase(property) && content != null) {
+                String url = safeUrl(page, content.replace("&amp;", "&").replace("&#38;", "&"));
+                if (url != null && !isSocialCard(url)) return url;
+            }
         }
         // README image URLs, relative to the raw README URL returned by GitHub.
         Matcher md = Pattern.compile("!\\[[^\\]]*\\]\\(<?([^\\s)>]+)>?(?:\\s+[^)]*)?\\)").matcher(text);
