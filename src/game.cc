@@ -10,6 +10,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <filesystem>
+#include <system_error>
 
 #include "action_log.h"
 #include "actions.h"
@@ -1369,7 +1371,24 @@ static void TryLoadBaseCEMod()
     bool found = false;
     bool openFailed = false;
 
+    // The app's own ce.dat (MUI font, art, scripts) lives in the top app root.
+    // A game in games/<id> may ship its own ce.dat too (Et Tu does, with 18
+    // files). Open the app's first: the game's, opened last, is searched first
+    // and still overrides it, while the app's files stay reachable.
+    bool appLoaded = false;
+    if (!gameTopRoot().empty() && compat_access(kBaseModPath, 0) == 0) {
+        std::string topPath = gameTopRoot() + "/" + kBaseModPath;
+        std::error_code ec;
+        if (compat_access(topPath.c_str(), 0) == 0 && !std::filesystem::equivalent(kBaseModPath, topPath, ec)) {
+            appLoaded = tryLoadBaseCEModAtPath(topPath.c_str(), &found, &openFailed);
+        }
+    }
+
     if (tryLoadBaseCEModAtPath(kBaseModPath, &found, &openFailed)) {
+        return;
+    }
+
+    if (appLoaded) {
         return;
     }
 
