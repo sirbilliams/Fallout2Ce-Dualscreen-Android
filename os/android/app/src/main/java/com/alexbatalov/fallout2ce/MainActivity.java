@@ -79,6 +79,15 @@ public class MainActivity extends SDLActivity {
             return;
         }
 
+        // Et Tu needs Fallout 1's data unpacked first (EtTuUndat); not on this thread.
+        if (!automated && GameRoots.ETTU.equals(GameRoots.activeGameId(externalFilesDir)) && EtTuUndat.needed(externalFilesDir)) {
+            startActivity(new Intent(this, EtTuUndatActivity.class));
+
+            noExit = true;
+            finish();
+            return;
+        }
+
         bottomScreen = new BottomScreen(this);
     }
 

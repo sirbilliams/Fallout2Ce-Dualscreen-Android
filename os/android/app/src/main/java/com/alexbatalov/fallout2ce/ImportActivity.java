@@ -450,6 +450,22 @@ public class ImportActivity extends ImmersiveActivity {
                 };
                 if (fallout1()) {
                     Fallout1Import.install(source, found, plan, getExternalFilesDir(null), copyProgress);
+                    // Et Tu (if installed) gets Fallout 1's data unpacked now.
+                    if (EtTuUndat.needed(getExternalFilesDir(null))) {
+                        runOnUiThread(() -> {
+                            progress.setIndeterminate(true);
+                            progressText.setText("Unpacking Fallout 1 data for Et Tu...");
+                        });
+                        try {
+                            EtTuUndat.run(getExternalFilesDir(null), EtTuUndat.REAL);
+                        } catch (IOException | RuntimeException e) {
+                            Log.w(TAG, "Et Tu unpack failed", e);
+                            String text = e instanceof IOException ? EtTuUndat.failureText((IOException) e)
+                                : "Could not unpack the Fallout 1 data for Et Tu: " + e;
+                            runOnUiThread(() -> showError(text));
+                            return;
+                        }
+                    }
                 } else {
                     GameImport.install(source, found, plan, !replacing, getExternalFilesDir(null), copyProgress);
                 }

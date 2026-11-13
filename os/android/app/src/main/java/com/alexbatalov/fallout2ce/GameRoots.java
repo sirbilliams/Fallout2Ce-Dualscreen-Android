@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 // "<top>/base/fallout1". Pure helpers take the top File so JVM tests can use them.
 public final class GameRoots {
     public static final String FALLOUT2 = "fallout2";
+    public static final String ETTU = "ettu";
     // Keep in sync with gameCatalog() in src/game_catalog.cc (GameRootsTest checks it).
     static final String[] IDS = {
         "fallout2", "ettu", "sonora", "resurrection", "nevada", "olympus2207", "megamod", "yesterday"

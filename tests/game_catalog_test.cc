@@ -182,7 +182,15 @@ int main()
     CHECK(gameVersionDetail(true, "Version: incomplete", "Version: not installed", "Size: %s", "12 MB") == "Version: incomplete");
     CHECK(!gameNeedsRepair(tp, 0) && !gameNeedsRepair(tp, 3) && !gameNeedsRepair(tp, 99)); // no own dats
     CHECK(chdir((tp + "/games/ettu").c_str()) == 0);
-    CHECK(gameResolveBaseFile(tp, 1, "master.dat") == tp + "/base/fallout1/master.dat");
+    // Et Tu: the imported Fallout 1 dats are DAT1; always mount Fallout 2's from the top root.
+    CHECK(saveStorage::writeFile(tp + "/base/fallout1/critter.dat", "c1"));
+    CHECK(saveStorage::writeFile(tp + "/base/fallout1/master.dat", "m1"));
+    CHECK(saveStorage::writeFile(tp + "/master.dat", "f2m"));
+    CHECK(saveStorage::writeFile(tp + "/critter.dat", "f2c"));
+    CHECK(gameResolveBaseFile(tp, 1, "master.dat") == tp + "/master.dat");
+    CHECK(gameResolveBaseFile(tp, 1, "critter.dat") == tp + "/critter.dat");
+    CHECK(gameResolveBaseFile(tp, 1, "patch000.dat") == tp + "/patch000.dat"); // Fallout 2 patch (written above)
+    CHECK(gameResolveBaseFile(tp, 1, "patch001.dat") == "patch001.dat");
     CHECK(gameResolveBaseFile(tp, 1, "sound\\music\\") == "sound\\music\\");
     // Top-root-only app files (ce.dat): missing in the game folder -> top root.
     CHECK(gameResolveTopRootFile(tp, "ce.dat") == "ce.dat"); // absent everywhere

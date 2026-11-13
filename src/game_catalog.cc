@@ -126,6 +126,21 @@ std::string gameResolveBaseFile(const std::string& topRoot, int index, const std
     }
     std::string base = gameBasePath(topRoot, index);
     if (base.empty()) return configured;
+    if (std::string(gameCatalog()[index].baseGame) == "fallout1") {
+        // Fallout 1 ships DAT1 archives, which the engine cannot open. Mods built
+        // on it (Et Tu) run on Fallout 2's master/critter dat; Fallout 1's
+        // content is unpacked loose into the game's data folder instead. Any
+        // .dat therefore comes from the top root (Fallout 2); only loose files
+        // (music, ...) still come from base/fallout1.
+        std::string lower = rel;
+        for (char& c : lower)
+            c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (lower.size() >= 4 && lower.compare(lower.size() - 4, 4, ".dat") == 0) {
+            if (topRoot.empty()) return configured;
+            std::string f2 = topRoot + "/" + rel;
+            return fs::exists(f2, ec) ? f2 : configured;
+        }
+    }
     std::string candidate = base + "/" + rel;
     return fs::exists(candidate, ec) ? candidate : configured;
 }

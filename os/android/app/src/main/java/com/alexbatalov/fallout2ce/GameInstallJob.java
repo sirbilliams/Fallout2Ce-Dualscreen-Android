@@ -35,6 +35,15 @@ public class GameInstallJob extends JobService {
                         DownloadIndex.update(ModDownloads.gameFolder(this), items -> {
                             for (DownloadIndex.Item item : items) if (item.id == row.item.id) item.installed = true;
                         });
+                        if (GameRoots.ETTU.equals(id) && EtTuUndat.needed(GameRoots.topRoot(this))) {
+                            GameInstaller.status(this, id, "Installing: unpacking Fallout 1 data");
+                            try {
+                                EtTuUndat.run(GameRoots.topRoot(this), EtTuUndat.REAL);
+                            } catch (IOException | RuntimeException e) {
+                                // Not fatal for the install: the launch retries and reports it.
+                                android.util.Log.w("GameInstallJob", "Et Tu unpack failed", e);
+                            }
+                        }
                         GameInstaller.status(this, id, "Installed");
                         GamePictures.afterInstall(this, id);
                     } catch (IOException | RuntimeException e) {

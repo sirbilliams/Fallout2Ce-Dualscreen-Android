@@ -111,6 +111,13 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
         </activity>
 
+        <!-- Et Tu: unpacks Fallout 1's data before the game starts, if still to do. -->
+        <activity android:name=".EtTuUndatActivity"
+            android:process=":import"
+            android:theme="@style/AppTheme"
+            android:screenOrientation="landscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden" />
+
         <!-- Restart helper: waits for the game process to exit, then opens the game again. -->
         <activity android:name=".RestartActivity"
             android:process=":import"
