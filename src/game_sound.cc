@@ -1,5 +1,7 @@
 #include "game_sound.h"
 
+#include "game_catalog.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -252,6 +254,26 @@ int gameSoundInit()
 
     if (_gsound_get_music_path(&_sound_music_path2, GAME_CONFIG_MUSIC_PATH2_KEY) != 0) {
         return -1;
+    }
+
+    // CE: expansions fall back to the shared base's music folder (read-only,
+    // absolute, searched after the game's own paths). Not for Fallout 2.
+    if (gameActiveIndex() != 0) {
+        std::string configured = _sound_music_path2;
+        std::string withData = "data/" + configured;
+        std::string resolved = gameResolveBaseFile(gameTopRoot(), gameActiveIndex(), withData);
+        if (resolved == withData) {
+            resolved = gameResolveBaseFile(gameTopRoot(), gameActiveIndex(), configured);
+            if (resolved == configured) {
+                resolved.clear();
+            }
+        }
+        if (!resolved.empty() && resolved[0] == '/') {
+            if (resolved.back() != '/') resolved += '/';
+            debugPrint("Base: music -> %s\n", resolved.c_str());
+            internal_free(_sound_music_path2);
+            _sound_music_path2 = internal_strdup(resolved.c_str());
+        }
     }
 
     if (strlen(_sound_music_path1) > 247 || strlen(_sound_music_path2) > 247) {

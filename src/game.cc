@@ -1,5 +1,7 @@
 #include "game.h"
 
+#include "game_catalog.h"
+
 #ifdef FALLOUT_HD
 #include "hd/hd.h"
 #endif
@@ -1410,11 +1412,30 @@ static bool tryLoadBaseCEModAtPath(const char* path, bool* found, bool* openFail
     return true;
 }
 
+// CE: Expansions share one copy of the vanilla base files (game_catalog.h).
+// Read-only sources only; no-op for Fallout 2 (index 0). [storage] keeps the
+// resolved string alive for the caller.
+static const char* resolveSharedBase(const char* name, const std::string& configured, std::string& storage)
+{
+    int index = gameActiveIndex();
+    if (index == 0 || configured.empty()) {
+        return configured.c_str();
+    }
+    storage = gameResolveBaseFile(gameTopRoot(), index, configured);
+    if (storage != configured) {
+        debugPrint("Base: %s -> %s\n", name, storage.c_str());
+    }
+    return storage.c_str();
+}
+
 // 0x44418C
 static int gameDbInit()
 {
     saveCompatibilityReset();
-    const char* master_dat_path = settings.system.master_dat_path.c_str();
+    std::string masterDatResolved;
+    std::string critterDatResolved;
+    std::string f2ResResolved;
+    const char* master_dat_path = resolveSharedBase("master.dat", settings.system.master_dat_path, masterDatResolved);
     if (*master_dat_path == '\0') {
         master_dat_path = nullptr;
     }
@@ -1428,7 +1449,7 @@ static int gameDbInit()
         compat_mkdir_recursive(master_patches_path);
     }
 
-    const char* critter_dat_path = settings.system.critter_dat_path.c_str();
+    const char* critter_dat_path = resolveSharedBase("critter.dat", settings.system.critter_dat_path, critterDatResolved);
     if (*critter_dat_path == '\0') {
         critter_dat_path = nullptr;
     }
@@ -1452,7 +1473,7 @@ static int gameDbInit()
         return -1;
     }
 
-    const char* highResPatchDatPath = settings.system.f2_res_dat_path.c_str();
+    const char* highResPatchDatPath = resolveSharedBase("f2_res.dat", settings.system.f2_res_dat_path, f2ResResolved);
     if (*highResPatchDatPath != '\0' && compat_access(highResPatchDatPath, 0) == 0) {
         debugPrint("Loading HRP data mod: %s\n", highResPatchDatPath);
         dbOpen(highResPatchDatPath);
@@ -1470,10 +1491,12 @@ static int gameDbInit()
     for (int patch_index = 0; patch_index < 1000; patch_index++) {
         snprintf(filename, sizeof(filename), path_file_name_template, patch_index);
 
-        if (compat_access(filename, 0) != 0) {
+        std::string patchResolved;
+        const char* patchPath = resolveSharedBase(filename, filename, patchResolved);
+        if (compat_access(patchPath, 0) != 0) {
             break;
         }
-        dbOpen(filename);
+        dbOpen(patchPath);
     }
 
     if (modProfileIsVanilla()) {
