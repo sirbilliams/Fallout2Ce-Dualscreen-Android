@@ -23,6 +23,25 @@ final class PickerPictures {
         return full.isFile() ? full : preview.isFile() ? preview : null;
     }
 
+    /**
+     * Art made before social cards were rejected: when the picture directory's
+     * credit.txt "Image:" line is a GitHub social card, removes art.rgba and
+     * credit.txt (a regenerable cache) so the picture is fetched again, or the
+     * plain themed panel shows when no replacement exists. True when purged.
+     */
+    static boolean purgeSocialCard(File dir) {
+        File art = new File(dir, "art.rgba"), credit = new File(dir, "credit.txt");
+        if (!art.isFile() || !credit.isFile()) return false;
+        try {
+            for (String line : new String(java.nio.file.Files.readAllBytes(credit.toPath()), StandardCharsets.UTF_8).split("\\r?\\n")) {
+                if (!line.startsWith("Image:")) continue;
+                if (!isSocialCard(line.substring(6).trim())) return false;
+                return art.delete() & credit.delete();
+            }
+        } catch (IOException e) { /* unreadable credit: keep the art */ }
+        return false;
+    }
+
     static boolean mayFetch(boolean connected, boolean wifiOrEthernet, boolean metered) {
         return connected && wifiOrEthernet && !metered;
     }

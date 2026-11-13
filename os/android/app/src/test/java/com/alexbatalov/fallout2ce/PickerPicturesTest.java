@@ -61,4 +61,22 @@ public class PickerPicturesTest {
             fail("oversize stream accepted");
         } catch (IOException expected) { }
     }
+    @Test public void installedSocialCardArtIsPurgedForRegeneration() throws Exception {
+        File top = Files.createTempDirectory("picker-stale-test").toFile();
+        File dir = PickerPictures.directory(top, "sonora", true);
+        assertTrue(dir.mkdirs());
+        Files.write(new File(dir, "art.rgba").toPath(), new byte[]{1});
+        // Art without credit (or with a real image) is kept.
+        assertFalse(PickerPictures.purgeSocialCard(dir));
+        Files.write(new File(dir, "credit.txt").toPath(), "by X - https://github.com/a/b\nImage: https://raw.githubusercontent.com/a/b/master/t.png\n".getBytes("UTF-8"));
+        assertFalse(PickerPictures.purgeSocialCard(dir));
+        assertTrue(new File(dir, "art.rgba").isFile());
+        // A GitHub social card is removed so it is rebuilt (plain panel meanwhile).
+        Files.write(new File(dir, "credit.txt").toPath(), "by X - https://github.com/a/b\nImage: https://opengraph.githubassets.com/abc/a/b\n".getBytes("UTF-8"));
+        assertTrue(PickerPictures.purgeSocialCard(dir));
+        assertFalse(new File(dir, "art.rgba").exists());
+        assertFalse(new File(dir, "credit.txt").exists());
+        assertNull(PickerPictures.cached(top, "sonora"));
+        assertFalse(PickerPictures.purgeSocialCard(dir)); // nothing left
+    }
 }

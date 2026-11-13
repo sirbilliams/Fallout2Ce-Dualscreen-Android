@@ -48,6 +48,7 @@ public final class GamePictures {
         File dir;
         try { dir = PickerPictures.directory(top, id, installed); }
         catch (IllegalArgumentException e) { return; }
+        PickerPictures.purgeSocialCard(dir);
         if (new File(dir, "art.rgba").isFile()) return;
         String key = dir.getAbsolutePath();
         long now = android.os.SystemClock.elapsedRealtime();
