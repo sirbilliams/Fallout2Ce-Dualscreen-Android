@@ -14,8 +14,8 @@ only Fallout 2 can Play or open its existing Mod Organizer in this step.
 No external pictures or downloads are included.
 
 Selection lives in `profiles/last-game.txt` as a catalog ID, with Fallout 2
-as the missing/invalid-file fallback. Browsing saves the selected page;
-Play records Fallout 2 again. Existing profiles and game files stay in place.
+as the missing/invalid-file fallback. Browsing does not save; only Play
+records the selected page (Fallout 2). Existing profiles and game files stay in place.
 Fallout 2 displays configured language and total master/critter archive MiB;
 the data version is explicitly unknown. Other games have pending metadata.
 
@@ -26,7 +26,7 @@ the data version is explicitly unknown. Other games have pending metadata.
   missing/invalid state and failed writes.
 - `--dev-autotest-scenario=gamepicker`: 1920x1080 top and simulated
   1240x1080 bottom. Asserts Play, Install, coming-soon notice, shoulder,
-  both-screen swipes, d-pad, saved selection, Mods and A → main menu.
+  both-screen swipes, d-pad, browsing leaves last-game.txt unchanged, Play writes it, Mods and A → main menu.
 - `--dev-autotest-scenario=gamepickerintro`: needs the game's three opening
   movies (a copy of sonora-run plus F1 IPLOGO/INTRO under `data/art/cuts` was
   used; credits come from master.dat). Taps Intro, checks a decoded frame,
