@@ -111,6 +111,12 @@
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
         </activity>
 
+        <!-- Restart helper: waits for the game process to exit, then opens the game again. -->
+        <activity android:name=".RestartActivity"
+            android:process=":import"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true" />
+
         <!-- Nexus browser: same process as ImportActivity, so it outlives the game. -->
         <activity android:name=".NexusActivity"
             android:process=":import"

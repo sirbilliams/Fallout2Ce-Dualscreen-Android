@@ -618,7 +618,27 @@ namespace {
 
 void muiRequestAppRestart()
 {
+    gRestartRequested = true;
+#ifdef __ANDROID__
+    // Closes the game's process and opens the game again (not the import screen).
+    JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+    jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+    if (env == nullptr || activity == nullptr) {
+        return;
+    }
+    jclass activityClass = env->GetObjectClass(activity);
+    jmethodID method = env->GetMethodID(activityClass, "restartApp", "()V");
+    if (method != nullptr) {
+        env->CallVoidMethod(activity, method);
+    }
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+    }
+    env->DeleteLocalRef(activityClass);
+    env->DeleteLocalRef(activity);
+#else
     requestRestart(nullptr);
+#endif
 }
 
 bool muiModsRestartRequested()

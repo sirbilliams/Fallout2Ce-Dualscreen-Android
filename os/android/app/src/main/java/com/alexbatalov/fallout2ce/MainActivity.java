@@ -51,6 +51,10 @@ public class MainActivity extends SDLActivity {
             e.printStackTrace();
         }
         installBundledFiles(externalFilesDir);
+        // Game folders installed by older builds were owner-only.
+        if (externalFilesDir != null) {
+            new Thread(() -> GameInstall.shareGames(externalFilesDir)).start();
+        }
 
         super.onCreate(savedInstanceState);
 
@@ -254,6 +258,15 @@ public class MainActivity extends SDLActivity {
     public void addFallout1Files(String gameId) {
         runOnUiThread(() -> startActivity(new Intent(this, ImportActivity.class)
             .putExtra(ImportActivity.MODE, ImportActivity.MODE_FALLOUT1)));
+    }
+
+    // Called from native code (mui_mods.cc): the game closes (the process
+    // exits, see onDestroy) and RestartActivity opens it again.
+    public void restartApp() {
+        runOnUiThread(() -> {
+            startActivity(new Intent(this, RestartActivity.class));
+            finish();
+        });
     }
 
     public void openGameFiles(String mode) {
