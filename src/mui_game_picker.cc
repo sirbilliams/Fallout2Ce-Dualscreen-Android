@@ -360,12 +360,13 @@ namespace {
         char installed[160];
         std::snprintf(installed, sizeof(installed), muiText(409, "Version: unknown | Base files: %llu MiB"), state.baseMiB);
         bool wantsFo1 = std::string(entry.baseGame) == "fallout1";
-        auto details = index == 0         ? muiDecodeGameText(installed)
-            : installedGame               ? muiDecodeUtf8("Version: installed release")
-            : wantsFo1                    ? (state.fo1Ready ? text(431, "Fallout 1 files: ready") : text(432, "Needs your own Fallout 1 files"))
-            : muiDecodeGameText(gameVersionDetail(gameNeedsRepair(gameTopRoot(), index),
-                muiText(434, "Version: incomplete"), muiText(433, "Version: not installed"),
-                muiText(410, "Version: not installed | Size: %s"), downloadSize(index)).c_str());
+        auto details = index == 0 ? muiDecodeGameText(installed)
+            : installedGame       ? muiDecodeUtf8("Version: installed release")
+            : wantsFo1            ? (state.fo1Ready ? text(431, "Fallout 1 files: ready") : text(432, "Needs your own Fallout 1 files"))
+                                  : muiDecodeGameText(gameVersionDetail(gameNeedsRepair(gameTopRoot(), index),
+                                        muiText(434, "Version: incomplete"), muiText(433, "Version: not installed"),
+                                        muiText(410, "Version: not installed | Size: %s"), downloadSize(index))
+                                            .c_str());
         muiDrawTextAligned(details, { inner.x, inner.y + inner.h * 0.27f, inner.w, inner.h * 0.08f }, muiFitTextSize(details, inner.w, ui.dp(13), ui.dp(9)), theme.textDim, MuiAlign::Center, MuiAlign::Center);
         auto lang = index == 0 ? text(411, "Language: ") + muiDecodeUtf8(settings.system.language.c_str())
                                : muiDecodeUtf8(muiText(411 + index, entry.languageNote));
