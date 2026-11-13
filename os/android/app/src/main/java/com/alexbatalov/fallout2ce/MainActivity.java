@@ -251,6 +251,9 @@ public class MainActivity extends SDLActivity {
     public String gameInstallStatus(String gameId) {
         return GameInstaller.status(this, gameId);
     }
+    public String gameDownloadSize(String gameId) {
+        return GameInstaller.size(this, gameId);
+    }
     public void openGameProjectPage(String gameId, String projectUrl) { }
     // Et Tu import contract, reserved for the user-owned Fallout 1 files.
     // Opens the import screen for the player's Fallout 1 files (the shared

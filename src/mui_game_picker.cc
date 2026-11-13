@@ -85,6 +85,42 @@ namespace {
 #endif
     }
 
+    // Download size ("123 MB") from the Java installer; "" while unknown.
+    std::string downloadSize(int index)
+    {
+#ifdef __ANDROID__
+        static unsigned int checked[8] = {};
+        static std::string sizes[8];
+        if (!sizes[index].empty() || (checked[index] != 0 && uiTicks() - checked[index] < 2000)) return sizes[index];
+        checked[index] = uiTicks();
+        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+        if (!env || !activity) return sizes[index];
+        jclass cls = env->GetObjectClass(activity);
+        jmethodID method = env->GetMethodID(cls, "gameDownloadSize", "(Ljava/lang/String;)Ljava/lang/String;");
+        if (method) {
+            jstring id = env->NewStringUTF(gameCatalog()[index].id);
+            jstring result = static_cast<jstring>(env->CallObjectMethod(activity, method, id));
+            if (!env->ExceptionCheck() && result) {
+                const char* value = env->GetStringUTFChars(result, nullptr);
+                if (value) {
+                    sizes[index] = value;
+                    env->ReleaseStringUTFChars(result, value);
+                }
+            }
+            if (result) env->DeleteLocalRef(result);
+            env->DeleteLocalRef(id);
+        }
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        env->DeleteLocalRef(cls);
+        env->DeleteLocalRef(activity);
+        return sizes[index];
+#else
+        (void)index;
+        return "";
+#endif
+    }
+
     // True while a download or install is in flight (statuses written by
     // GameInstaller/GameInstallJob); failures and "Not installed" are not busy,
     // so the Install button returns after a failure or cancel.
@@ -321,10 +357,11 @@ namespace {
         char installed[160];
         std::snprintf(installed, sizeof(installed), muiText(409, "Version: unknown | Base files: %llu MiB"), state.baseMiB);
         bool wantsFo1 = std::string(entry.baseGame) == "fallout1";
-        auto details = index == 0 ? muiDecodeGameText(installed)
-            : installedGame       ? muiDecodeUtf8("Version: installed release")
-            : wantsFo1            ? (state.fo1Ready ? text(431, "Fallout 1 files: ready") : text(432, "Needs your own Fallout 1 files"))
-                                  : text(410, "Version: not installed | Size: download pending");
+        auto details = index == 0         ? muiDecodeGameText(installed)
+            : installedGame               ? muiDecodeUtf8("Version: installed release")
+            : wantsFo1                    ? (state.fo1Ready ? text(431, "Fallout 1 files: ready") : text(432, "Needs your own Fallout 1 files"))
+            : downloadSize(index).empty() ? text(433, "Version: not installed")
+                                          : text(410, "Version: not installed | Size: ") + muiDecodeUtf8(downloadSize(index).c_str());
         muiDrawTextAligned(details, { inner.x, inner.y + inner.h * 0.27f, inner.w, inner.h * 0.08f }, muiFitTextSize(details, inner.w, ui.dp(13), ui.dp(9)), theme.textDim, MuiAlign::Center, MuiAlign::Center);
         auto lang = index == 0 ? text(411, "Language: ") + muiDecodeUtf8(settings.system.language.c_str())
                                : muiDecodeUtf8(muiText(411 + index, entry.languageNote));

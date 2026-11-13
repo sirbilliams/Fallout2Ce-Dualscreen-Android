@@ -49,6 +49,40 @@ final class GameInstaller {
         return "Not installed";
     }
 
+    private static final Map<String, String> sizes = new HashMap<>();
+    private static final Map<String, Long> sizeTried = new HashMap<>();
+
+    /**
+     * Download size of the game's official archive ("123 MB"), or "" while it is
+     * unknown. The first call starts a background lookup (GitHub release asset
+     * size or the archive's Content-Length); failures are retried after a minute.
+     */
+    static String size(Context context, String id) {
+        if (!GameInstall.supported(id)) return "";
+        synchronized (sizes) {
+            String known = sizes.get(id);
+            if (known != null) return known;
+            long now = android.os.SystemClock.elapsedRealtime();
+            Long tried = sizeTried.get(id);
+            if (tried != null && now - tried < 60000) return "";
+            sizeTried.put(id, now);
+        }
+        new Thread(() -> {
+            try {
+                long bytes;
+                if (id.equals("resurrection")) {
+                    HttpURLConnection connection = connect(RESURRECTION, "HEAD");
+                    try { bytes = connection.getResponseCode() == 200 ? connection.getContentLengthLong() : -1; }
+                    finally { connection.disconnect(); }
+                } else {
+                    bytes = GameInstall.asset(id, read("https://api.github.com/repos/" + GameInstall.repo(id) + "/releases/latest")).size;
+                }
+                if (bytes > 0) synchronized (sizes) { sizes.put(id, DownloadIndex.formatSize(bytes)); }
+            } catch (IOException | RuntimeException ignored) { }
+        }, "game-size").start();
+        return "";
+    }
+
     static void start(MainActivity activity, String id) {
         if (!GameInstall.supported(id)) return;
         synchronized (resolving) { if (!resolving.add(id)) return; }
