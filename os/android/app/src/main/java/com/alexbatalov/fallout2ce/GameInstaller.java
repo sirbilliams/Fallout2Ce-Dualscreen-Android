@@ -87,7 +87,7 @@ final class GameInstaller {
                     try { bytes = connection.getResponseCode() == 200 ? connection.getContentLengthLong() : -1; }
                     finally { connection.disconnect(); }
                 } else {
-                    bytes = GameInstall.asset(id, read("https://api.github.com/repos/" + GameInstall.repo(id) + "/releases/latest")).size;
+                    bytes = GameInstall.asset(id, read(GameInstall.releaseApi(id))).size;
                 }
                 if (bytes > 0) synchronized (sizes) { sizes.put(id, DownloadIndex.formatSize(bytes)); }
             } catch (IOException | RuntimeException ignored) { }
@@ -135,9 +135,9 @@ final class GameInstaller {
                         asset = new RpuRelease.Asset("FoRes_EN_1_5.zip", size, RESURRECTION);
                     } finally { connection.disconnect(); }
                 } else {
-                    asset = GameInstall.asset(id, read("https://api.github.com/repos/" + GameInstall.repo(id) + "/releases/latest"));
+                    asset = GameInstall.asset(id, read(GameInstall.releaseApi(id)));
                 }
-                long need = GameInstall.preflight(asset.size);
+                long need = GameInstall.preflight(id, asset.size);
                 if (top.getUsableSpace() < need) throw new IOException("Not enough space: reserve " + DownloadIndex.formatSize(need));
                 final RpuRelease.Asset selected = asset;
                 handedToUi = true;

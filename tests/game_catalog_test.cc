@@ -27,10 +27,15 @@ int main()
         CHECK(game.title[0] && game.creator[0] && game.languageNote[0]);
         CHECK(std::string(game.projectUrl).find("https://") == 0);
         CHECK(game.experimental == (i != 0));
-        auto expected = i == 1 || i == 2 ? GameDownloadKind::GithubRelease : i == 3 ? GameDownloadKind::Direct
-                                                                                    : GameDownloadKind::ProjectPage;
+        auto expected = i == 1 || i == 2 || i == 4 ? GameDownloadKind::GithubRelease : i == 3 ? GameDownloadKind::Direct
+                                                                                              : GameDownloadKind::ProjectPage;
         CHECK(game.downloadKind == expected);
     }
+    CHECK(gameCatalog()[4].ownDats);
+    CHECK(std::string(gameCatalog()[4].languageNote) == "English (community repack)");
+    CHECK(gameCatalog()[4].downloadKind == GameDownloadKind::GithubRelease);
+    CHECK(gameResolveBaseFile("/unused", 4, "master.dat") == "master.dat");
+    CHECK(gameResolveBaseFile("/unused", 4, "critter.dat") == "critter.dat");
     // Fallout 2 plays the boot movies in the boot order; others list none.
     CHECK(gameCatalogIntroCount(0) == 3);
     CHECK(gameCatalog()[0].introMovies[0] == MOVIE_IPLOGO);

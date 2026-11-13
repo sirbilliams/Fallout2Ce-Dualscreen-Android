@@ -10,7 +10,7 @@ import java.util.zip.*;
 // Pure installer logic. Paths come from GameRoots; top is ALWAYS getExternalFilesDir(null), never active cwd.
 final class GameInstall {
     static boolean supported(String id) {
-        return "ettu".equals(id) || "sonora".equals(id) || "resurrection".equals(id);
+        return "ettu".equals(id) || "sonora".equals(id) || "nevada".equals(id) || "resurrection".equals(id);
     }
 
     // Games whose own release ships master.dat and critter.dat (kept in the game
@@ -18,7 +18,7 @@ final class GameInstall {
     // the player's Fallout 1 files and Resurrection (fores*.dat) the player's
     // Fallout 2 files, so an archive's dats never replace those.
     static boolean ownDats(String id) {
-        return "sonora".equals(id);
+        return "sonora".equals(id) || "nevada".equals(id);
     }
 
     // Marker present but the game's own dats are missing (installed by a build
@@ -86,7 +86,41 @@ final class GameInstall {
     static String repo(String id) throws IOException {
         if ("ettu".equals(id)) return "rotators/Fo1in2";
         if ("sonora".equals(id)) return "NovaRain/Fallout-Sonora-English";
+        if ("nevada".equals(id)) return "HogLord69/fallout-english-localization";
         throw new IOException("No GitHub release for this game");
+    }
+
+    static final long NEVADA_SIZE = 1029036403L;
+    static final String NEVADA_SHA256 = "3ebbd3c292be210e157a18e33a59b7fe5dd95f079fd71f4493774274bc155a60";
+    static final String NEVADA_URL = "https://github.com/HogLord69/fallout-english-localization/releases/download/v1.0/Fallout-Nevada-English.zip";
+
+    static String releaseApi(String id) throws IOException {
+        return "https://api.github.com/repos/" + repo(id)
+            + ("nevada".equals(id) ? "/releases/tags/v1.0" : "/releases/latest");
+    }
+
+    // Check the pinned repack before opening it, including reused downloads.
+    static void verifyArchive(String id, File archive) throws IOException {
+        if (!"nevada".equals(id)) return;
+        if (archive.length() != NEVADA_SIZE) throw new IOException("Nevada archive size mismatch");
+        verifySha256(archive, NEVADA_SHA256);
+    }
+
+    static void verifySha256(File archive, String expected) throws IOException {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            try (InputStream in = new FileInputStream(archive)) {
+                byte[] buffer = new byte[65536];
+                int n;
+                while ((n = in.read(buffer)) != -1) {
+                    if (Thread.currentThread().isInterrupted()) throw new IOException("Install interrupted");
+                    digest.update(buffer, 0, n);
+                }
+            }
+            StringBuilder hex = new StringBuilder();
+            for (byte b : digest.digest()) hex.append(String.format(Locale.ROOT, "%02x", b & 255));
+            if (!hex.toString().equals(expected)) throw new IOException("Archive SHA-256 mismatch");
+        } catch (java.security.NoSuchAlgorithmException e) { throw new IOException(e); }
     }
 
     static RpuRelease.Asset asset(String id, String json) throws IOException {
@@ -106,9 +140,12 @@ final class GameInstall {
                 if (!(name instanceof String) || !(size instanceof Double) || !(url instanceof String)) continue;
                 String n = ((String) name).toLowerCase(Locale.ROOT);
                 boolean match = "ettu".equals(id) ? n.equals("fallout1in2.zip")
+                    : "nevada".equals(id) ? n.equals("fallout-nevada-english.zip")
                     : "sonora".equals(id) && n.matches("fallout_sonora_[0-9].*_sfall\\.zip");
                 long bytes = ((Double) size).longValue();
                 if (!match || bytes <= 0 || !((String) url).startsWith("https://github.com/" + repo(id) + "/releases/download/")) continue;
+                if ("nevada".equals(id) && (bytes != NEVADA_SIZE || !NEVADA_URL.equals(url)))
+                    throw new IOException("Nevada release differs from the verified repack");
                 if (best != null) throw new IOException("Ambiguous release assets");
                 best = new RpuRelease.Asset((String) name, bytes, (String) url);
             }
@@ -134,6 +171,14 @@ final class GameInstall {
     static long preflight(long archive) throws IOException {
         if (archive <= 0 || archive > Long.MAX_VALUE / 5) throw new IOException("Invalid archive size");
         return needed(archive, archive * 4);
+    }
+
+    static long preflight(String id, long archive) throws IOException {
+        if ("nevada".equals(id)) {
+            if (archive != NEVADA_SIZE) throw new IOException("Unexpected Nevada archive size");
+            return 2500000000L; // 1.03 GB ZIP + 1.40 GB data + staging margin.
+        }
+        return preflight(archive);
     }
 
     static File target(File top, String id) throws IOException {
@@ -170,10 +215,19 @@ final class GameInstall {
         }
         if ("sonora".equals(id) && path.matches("fallout_sonora_[a-z0-9_]+/.*"))
             path = path.substring(path.indexOf('/') + 1);
+        if ("nevada".equals(id)) {
+            if (!path.startsWith("fallout-nevada-english/")) return null;
+            path = path.substring("fallout-nevada-english/".length());
+            // Only runtime data; documentation, screenshots and Windows tools stay out.
+            if (!(path.startsWith("data/") || path.startsWith("mods/")
+                || path.startsWith("appearance/") || path.startsWith("sfall/")
+                || path.matches("(master.dat|critter.dat|f2_res.dat|sfall.dat|f2_res.ini|ddraw.ini|config.cfg)"))) return null;
+        }
         String leaf = path.substring(path.lastIndexOf('/') + 1);
         boolean dat = leaf.equals("master.dat") || leaf.equals("critter.dat");
         if ((dat && !ownDats(id)) || leaf.equals(".installed")
-            || leaf.endsWith(".exe") || leaf.endsWith(".dll")) return null;
+            || leaf.endsWith(".exe") || leaf.endsWith(".dll")
+            || ("nevada".equals(id) && (leaf.endsWith(".bat") || leaf.endsWith(".ico")))) return null;
         return path;
     }
 
@@ -233,11 +287,17 @@ final class GameInstall {
                     }
                     if (count != e.getSize() || crc.getValue() != e.getCrc()) throw new IOException("Damaged ZIP");
                 }
+                if ("nevada".equals(id)) {
+                    if (!hasOwnDats(temp) || !new File(temp, "config.cfg").isFile())
+                        throw new IOException("Nevada archive lacks required game files");
+                    writeConfig(temp, "config.cfg");
+                    nevadaDefaults(temp);
+                }
                 if (repair) {
                     repairInto(temp, dest);
                     return;
                 }
-                writeConfig(temp);
+                if (!"nevada".equals(id)) writeConfig(temp, "fallout2.cfg");
                 Files.write(new File(temp, ".installed").toPath(), (id + "\n").getBytes(StandardCharsets.UTF_8));
                 // Same filesystem; rename publishes the complete tree. No replacement.
                 if (dest.exists() || !temp.renameTo(dest)) throw new IOException("Cannot publish game folder");
@@ -396,8 +456,44 @@ final class GameInstall {
         }
     }
 
-    private static void writeConfig(File temp) throws IOException {
-        File cfg = new File(temp, "fallout2.cfg");
+    // Defaults must be in ddraw.ini BEFORE the first launch: migration to
+    // data/game.cfg is one-shot. Explicit shipped values (including -1 timers)
+    // are retained. StartMonth/Day use sfall's zero-based convention.
+    static void nevadaDefaults(File temp) throws IOException {
+        File ini = new File(temp, "ddraw.ini");
+        List<String> lines = ini.isFile() ? Files.readAllLines(ini.toPath(), StandardCharsets.ISO_8859_1) : new ArrayList<>();
+        Map<String, String> missing = new LinkedHashMap<>();
+        missing.put("ConfigFile", "config.cfg");
+        missing.put("StartYear", "2140");
+        missing.put("StartMonth", "9");
+        missing.put("StartDay", "10");
+        for (int i = 1; i <= 4; i++) missing.put("MovieTimer_artimer" + i, Integer.toString(36000 + (i - 1) * 30));
+        boolean misc = false;
+        int insert = -1;
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i).trim();
+            if (line.startsWith("[")) {
+                misc = line.equalsIgnoreCase("[Misc]");
+                if (misc) insert = i + 1;
+            }
+            if (!misc) continue;
+            int equals = line.indexOf('=');
+            if (equals < 0) continue;
+            String key = line.substring(0, equals).trim();
+            missing.keySet().removeIf(k -> k.equalsIgnoreCase(key));
+        }
+        List<String> additions = new ArrayList<>();
+        for (Map.Entry<String, String> entry : missing.entrySet()) additions.add(entry.getKey() + "=" + entry.getValue());
+        if (insert < 0) {
+            lines.add("[Misc]");
+            insert = lines.size();
+        }
+        lines.addAll(insert, additions);
+        Files.write(ini.toPath(), lines, StandardCharsets.ISO_8859_1);
+    }
+
+    private static void writeConfig(File temp, String name) throws IOException {
+        File cfg = new File(temp, name);
         List<String> lines = cfg.isFile() ? Files.readAllLines(cfg.toPath(), StandardCharsets.ISO_8859_1) : new ArrayList<>();
         StringBuilder out = new StringBuilder();
         boolean system = false;
