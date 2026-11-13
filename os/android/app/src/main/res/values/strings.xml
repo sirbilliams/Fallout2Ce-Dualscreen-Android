@@ -2,6 +2,14 @@
     <string name="app_name">Fallout 2 Dual</string>
 
     <!-- ImportActivity: the game's files from the player's own copy. -->
+    <!-- Add Fallout 1 files (Et Tu and other Fallout 1 based games). -->
+    <string name="fo1_title">Fallout 1 files</string>
+    <string name="fo1_welcome">Fallout 1 based games need the files of your own copy of Fallout 1 (GOG, Steam or the disc).\n\nCopy the game\'s folder from your computer to the phone — by cable, through a cloud drive or as one archive (.zip, .7z or .rar) — and choose it here. Only master.dat, critter.dat and the data folder are used.</string>
+    <string name="fo1_replace_welcome">Fallout 1 files are on the phone. Choose a folder or an archive to replace them; your Fallout 2 and its saves are not touched.</string>
+    <string name="fo1_not_found">No Fallout 1 here: master.dat and critter.dat weren\'t found. Choose the folder or the archive Fallout 1 is installed in.</string>
+    <string name="fo1_is_fallout2">This is Fallout 2, not Fallout 1. Choose the folder or the archive of Fallout 1.</string>
+    <string name="fo1_not_fallout1">These master.dat and critter.dat aren\'t Fallout 1\'s. Nothing was changed. Choose the folder or the archive of Fallout 1.</string>
+    <string name="fo1_found">Fallout 1 found.</string>
     <string name="import_title">Files of the game</string>
     <string name="import_welcome">Fallout 2 CE needs the files of your own copy of Fallout 2 (GOG, Steam or the disc).\n\nCopy the game\'s folder from your computer to the phone — by cable, through a cloud drive or a messenger (as one archive: .zip, .7z or .rar) — and choose it here. Installed mods (RPU and others) and saves come along.</string>
     <string name="import_choose_folder">Choose the folder</string>

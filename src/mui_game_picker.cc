@@ -49,6 +49,12 @@ namespace {
         bool intro = false;
         bool stub = false;
         bool install = false;
+        // "Add Fallout 1 files" was chosen (Et Tu needs the player's own files).
+        bool addBase = false;
+        // base/fallout1 holds master.dat and critter.dat; rechecked while the
+        // picker runs, as the import screen is a separate activity.
+        bool fo1Ready = gameBaseHasFiles(gameTopRoot(), 1);
+        unsigned int fo1Checked = uiTicks();
         bool quit = false;
         // Set false while another modal owns input (Mods or notice).
         bool interactive = true;
@@ -88,6 +94,41 @@ namespace {
         env->DeleteLocalRef(activity);
 #else
         (void)entry;
+#endif
+    }
+
+    bool needsFallout1Files(const PickerState& state, int index)
+    {
+        return std::string(gameCatalog()[index].baseGame) == "fallout1" && !state.fo1Ready;
+    }
+
+    // JNI entry for the Fallout 1 import (MainActivity.addFallout1Files); false
+    // when this build has none (desktop), so the caller shows the notice.
+    bool requestFallout1Import(const GameCatalogEntry& entry)
+    {
+#ifdef __ANDROID__
+        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+        if (!env || !activity) return false;
+        jclass cls = env->GetObjectClass(activity);
+        jmethodID method = env->GetMethodID(cls, "addFallout1Files", "(Ljava/lang/String;)V");
+        bool called = false;
+        if (method) {
+            jstring id = env->NewStringUTF(entry.id);
+            env->CallVoidMethod(activity, method, id);
+            env->DeleteLocalRef(id);
+            called = true;
+        }
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            called = false;
+        }
+        env->DeleteLocalRef(cls);
+        env->DeleteLocalRef(activity);
+        return called;
+#else
+        (void)entry;
+        return false;
 #endif
     }
 
@@ -163,7 +204,10 @@ namespace {
         muiDrawTextAligned(status, { inner.x, inner.y + inner.h * 0.17f, inner.w, inner.h * 0.09f }, ui.dp(18), theme.text, MuiAlign::Center, MuiAlign::Center);
         char installed[160];
         std::snprintf(installed, sizeof(installed), muiText(409, "Version: unknown | Base files: %llu MiB"), state.baseMiB);
-        auto details = index == 0 ? muiDecodeGameText(installed) : text(410, "Version: not installed | Size: download pending");
+        bool wantsFo1 = std::string(entry.baseGame) == "fallout1";
+        auto details = index == 0 ? muiDecodeGameText(installed)
+            : wantsFo1            ? (state.fo1Ready ? text(431, "Fallout 1 files: ready") : text(432, "Needs your own Fallout 1 files"))
+                                  : text(410, "Version: not installed | Size: download pending");
         muiDrawTextAligned(details, { inner.x, inner.y + inner.h * 0.27f, inner.w, inner.h * 0.08f }, muiFitTextSize(details, inner.w, ui.dp(13), ui.dp(9)), theme.textDim, MuiAlign::Center, MuiAlign::Center);
         auto lang = index == 0 ? text(411, "Language: ") + muiDecodeUtf8(settings.system.language.c_str())
                                : muiDecodeUtf8(muiText(411 + index, entry.languageNote));
@@ -192,10 +236,17 @@ namespace {
             if (button("picker.play", playRect, text(398, "Play"), true)) state.play = true;
             if (enabled) ui.padPrefer("picker.play");
         } else {
-            auto caption = entry.downloadKind == GameDownloadKind::ProjectPage ? text(402, "Open project page") : text(401, "Install");
+            bool addBase = needsFallout1Files(state, index);
+            auto caption = addBase                                    ? text(430, "Add Fallout 1 files")
+                : entry.downloadKind == GameDownloadKind::ProjectPage ? text(402, "Open project page")
+                                                                      : text(401, "Install");
             if (button("picker.install", action, caption, true)) {
-                state.stub = true;
-                state.install = true;
+                if (addBase) {
+                    state.addBase = true;
+                } else {
+                    state.stub = true;
+                    state.install = true;
+                }
             }
             if (enabled) ui.padPrefer("picker.install");
         }
@@ -273,6 +324,8 @@ bool muiGamePickerAccept(MuiSurface surface)
     if (!validFocus || focus == "picker.play" || focus == "picker.install") {
         if (active->page == 0)
             active->play = true;
+        else if (needsFallout1Files(*active, active->page))
+            active->addBase = true;
         else {
             active->stub = true;
             active->install = true;
@@ -328,6 +381,14 @@ bool muiGamePickerRun()
             state.intro = false;
             playIntro(state.page);
             state.interactive = true;
+        }
+        if (state.fo1Checked + 1000 < uiTicks()) {
+            state.fo1Checked = uiTicks();
+            state.fo1Ready = gameBaseHasFiles(gameTopRoot(), 1);
+        }
+        if (state.addBase) {
+            state.addBase = false;
+            if (!requestFallout1Import(gameCatalog()[state.page])) state.stub = true;
         }
         if (state.mods || state.stub) {
             state.interactive = false;

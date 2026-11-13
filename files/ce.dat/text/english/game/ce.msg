@@ -433,3 +433,6 @@
 {417}{}{English}
 {418}{}{English}
 {419}{}{Intro}
+{430}{}{Add Fallout 1 files}
+{431}{}{Fallout 1 files: ready}
+{432}{}{Needs your own Fallout 1 files}

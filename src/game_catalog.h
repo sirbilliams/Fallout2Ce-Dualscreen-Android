@@ -46,6 +46,9 @@ const std::string& gameTopRoot();
 // existence only); never creates, copies or modifies anything.
 // Base directory of a game, or "" when it has none (Fallout 2, bad index).
 std::string gameBasePath(const std::string& topRoot, int index);
+// True when the game's base dir has master.dat and critter.dat (what the
+// Fallout 1 import leaves there). False for games without a base dir.
+bool gameBaseHasFiles(const std::string& topRoot, int index);
 // For a read-only base file/dir setting [configured] (relative to the game's
 // folder): the configured path when index is 0, it is absolute/empty, or it
 // exists in the game folder (its own file always wins) or in no base; else the
