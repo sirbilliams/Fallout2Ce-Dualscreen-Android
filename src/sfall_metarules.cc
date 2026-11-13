@@ -38,6 +38,7 @@
 #include "scripts.h"
 #include "sfall_animation.h"
 #include "sfall_arrays.h" // For CreateTempArray, SetArray
+#include "sfall_compat.h"
 #include "sfall_global_scripts.h"
 #include "sfall_ini.h"
 #include "sfall_object_name.h"
@@ -872,7 +873,7 @@ const MetaruleInfo kMetarules[] = {
     { "floor2", mf_floor2, 1, 1, 0, { ARG_NUMBER } },
     // {"get_can_rest_on_map",       mf_get_rest_on_map,           2, 2, -1, {ARG_INT, ARG_INT}},
     { "get_combat_free_move", mf_get_combat_free_move, 0, 0 },
-    // {"get_current_inven_size",    mf_get_current_inven_size,    1, 1,  0, {ARG_OBJECT}},
+    { "get_current_inven_size", mf_get_current_inven_size, 1, 1, 0, { ARG_OBJECT } },
     { "get_cursor_mode", mf_get_cursor_mode, 0, 0 },
     { "get_flags", mf_get_flags, 1, 1, 0, { ARG_OBJECT } },
     { "get_ini_config", mf_get_ini_config, 2, 2, 0, { ARG_STRING, ARG_INT } },
@@ -895,12 +896,12 @@ const MetaruleInfo kMetarules[] = {
     // {"has_fake_trait_npc",        mf_has_fake_trait_npc,        2, 2,  0, {ARG_OBJECT, ARG_STRING}},
     { "hide_window", mf_hide_window, 0, 1, -1, { ARG_STRING } },
     { "interface_art_draw", mf_interface_art_draw, 4, 6, -1, { ARG_INT, ARG_INTSTR, ARG_INT, ARG_INT, ARG_INT, ARG_INT } },
-    // {"interface_overlay",         mf_interface_overlay,         2, 6, -1, {ARG_INT, ARG_INT, ARG_INT, ARG_INT, ARG_INT, ARG_INT}},
+    { "interface_overlay", mf_interface_overlay, 2, 6, -1, { ARG_INT, ARG_INT, ARG_INT, ARG_INT, ARG_INT, ARG_INT } },
     // {"interface_print",           mf_interface_print,           5, 6, -1, {ARG_STRING, ARG_INT, ARG_INT, ARG_INT, ARG_INT, ARG_INT}},
-    // {"intface_hide",              mf_intface_hide,              0, 0},
-    // {"intface_is_hidden",         mf_intface_is_hidden,         0, 0},
+    { "intface_hide", mf_intface_hide, 0, 0 },
+    { "intface_is_hidden", mf_intface_is_hidden, 0, 0 },
     { "intface_redraw", mf_intface_redraw, 0, 1 },
-    // {"intface_show",              mf_intface_show,              0, 0},
+    { "intface_show", mf_intface_show, 0, 0 },
     { "inventory_redraw", mf_inventory_redraw, 0, 1, -1, { ARG_INT } },
     // {"item_make_explosive",       mf_item_make_explosive,       3, 4, -1, {ARG_INT, ARG_INT, ARG_INT, ARG_INT}},
     { "item_weight", mf_item_weight, 1, 1, 0, { ARG_OBJECT } },
@@ -924,7 +925,7 @@ const MetaruleInfo kMetarules[] = {
     { "set_combat_free_move", mf_set_combat_free_move, 1, 1, -1, { ARG_INT } },
     { "set_cursor_mode", mf_set_cursor_mode, 1, 1, -1, { ARG_INT } },
     // {"set_drugs_data",            mf_set_drugs_data,            3, 3, -1, {ARG_INT, ARG_INT, ARG_INT}},
-    // {"set_dude_obj",              mf_set_dude_obj,              1, 1, -1, {ARG_INT}},
+    { "set_dude_obj", mf_set_dude_obj, 1, 1, -1, { ARG_ANY } },
     // {"set_fake_perk_npc",         mf_set_fake_perk_npc,         5, 5, -1, {ARG_OBJECT, ARG_STRING, ARG_INT, ARG_INT, ARG_STRING}},
     // {"set_fake_trait_npc",        mf_set_fake_trait_npc,        5, 5, -1, {ARG_OBJECT, ARG_STRING, ARG_INT, ARG_INT, ARG_STRING}},
     { "set_flags", mf_set_flags, 2, 2, -1, { ARG_OBJECT, ARG_INT } },

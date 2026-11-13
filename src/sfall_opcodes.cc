@@ -38,6 +38,7 @@
 #include "scripts.h"
 #include "sfall_animation.h"
 #include "sfall_arrays.h"
+#include "sfall_compat.h"
 #include "sfall_filesystem.h"
 #include "sfall_global_scripts.h"
 #include "sfall_global_vars.h"
@@ -105,33 +106,6 @@ static void op_obj_is_carrying_obj(Program* program)
     }
 
     programStackPushInteger(program, count);
-}
-
-// read_byte
-static void op_read_byte(Program* program)
-{
-    int addr = programStackPopInteger(program);
-
-    int value = 0;
-    switch (addr) {
-    case 0x56D38C:
-        value = combatGetTargetHighlight();
-        break;
-    default:
-        debugPrint("%s: attempt to 'read_byte' at 0x%x", program->name, addr);
-        break;
-    }
-
-    programStackPushInteger(program, value);
-}
-
-// write_byte/write_short/write_int: CE has a different address space, so
-// writes to original EXE memory are ignored (logged), like read_byte.
-static void op_write_memory(Program* program)
-{
-    int value = programStackPopInteger(program);
-    int addr = programStackPopInteger(program);
-    debugPrint("%s: ignored memory write 0x%x at 0x%x", program->name, value, addr);
 }
 
 // eax_available: deprecated in sfall (always 0 there too).
@@ -2052,16 +2026,6 @@ static void op_charcode(Program* program)
     }
 }
 
-static void op_set_fake_trait(Program* program)
-{
-    char* desc = programStackPopString(program);
-    int image = programStackPopInteger(program);
-    int active = programStackPopInteger(program);
-    char* name = programStackPopString(program);
-
-    programPrintError("set_fake_trait: not implemented!");
-}
-
 static void op_show_iface_tag(Program* program)
 {
     int tag = programStackPopInteger(program);
@@ -2283,21 +2247,18 @@ static void op_set_hero_race(Program* program)
 // Note: opcodes should pop arguments off the stack in reverse order
 void sfallOpcodesInit()
 {
+    sfallCompatibilityInit();
     // ref. https://github.com/sfall-team/sfall/blob/71ecec3d405bd5e945f157954618b169e60068fe/artifacts/scripting/sfall%20opcode%20list.txt#L145
     // Note: we can't really implement these since address space is different.
     // We can potentially special case some of them, but we should try to avoid that.
     // 0x8156 - int   read_byte(int address)
-    interpreterRegisterOpcode(0x8156, op_read_byte);
     // 0x8157 - int   read_short(int address)
     // 0x8158 - int   read_int(int address)
     // 0x8159 - string read_string(int address)
 
     // 0x81cf - void  write_byte(int address, int value)
-    interpreterRegisterOpcode(0x81CF, op_write_memory);
     // 0x81d0 - void  write_short(int address, int value)
-    interpreterRegisterOpcode(0x81D0, op_write_memory);
     // 0x81d1 - void  write_int(int address, int value)
-    interpreterRegisterOpcode(0x81D1, op_write_memory);
     // ^ 0x821b - void  write_string(int address, string value)
 
     // ^ 0x81d2 - void  call_offset_v0(int address)
@@ -2560,7 +2521,6 @@ void sfallOpcodesInit()
 
     // 0x81bb - void set_fake_perk(string name, int level, int image, string desc)
     // 0x81bc - void set_fake_trait(string name, int active, int image, string desc)
-    interpreterRegisterOpcode(0x81BC, op_set_fake_trait);
     // 0x81bd - void set_selectable_perk(string name, int active, int image, string desc)
     // 0x81be - void set_perkbox_title(string title)
     // 0x81bf - void hide_real_perks()
@@ -2607,7 +2567,7 @@ void sfallOpcodesInit()
     // 0x81e5 - void  set_sfall_return(any value)
     interpreterRegisterOpcode(0x81e5, op_set_sfall_return);
 
-    // 0x81ea - int   init_hook()  -> OBSOLETE, do not implement
+    // 0x81ea - int   init_hook() -> obsolete compatibility stub
 
     // 0x81e6 - void set_unspent_ap_bonus(int multiplier)
     interpreterRegisterOpcode(0x81E6, op_set_unspent_ap_bonus);
