@@ -355,6 +355,12 @@ public class DownloadsActivity extends ImmersiveActivity {
     }
 
     private void install(DownloadIndex.Row row) {
+        if (GameInstaller.game(row) != null) {
+            try { GameInstaller.status(this, GameInstaller.game(row), "Waiting to install"); }
+            catch (IOException e) { info(e.getMessage()); return; }
+            GameInstaller.schedule(this);
+            return;
+        }
         if (installing) return;
         String lower = row.item.file.toLowerCase(Locale.ROOT);
         if (lower.endsWith(".7z") || lower.endsWith(".rar")) {

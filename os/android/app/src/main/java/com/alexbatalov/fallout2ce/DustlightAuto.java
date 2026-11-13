@@ -189,6 +189,7 @@ final class DustlightAuto {
     // --- helpers ---
 
     private static boolean ready(Context context, DownloadIndex.Row row) {
+        if (row.item.source.startsWith("game:")) return false;
         return row.state.kind == DownloadIndex.Kind.DOWNLOADED && !row.item.installed
             && !DownloadIndex.RPU.equals(row.item.source)
             && row.item.file.toLowerCase(java.util.Locale.ROOT).endsWith(".zip");
@@ -201,6 +202,7 @@ final class DustlightAuto {
     // An HD art part: by name (while it downloads and once installed) and,
     // for a finished unknown zip, by content (cached).
     private static boolean isHdRow(Context context, DownloadIndex.Row row) {
+        if (row.item.source.startsWith("game:")) return false;
         DustlightHd.Name name = DustlightHd.classify(row.item.file);
         if (name.kind == DustlightHd.Kind.ENGINE) return false;
         boolean finished = row.state.kind == DownloadIndex.Kind.DOWNLOADED;

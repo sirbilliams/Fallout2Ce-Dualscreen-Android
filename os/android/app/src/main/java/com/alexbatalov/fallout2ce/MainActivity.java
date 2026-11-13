@@ -224,9 +224,15 @@ public class MainActivity extends SDLActivity {
     // reads the saves again when back); replacing the game ([mode] null)
     // closes it (its process exits, see onDestroy) and the import screen
     // starts it again when done.
-    // Step 1 JNI contracts. Native mui displays the localized coming-soon
-    // notice. Step 3 will dispatch ModDownloads / the generalized browser.
-    public void installGame(String gameId, String officialUrl) { }
+    // JNI contracts: installers use the top external-files root and stay in
+    // the background while the native picker continues to render progress.
+    public void installGame(String gameId, String officialUrl) {
+        runOnUiThread(() -> GameInstaller.start(this, gameId));
+    }
+
+    public String gameInstallStatus(String gameId) {
+        return GameInstaller.status(this, gameId);
+    }
     public void openGameProjectPage(String gameId, String projectUrl) { }
     // Et Tu import contract, reserved for the user-owned Fallout 1 files.
     public void addFallout1Files(String gameId) { }
