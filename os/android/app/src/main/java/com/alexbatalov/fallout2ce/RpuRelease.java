@@ -147,7 +147,7 @@ final class RpuRelease {
 
     // Minimal JSON reader (org.json is only a stub in JVM unit tests).
     // Numbers are Doubles; objects Maps; arrays Lists.
-    private static final class Json {
+    static final class Json {
         private final String text;
         private int pos;
 
