@@ -93,7 +93,7 @@ public class PickerPicturesTest {
         assertEquals(-1, PickerPictures.imageScore(320, 200));   // too narrow
         assertEquals(-1, PickerPictures.imageScore(1000, 1000)); // square
         assertEquals(-1, PickerPictures.imageScore(1600, 400));  // too wide
-        assertEquals(640L * 480, PickerPictures.imageScore(640, 480));
+        assertEquals(-1, PickerPictures.imageScore(640, 480));
         assertTrue(PickerPictures.imageScore(1280, 720) > PickerPictures.imageScore(640, 480));
     }
 }

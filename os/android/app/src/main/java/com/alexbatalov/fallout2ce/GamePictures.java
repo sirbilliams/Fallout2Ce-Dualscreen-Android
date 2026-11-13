@@ -49,26 +49,12 @@ public final class GamePictures {
         try { dir = PickerPictures.directory(top, id, installed); }
         catch (IllegalArgumentException e) { return; }
         PickerPictures.purgeSocialCard(dir);
-        // Installed games take their art from their own files; art fetched online for
-        // an installed game earlier is replaced when the game's files give a picture.
-        if (installed && !"fallout2".equals(id)) {
-            if (GameArt.isOwn(dir)) return;
-            String key = dir.getAbsolutePath() + "#own";
-            long now = android.os.SystemClock.elapsedRealtime();
-            if (now - attempted.getOrDefault(key, -60000L) < 60000 || !pending.add(key)) return;
-            attempted.put(key, now);
-            WORKER.execute(() -> {
-                try { GameArt.generate(top, id, dir, creator, source); }
-                catch (IOException | RuntimeException e) {
-                    Log.d("GamePictures", "No game-file art for " + id + ": " + e.getClass().getSimpleName());
-                } finally { pending.remove(key); }
-            });
-            return;
-        }
-        if (new File(dir, "art.rgba").isFile()) return;
+        String version = PickerPictures.rankVersion(BuildConfig.VERSION_CODE + ":" + BuildConfig.VERSION_NAME);
+        if (!PickerPictures.needsRanking(dir, version)) return;
         String key = dir.getAbsolutePath();
         long now = android.os.SystemClock.elapsedRealtime();
         if (now - attempted.getOrDefault(key, -60000L) < 60000 || !pending.add(key)) return;
+        attempted.put(key, now);
         Context app = context.getApplicationContext();
         WORKER.execute(() -> {
             try {
@@ -76,26 +62,21 @@ public final class GamePictures {
                 NetworkCapabilities caps = cm == null ? null : cm.getNetworkCapabilities(cm.getActiveNetwork());
                 boolean wifi = caps != null && (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
                         || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
-                if (!PickerPictures.mayFetch(caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
-                        wifi, cm == null || cm.isActiveNetworkMetered())) return;
-                attempted.put(key, android.os.SystemClock.elapsedRealtime());
+                boolean online = PickerPictures.mayFetch(caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
+                        wifi, cm == null || cm.isActiveNetworkMetered());
+                // The same pool for previews and installed games. Own files are its lowest tier.
+                Object[] local = GameArt.pick(GameArt.sourceFor(top, id));
+                if (!online) {
+                    if (!new File(dir, "art.rgba").isFile() && local != null)
+                        writeLocal(dir, local, creator, source);
+                    return; // No rank marker: retry discovery when Wi-Fi is available.
+                }
                 long deadline = android.os.SystemClock.elapsedRealtime() + 25000;
-                // Online art is only for not-installed previews: the best large landscape image
-                // of the project page / README (no badges, logos, icons or GitHub social cards).
-                java.util.List<String> candidates = new java.util.ArrayList<>();
-                String api = PickerPictures.readmeApi(source);
-                try {
-                    if (api == null) {
-                        candidates.addAll(PickerPictures.imageUrls(source, PickerPictures.utf8(fetch(source, PickerPictures.PAGE_CAP, deadline)), 6));
-                    } else {
-                        String raw = PickerPictures.readmeUrl(PickerPictures.utf8(fetch(api, PickerPictures.PAGE_CAP, deadline)));
-                        if (raw != null) candidates.addAll(PickerPictures.imageUrls(raw, PickerPictures.utf8(fetch(raw, PickerPictures.PAGE_CAP, deadline)), 6));
-                    }
-                } catch (IOException ignored) { /* No page art. */ }
+                java.util.List<String> candidates = discover(id, source, deadline - 12000);
                 String image = null;
                 byte[] data = null;
                 BitmapFactory.Options bounds = new BitmapFactory.Options();
-                long bestScore = -1;
+                long bestScore = local == null ? -1 : 0;
                 for (String candidate : candidates) {
                     try {
                         byte[] bytes = fetch(candidate, installed ? PickerPictures.FULL_CAP : PickerPictures.PREVIEW_CAP, deadline);
@@ -104,11 +85,28 @@ public final class GamePictures {
                         BitmapFactory.decodeByteArray(bytes, 0, bytes.length, probe);
                         if (probe.outWidth > 16384 || probe.outHeight > 16384 || (long) probe.outWidth * probe.outHeight > 64000000) continue;
                         if (!"image/png".equals(probe.outMimeType) && !"image/jpeg".equals(probe.outMimeType)) continue;
-                        long score = PickerPictures.imageScore(probe.outWidth, probe.outHeight);
+                        if (PickerPictures.score(candidate, probe.outMimeType, probe.outWidth, probe.outHeight, 100, false) < 0) continue;
+                        BitmapFactory.Options sample = new BitmapFactory.Options();
+                        sample.inSampleSize = 1;
+                        while (probe.outWidth / sample.inSampleSize > 96 || probe.outHeight / sample.inSampleSize > 96) sample.inSampleSize *= 2;
+                        Bitmap small = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, sample);
+                        if (small == null) continue;
+                        double richness;
+                        try { richness = GameArt.richness(toPraw(small)); }
+                        finally { small.recycle(); }
+                        long score = PickerPictures.score(candidate, probe.outMimeType, probe.outWidth, probe.outHeight, richness, false);
                         if (score > bestScore) { bestScore = score; image = candidate; data = bytes; bounds = probe; }
                     } catch (IOException ignored) { /* skip this candidate */ }
                 }
-                if (image == null || data == null) return;
+                if (image == null || data == null) {
+                    if (local != null) {
+                        writeLocal(dir, local, creator, source);
+                        if (android.os.SystemClock.elapsedRealtime() < deadline)
+                            Files.write(new File(dir, "rank-version").toPath(), version.getBytes(StandardCharsets.UTF_8));
+                    }
+                    // With no result or an exhausted deadline, allow a later retry.
+                    return;
+                }
                 int edge = installed ? 1920 : 480;
                 BitmapFactory.Options opts = new BitmapFactory.Options();
                 opts.inSampleSize = 1;
@@ -134,11 +132,78 @@ public final class GamePictures {
                     Files.write(credit.toPath(), ("by " + creator + " - " + source + "\nImage: " + image + "\n").getBytes(StandardCharsets.UTF_8));
                     Files.move(credit.toPath(), new File(dir, "credit.txt").toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                     Files.move(temp.toPath(), new File(dir, "art.rgba").toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+                    Files.write(new File(dir, "rank-version").toPath(), version.getBytes(StandardCharsets.UTF_8));
                 } finally { bitmap.recycle(); }
             } catch (IOException | RuntimeException e) {
                 Log.d("GamePictures", "No picture for " + id + ": " + e.getClass().getSimpleName());
             } finally { pending.remove(key); }
         });
+    }
+
+    private static void writeLocal(File dir, Object[] picked, String creator, String source) throws IOException {
+        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("picture directory");
+        File temp = new File(dir, "art.rgba.part"), credit = new File(dir, "credit.txt.part");
+        Files.write(temp.toPath(), (byte[]) picked[0]);
+        Files.write(credit.toPath(), ("by " + creator + " - " + source + "\nImage: game-file:" + picked[1] + "\n").getBytes(StandardCharsets.UTF_8));
+        Files.move(credit.toPath(), new File(dir, "credit.txt").toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        Files.move(temp.toPath(), new File(dir, "art.rgba").toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+    }
+
+    private static byte[] toPraw(Bitmap bitmap) throws IOException {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (DataOutputStream out = new DataOutputStream(bytes)) {
+            out.writeInt(0x50524157); out.writeInt(bitmap.getWidth()); out.writeInt(bitmap.getHeight());
+            int[] row = new int[bitmap.getWidth()];
+            for (int y = 0; y < bitmap.getHeight(); y++) {
+                bitmap.getPixels(row, 0, row.length, 0, y, row.length, 1);
+                for (int pixel : row) {
+                    out.writeByte(pixel >> 16); out.writeByte(pixel >> 8); out.writeByte(pixel); out.writeByte(pixel >>> 24);
+                }
+            }
+        }
+        return bytes.toByteArray();
+    }
+
+    // Independently failing sources, bounded metadata calls and round-robin image slots:
+    // a README full of images cannot crowd the wiki or release assets out of the pool.
+    private static java.util.List<String> discover(String id, String source, long deadline) {
+        java.util.List<java.util.List<String>> pools = new java.util.ArrayList<>();
+        String api = PickerPictures.readmeApi(source);
+        try {
+            if (api == null) {
+                pools.add(PickerPictures.imageUrls(source, PickerPictures.utf8(fetch(source, PickerPictures.PAGE_CAP, deadline)), 12));
+            } else {
+                String raw = PickerPictures.readmeUrl(PickerPictures.utf8(fetch(api, PickerPictures.PAGE_CAP, deadline)));
+                if (raw != null) pools.add(PickerPictures.imageUrls(raw, PickerPictures.utf8(fetch(raw, PickerPictures.PAGE_CAP, deadline)), 12));
+            }
+        } catch (IOException | RuntimeException ignored) { }
+        try {
+            String json = PickerPictures.utf8(fetch(PickerPictures.wikiApi(id), PickerPictures.PAGE_CAP, deadline));
+            java.util.List<String> wiki = PickerPictures.wikiImages(json);
+            String info = PickerPictures.wikiImageInfoApi(json);
+            if (info != null) {
+                try { wiki.addAll(PickerPictures.wikiImages(PickerPictures.utf8(fetch(info, PickerPictures.PAGE_CAP, deadline)))); }
+                catch (IOException | RuntimeException ignored) { }
+            }
+            pools.add(wiki);
+        } catch (IOException | RuntimeException ignored) { }
+        if (api != null) {
+            String repo = api.substring(0, api.length() - "/readme".length());
+            try { pools.add(PickerPictures.githubImages(PickerPictures.utf8(fetch(repo + "/releases?per_page=2", PickerPictures.PAGE_CAP, deadline)), true)); }
+            catch (IOException | RuntimeException ignored) { }
+            for (String folder : new String[] { "", "/docs", "/screenshots", "/gallery" }) {
+                try { pools.add(PickerPictures.githubImages(PickerPictures.utf8(fetch(repo + "/contents" + folder, PickerPictures.PAGE_CAP, deadline)), false)); }
+                catch (IOException | RuntimeException ignored) { }
+            }
+        }
+        java.util.Set<String> result = new java.util.LinkedHashSet<>();
+        for (int index = 0; index < 12 && result.size() < PickerPictures.CANDIDATE_CAP; index++) {
+            for (java.util.List<String> pool : pools) {
+                if (index < pool.size()) result.add(pool.get(index));
+                if (result.size() == PickerPictures.CANDIDATE_CAP) break;
+            }
+        }
+        return new java.util.ArrayList<>(result);
     }
 
     private static byte[] fetch(String address, int cap, long deadline) throws IOException {

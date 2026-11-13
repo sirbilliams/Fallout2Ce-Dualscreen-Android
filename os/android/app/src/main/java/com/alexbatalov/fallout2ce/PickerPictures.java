@@ -3,7 +3,8 @@ package com.alexbatalov.fallout2ce;
 import java.io.*;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
+import java.util.*;
+import java.net.URLEncoder;
 import java.util.regex.*;
 
 // Pure source/cache policy. No pictures or network access at build time.
@@ -117,7 +118,7 @@ final class PickerPictures {
         if (host.contains("shields.io") || host.contains("badge") || host.endsWith("travis-ci.org") || host.contains("codecov")
             || host.contains("opengraph") || host.contains("gravatar")) return true;
         if (path.endsWith(".svg") || path.endsWith(".gif") || path.endsWith(".ico") || path.endsWith(".webp")) return true;
-        return path.matches(".*(badge|shield|icon|logo|avatar|favicon|button|sponsor|social|banner-ad|emoji).*");
+        return path.matches(".*(badge|shield|icon|logo|avatar|favicon|button|sponsor|social|banner|title|emoji).*");
     }
 
     /**
@@ -149,14 +150,124 @@ final class PickerPictures {
         return list.size() > max ? list.subList(0, max) : list;
     }
 
-    /**
-     * Rank of a decoded image as picker art: -1 when unsuitable (narrower than 640 px
-     * or an aspect outside 1.2..2.5), else its pixel area (bigger is better).
-     */
+    static final int RANK_VERSION = 2;
+    static final int CANDIDATE_CAP = 12;
+
+    static String rankVersion(String appVersion) { return RANK_VERSION + ":" + appVersion; }
+
+    static boolean needsRanking(File dir, String version) {
+        if (!new File(dir, "art.rgba").isFile()) return true;
+        try {
+            return !version.equals(utf8(java.nio.file.Files.readAllBytes(new File(dir, "rank-version").toPath())));
+        } catch (IOException e) { return true; }
+    }
+
+    /** Pure ranking; every accepted online image outranks game-file fallback. */
+    static long score(String name, String mime, int width, int height, double richness, boolean gameFile) {
+        if (gameFile) return width > 0 && height > 0 ? 0 : -1;
+        if (unwantedImage(name) || !("image/png".equals(mime) || "image/jpeg".equals(mime))) return -1;
+        long area = imageScore(width, height);
+        if (area < 0) return -1;
+        double bonus = name.toLowerCase(Locale.ROOT).matches(".*(screen|screenshot|scr|gameplay|cover|art|wallpaper).*") ? 1.5 : 1;
+        double colour = Double.isFinite(richness) && richness >= 25 ? 1 : 0.25;
+        return Math.max(1, (long) (area * bonus * colour));
+    }
+
     static long imageScore(int width, int height) {
-        if (width < 640 || height <= 0) return -1;
+        if (width < 960 || height <= 0 || width > 16384 || height > 16384 || (long) width * height > 64000000) return -1;
         double aspect = width / (double) height;
-        return aspect < 1.2 || aspect > 2.5 ? -1 : (long) width * height;
+        return aspect < 1.3 || aspect > 2.2 ? -1 : (long) width * height;
+    }
+
+    // A title is a discovery hint, never a fixed picture selection. Missing pages yield nothing.
+    static String wikiTitle(String id) {
+        String[][] titles = {
+            { "fallout2", "Fallout 2" }, { "ettu", "Fallout Et Tu" },
+            { "sonora", "Fallout: Sonora" }, { "resurrection", "Fallout 1.5: Resurrection" },
+            { "nevada", "Fallout: Nevada" }, { "olympus2207", "Olympus 2207" },
+            { "megamod", "MIB88 Megamod" }, { "yesterday", "Fallout: Yesterday" }
+        };
+        for (String[] row : titles) if (row[0].equals(id)) return row[1];
+        return "";
+    }
+
+    static String encode(String value) {
+        try { return URLEncoder.encode(value, "UTF-8"); }
+        catch (UnsupportedEncodingException impossible) { throw new AssertionError(impossible); }
+    }
+
+    static String wikiApi(String id) {
+        return "https://fallout.fandom.com/api.php?action=query&format=json&prop=pageimages%7Cimages"
+            + "&piprop=original&imlimit=12&redirects=1&titles=" + encode(wikiTitle(id));
+    }
+
+    static Map<?, ?> object(Object value) {
+        return value instanceof Map ? (Map<?, ?>) value : Collections.emptyMap();
+    }
+
+    static List<?> array(Object value) {
+        return value instanceof List ? (List<?>) value : Collections.emptyList();
+    }
+
+    static List<?> pages(String json) {
+        Object pages = object(object(new RpuRelease.Json(json).value()).get("query")).get("pages");
+        return pages instanceof Map ? new ArrayList<>(object(pages).values()) : array(pages);
+    }
+
+    static void addImage(Set<String> out, Object value) {
+        if (!(value instanceof String)) return;
+        String url = safeUrl("https://fallout.fandom.com/", (String) value);
+        if (!unwantedImage(url)) out.add(url);
+    }
+
+    static List<String> wikiImages(String json) {
+        Set<String> out = new LinkedHashSet<>();
+        for (Object page : pages(json)) {
+            Map<?, ?> p = object(page);
+            if (p.containsKey("missing")) continue;
+            addImage(out, object(p.get("original")).get("source"));
+            for (Object info : array(p.get("imageinfo"))) {
+                Map<?, ?> i = object(info);
+                if (!(i.get("width") instanceof Number) || !(i.get("height") instanceof Number)) continue;
+                String url = String.valueOf(i.get("url"));
+                if (score(url, String.valueOf(i.get("mime")), ((Number) i.get("width")).intValue(),
+                        ((Number) i.get("height")).intValue(), 100, false) >= 0) addImage(out, url);
+            }
+        }
+        return new ArrayList<>(out);
+    }
+
+    static String wikiImageInfoApi(String json) {
+        List<String> titles = new ArrayList<>();
+        for (Object page : pages(json)) {
+            Map<?, ?> p = object(page);
+            if (p.containsKey("missing")) continue;
+            for (Object image : array(p.get("images"))) {
+                Object title = object(image).get("title");
+                if (title instanceof String && titles.size() < 12
+                        && !unwantedImage("https://fallout.fandom.com/" + encode((String) title))) titles.add((String) title);
+            }
+        }
+        return titles.isEmpty() ? null : "https://fallout.fandom.com/api.php?action=query&format=json&prop=imageinfo&iiprop=url%7Csize%7Cmime&titles="
+            + encode(String.join("|", titles));
+    }
+
+    static List<String> githubImages(String json, boolean releases) {
+        Set<String> out = new LinkedHashSet<>();
+        List<?> entries = array(new RpuRelease.Json(json).value());
+        int count = 0;
+        for (Object entry : entries) {
+            if (++count > (releases ? 2 : 100)) break;
+            for (Object item : releases ? array(object(entry).get("assets")) : Collections.singletonList(entry)) {
+                Map<?, ?> file = object(item);
+                if (!releases && !"file".equals(file.get("type"))) continue;
+                String name = String.valueOf(file.get("name")).toLowerCase(Locale.ROOT);
+                if (!name.matches(".*\\.(png|jpe?g)") || unwantedImage("https://github.com/" + encode(name))) continue;
+                addImage(out, file.get(releases ? "browser_download_url" : "download_url"));
+                if (out.size() >= 12) return new ArrayList<>(out);
+            }
+        }
+        return new ArrayList<>(out);
     }
 
     static byte[] readLimited(InputStream input, int cap) throws IOException {

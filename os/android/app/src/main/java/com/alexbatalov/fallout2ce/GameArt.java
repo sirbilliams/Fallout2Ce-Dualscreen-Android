@@ -35,7 +35,7 @@ final class GameArt {
             String rel = path.replace('\\', '/').toLowerCase(Locale.ROOT);
             for (File root : looseRoots) {
                 File f = ci(root, rel);
-                if (f != null && f.isFile() && f.length() <= MAX_ENTRY) {
+                if (f != null && inside(root, f) && f.isFile() && f.length() <= MAX_ENTRY) {
                     try { origin = f.getName(); return Files.readAllBytes(f.toPath()); } catch (IOException ignored) { }
                 }
             }
@@ -49,6 +49,11 @@ final class GameArt {
             }
             return null;
         }
+    }
+
+    private static boolean inside(File root, File file) {
+        try { return file.getCanonicalPath().startsWith(root.getCanonicalPath() + File.separator); }
+        catch (IOException e) { return false; }
     }
 
     // Case-insensitive path below [root] (Android file systems are case sensitive).
@@ -239,12 +244,13 @@ final class GameArt {
         return pal != null && pal.length >= 768 ? pal : null;
     }
 
-    /** Files that make up the game: its own loose data and dats, then (if the game builds on it) Fallout 2's. */
+    /** Only this game's files. Shared base data is never mounted for another game. */
     static Source sourceFor(File top, String id) {
         Source source = new Source();
         File root = GameRoots.gameRoot(top, id);
         if (root != null) {
-            source.looseRoots.add(new File(root, "data"));
+            File data = new File(root, "data");
+            if (inside(root, data)) source.looseRoots.add(data);
             source.looseRoots.add(root);
             File[] dats = root.listFiles((d, n) -> n.toLowerCase(Locale.ROOT).endsWith(".dat"));
             if (dats != null) {
@@ -252,14 +258,8 @@ final class GameArt {
                     boolean am = a.getName().equalsIgnoreCase("master.dat"), bm = b.getName().equalsIgnoreCase("master.dat");
                     return am != bm ? (am ? 1 : -1) : a.getName().compareToIgnoreCase(b.getName()); // patches before master
                 });
-                source.dats.addAll(Arrays.asList(dats));
+                for (File dat : dats) if (inside(root, dat)) source.dats.add(dat);
             }
-        }
-        // Fallout 2 based games (Resurrection) fall back to the player's Fallout 2 files.
-        if ("resurrection".equals(id)) {
-            File base = GameRoots.baseRoot(top, "fallout2");
-            File master = base == null ? null : ci(base, "master.dat");
-            if (master != null) source.dats.add(master);
         }
         return source;
     }
@@ -276,7 +276,7 @@ final class GameArt {
      * first, then art, atomically). False when the game has no usable picture.
      */
     static boolean generate(File top, String id, File dir, String creator, String projectUrl) throws IOException {
-        Object[] picked = pick(sourceFor(top, id), baseSource(top));
+        Object[] picked = pick(sourceFor(top, id));
         if (picked == null) return false;
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("picture directory");
         File art = new File(dir, "art.rgba.part"), credit = new File(dir, "credit.txt.part");
