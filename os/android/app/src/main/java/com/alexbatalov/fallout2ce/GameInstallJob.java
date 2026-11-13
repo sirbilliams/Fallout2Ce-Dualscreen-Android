@@ -36,6 +36,7 @@ public class GameInstallJob extends JobService {
                             for (DownloadIndex.Item item : items) if (item.id == row.item.id) item.installed = true;
                         });
                         GameInstaller.status(this, id, "Installed");
+                        GamePictures.afterInstall(this, id);
                     } catch (IOException | RuntimeException e) {
                         if (stopped || Thread.currentThread().isInterrupted()) {
                             retry = true;

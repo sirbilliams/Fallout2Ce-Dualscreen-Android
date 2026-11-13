@@ -19,6 +19,25 @@ public final class GamePictures {
     private static final java.util.Set<String> pending = ConcurrentHashMap.newKeySet();
     private static final java.util.Map<String, Long> attempted = new ConcurrentHashMap<>();
 
+    // Creator and picture source per installable game; mirrors gameCatalog() in
+    // src/game_catalog.cc (the native picker passes the same strings to prepareGamePictures).
+    static String[] catalogInfo(String id) {
+        if ("ettu".equals(id)) return new String[] { "rotators", "https://github.com/rotators/Fo1in2" };
+        if ("sonora".equals(id)) return new String[] { "Nevada Band / Cambragol / NovaRain", "https://github.com/NovaRain/Fallout-Sonora-English" };
+        if ("resurrection".equals(id)) return new String[] { "Resurrection Team", "https://resurrection.cz/en/download/" };
+        return null;
+    }
+
+    /** Looks up creator and source from the catalog; never throws. */
+    public static void afterInstall(Context context, String id) {
+        try {
+            String[] info = catalogInfo(id);
+            if (info != null) afterInstall(context, id, info[0], info[1]);
+        } catch (RuntimeException e) {
+            Log.d("GamePictures", "afterInstall skipped for " + id + ": " + e.getClass().getSimpleName());
+        }
+    }
+
     public static void afterInstall(Context context, String id, String creator, String source) {
         request(context, id, creator, source, true);
     }
