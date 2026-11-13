@@ -14,11 +14,13 @@
 #include "mui.h"
 #include "mui_pad.h"
 #include "palette.h"
+#include "picker_picture.h"
 #include "settings.h"
 #include "svga.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #ifdef __ANDROID__
 #include <jni.h>
@@ -91,6 +93,31 @@ namespace {
 #endif
     }
 
+    void requestPicture(const GameCatalogEntry& entry)
+    {
+#ifdef __ANDROID__
+        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+        if (!env || !activity) return;
+        jclass cls = env->GetObjectClass(activity);
+        jmethodID method = env->GetMethodID(cls, "prepareGamePictures", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V");
+        if (method) {
+            jstring id = env->NewStringUTF(entry.id);
+            jstring creator = env->NewStringUTF(entry.creator);
+            jstring source = env->NewStringUTF(entry.pictureSource);
+            env->CallVoidMethod(activity, method, id, creator, source);
+            env->DeleteLocalRef(id);
+            env->DeleteLocalRef(creator);
+            env->DeleteLocalRef(source);
+        }
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        env->DeleteLocalRef(cls);
+        env->DeleteLocalRef(activity);
+#else
+        (void)entry;
+#endif
+    }
+
     class PickerScreen : public MuiScreen {
     public:
         PickerScreen(PickerState& state, MuiSurface target)
@@ -112,6 +139,14 @@ namespace {
         void controls(MuiContext& ui, MuiRect rect, int index, bool enabled);
         PickerState& state;
         MuiSurface target;
+        struct CachedPicture {
+            PickerPicture pixels;
+            std::string path;
+            std::filesystem::file_time_type modified {};
+            unsigned int version = 0;
+            unsigned int checked = 0;
+        };
+        std::array<CachedPicture, 8> pictures;
         bool wasDown = false;
         float startX = 0, startY = 0;
     };
@@ -122,7 +157,34 @@ namespace {
         const auto& entry = gameCatalog()[index];
         const auto& theme = muiTheme();
         muiFillGradient(rect, theme.background, theme.well, theme.panel, theme.background);
-        if (index == 0) {
+        auto& cached = pictures[index];
+        if (cached.checked == 0 || uiTicks() - cached.checked >= 1000) {
+            cached.checked = uiTicks();
+            requestPicture(entry);
+            // Prefer full art; corrupt/missing files fall through to preview and original art.
+            for (bool installed : { true, false }) {
+                std::string path = pickerPicturePath(gameTopRoot(), entry.id, installed);
+                std::error_code ec;
+                auto modified = std::filesystem::last_write_time(path, ec);
+                if (ec) continue;
+                if (path == cached.path && modified == cached.modified) break;
+                PickerPicture loaded;
+                if (!pickerPictureLoad(path, loaded)) continue;
+                cached.pixels = std::move(loaded);
+                cached.path = path;
+                cached.modified = modified;
+                cached.version = static_cast<unsigned int>(modified.time_since_epoch().count());
+                break;
+            }
+        }
+        auto& pixels = cached.pixels;
+        SDL_Texture* downloaded = pixels.rgba.empty() ? nullptr
+                                                      : muiRgbaTexture(std::string("picker.") + entry.id, pixels.rgba.data(), pixels.width, pixels.height, cached.version);
+        if (downloaded) {
+            muiDrawTexture(downloaded, muiFitRect(rect, pixels.width, pixels.height));
+            muiFillHorizontalGradient(rect, theme.background, theme.background.withAlpha(0));
+        }
+        if (!downloaded && index == 0) {
             int w = 0, h = 0;
             SDL_Texture* image = muiPictureTexture(InterfaceFrmId("HR_MAINMENU.FRM"), &w, &h);
             int left = 0;

@@ -226,6 +226,18 @@ public class MainActivity extends SDLActivity {
     // starts it again when done.
     // Step 1 JNI contracts. Native mui displays the localized coming-soon
     // notice. Step 3 will dispatch ModDownloads / the generalized browser.
+    // Native picker requests this asynchronously; network failures leave the title visible.
+    public void prepareGamePictures(String gameId, String creator, String source) {
+        File top = getExternalFilesDir(null);
+        if (top == null) return;
+        File root;
+        try { root = PickerPictures.directory(top, gameId, true).getParentFile(); }
+        catch (IllegalArgumentException e) { return; }
+        boolean installed = new File(root, "master.dat").isFile()
+                || new File(root, "mods").isDirectory() || new File(root, "data").isDirectory();
+        GamePictures.request(this, gameId, creator, source, installed);
+    }
+
     public void installGame(String gameId, String officialUrl) { }
     public void openGameProjectPage(String gameId, String projectUrl) { }
     // Et Tu import contract, reserved for the user-owned Fallout 1 files.
