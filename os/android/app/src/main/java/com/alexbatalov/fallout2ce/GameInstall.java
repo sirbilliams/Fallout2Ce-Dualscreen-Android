@@ -181,17 +181,33 @@ final class GameInstall {
         throw new IOException("Cannot create installer staging folder");
     }
 
+    // android.system.Os access, isolated so a missing class (JVM unit tests)
+    // only disables this path. Returns {mode, gid} or null when unavailable.
+    static int[] osStat(File f) {
+        try {
+            android.system.StructStat st = android.system.Os.stat(f.getPath());
+            return st == null ? null : new int[] { st.st_mode, st.st_gid };
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     // Adds owner+group rwx to folders and rw to files (no symlinks followed).
+    // On Android folders also get setgid and the games folder's group, so files
+    // the game creates later inherit it (readable over adb/MTP).
     // Errors are ignored: some filesystems have no POSIX permissions.
     static void shareTree(File dir) {
+        File parent = dir.getAbsoluteFile().getParentFile();
+        int[] parentStat = parent == null ? null : osStat(parent);
+        final int gid = parentStat == null ? -1 : parentStat[1];
         try {
             Files.walkFileTree(dir.toPath(), new java.nio.file.SimpleFileVisitor<java.nio.file.Path>() {
                 @Override public java.nio.file.FileVisitResult preVisitDirectory(java.nio.file.Path p, java.nio.file.attribute.BasicFileAttributes a) {
-                    share(p, true);
+                    share(p, true, gid);
                     return java.nio.file.FileVisitResult.CONTINUE;
                 }
                 @Override public java.nio.file.FileVisitResult visitFile(java.nio.file.Path p, java.nio.file.attribute.BasicFileAttributes a) {
-                    if (a.isRegularFile()) share(p, false);
+                    if (a.isRegularFile()) share(p, false, gid);
                     return java.nio.file.FileVisitResult.CONTINUE;
                 }
                 @Override public java.nio.file.FileVisitResult visitFileFailed(java.nio.file.Path p, IOException e) {
@@ -202,7 +218,23 @@ final class GameInstall {
         }
     }
 
-    private static void share(java.nio.file.Path p, boolean dir) {
+    private static boolean shareWithOs(java.nio.file.Path p, boolean dir, int gid) {
+        if (osStat(p.toFile()) == null) return false;
+        try {
+            android.system.Os.chmod(p.toString(), dir ? 02770 : 0660);
+        } catch (Throwable ignored) {
+        }
+        if (gid >= 0) {
+            try {
+                android.system.Os.chown(p.toString(), -1, gid);
+            } catch (Throwable ignored) {
+            }
+        }
+        return true;
+    }
+
+    private static void share(java.nio.file.Path p, boolean dir, int gid) {
+        if (shareWithOs(p, dir, gid)) return;
         try {
             Set<java.nio.file.attribute.PosixFilePermission> perms =
                 new HashSet<>(Files.getPosixFilePermissions(p, java.nio.file.LinkOption.NOFOLLOW_LINKS));
@@ -219,16 +251,40 @@ final class GameInstall {
         }
     }
 
+    // Android only: true when a game folder or one of its direct children lacks
+    // setgid (folders) / has a group other than the games folder's.
+    private static boolean needsOsShare(File game, int gamesGid) {
+        int[] st = osStat(game);
+        if (st == null) return false;
+        if ((st[0] & 02000) == 0 || (st[0] & 0070) != 0070 || st[1] != gamesGid) return true;
+        File[] children = game.listFiles();
+        if (children == null) return false;
+        for (File c : children) {
+            if (Files.isSymbolicLink(c.toPath())) continue;
+            int[] cs = osStat(c);
+            if (cs == null) continue;
+            if (cs[1] != gamesGid) return true;
+            if (c.isDirectory() && (cs[0] & 02000) == 0) return true;
+        }
+        return false;
+    }
+
     // App start: repairs owner-only game folders of older installs.
     static void shareGames(File top) {
-        File[] games = new File(top, "games").listFiles();
+        File gamesDir = new File(top, "games");
+        File[] games = gamesDir.listFiles();
         if (games == null) return;
+        int[] gamesStat = osStat(gamesDir);
         for (File game : games) {
             if (game.getName().startsWith(".") || !game.isDirectory() || Files.isSymbolicLink(game.toPath())) continue;
-            try {
-                if (Files.getPosixFilePermissions(game.toPath()).contains(java.nio.file.attribute.PosixFilePermission.GROUP_READ)) continue;
-            } catch (IOException | RuntimeException e) {
-                continue;
+            if (gamesStat != null) {
+                if (!needsOsShare(game, gamesStat[1])) continue;
+            } else {
+                try {
+                    if (Files.getPosixFilePermissions(game.toPath()).contains(java.nio.file.attribute.PosixFilePermission.GROUP_READ)) continue;
+                } catch (IOException | RuntimeException e) {
+                    continue;
+                }
             }
             shareTree(game);
         }
