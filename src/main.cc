@@ -296,6 +296,17 @@ int falloutMain(int argc, char** argv)
                 creditsOpen("quotes.txt", InterfaceFrameId::Invalid, true);
                 break;
             case MAIN_MENU_EXIT:
+                // CE: On the mobile menu Exit is Back: the game picker opens
+                // again (the same game returns to this menu, another one
+                // restarts the app; the picker quits). An app close request
+                // still quits.
+                if (muiIsEnabled() && _game_user_wants_to_quit == GAME_QUIT_REQUEST_NONE) {
+                    mainMenuWindowHide(true);
+                    if (muiGamePickerRun()) {
+                        break;
+                    }
+                }
+                // FALLTHROUGH
             case -1:
                 done = true;
                 mainMenuWindowHide(true);

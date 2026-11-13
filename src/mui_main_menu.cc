@@ -26,7 +26,7 @@ namespace {
     constexpr int kTextContinue = 214;
     constexpr int kTextLoadGame = 216;
     constexpr int kTextSettings = 217;
-    constexpr int kTextExit = 218;
+    constexpr int kTextBack = 386;
     constexpr int kTextNewGame = 290;
     constexpr int kTextMods = 380;
     constexpr int kTextIntro = 291;
@@ -50,7 +50,7 @@ namespace {
 
         bool coversScreen() override { return true; }
         void build(MuiContext& ui) override;
-        // Exit, as the game's menu does on Esc.
+        // Back to the game picker (main.cc), as the game's menu does on Esc.
         void back() override { choice = MAIN_MENU_EXIT; }
 
         int choice = -1;
@@ -187,7 +187,7 @@ namespace {
         const Button small[] = {
             { "mainmenu.intro", kTextIntro, "Intro", MAIN_MENU_INTRO },
             { "mainmenu.credits", kTextCredits, "Credits", MAIN_MENU_CREDITS },
-            { "mainmenu.exit", kTextExit, "Exit", MAIN_MENU_EXIT },
+            { "mainmenu.exit", kTextBack, "Back", MAIN_MENU_EXIT },
         };
         float smallWidth = (column.w - gap * 2.0f) / 3.0f;
         for (int index = 0; index < 3; index++) {
