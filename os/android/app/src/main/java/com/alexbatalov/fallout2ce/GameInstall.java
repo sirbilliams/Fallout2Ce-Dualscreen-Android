@@ -10,7 +10,7 @@ import java.util.zip.*;
 // Pure installer logic. Paths come from GameRoots; top is ALWAYS getExternalFilesDir(null), never active cwd.
 final class GameInstall {
     static boolean supported(String id) {
-        return "ettu".equals(id) || "sonora".equals(id) || "resurrection".equals(id);
+        return "ettu".equals(id) || "sonora".equals(id) || "resurrection".equals(id) || "yesterday".equals(id);
     }
 
     // Games whose own release ships master.dat and critter.dat (kept in the game
@@ -154,6 +154,11 @@ final class GameInstall {
 
     static void requireBase(File top, String id) throws IOException {
         if (top == null) throw new IOException("Game storage unavailable");
+        if ("yesterday".equals(id)) {
+            for (String name : new String[] { "master.dat", "critter.dat", "patch000.dat" })
+                if (!new File(GameRoots.baseRoot(top, "fallout2"), name).isFile())
+                    throw new IOException("Yesterday needs your Fallout 2 " + name + " in the shared base.");
+        }
         if ("ettu".equals(id) && !GameRoots.baseRoot(top, "fallout1").isDirectory())
             throw new IOException("Et Tu needs your Fallout 1 files. Choose Add Fallout 1 files first.");
     }
@@ -170,6 +175,12 @@ final class GameInstall {
         }
         if ("sonora".equals(id) && path.matches("fallout_sonora_[a-z0-9_]+/.*"))
             path = path.substring(path.indexOf('/') + 1);
+        if ("yesterday".equals(id)) {
+            if (!path.startsWith(YesterdayInstall.PREFIX)) throw new IOException("Expected fallouty-main archive folder");
+            path = path.substring(YesterdayInstall.PREFIX.length());
+            if (path.equals("sfall.dat")) return "mods/sfall.dat";
+            if (path.startsWith("_tools/") || path.endsWith(".bat") || path.equals("patch000.dat")) return null;
+        }
         String leaf = path.substring(path.lastIndexOf('/') + 1);
         boolean dat = leaf.equals("master.dat") || leaf.equals("critter.dat");
         if ((dat && !ownDats(id)) || leaf.equals(".installed")
@@ -199,6 +210,7 @@ final class GameInstall {
                     throw new IOException("Invalid ZIP entries");
                 total += e.getSize();
             }
+            if ("yesterday".equals(id)) YesterdayInstall.validate(paths);
             if (paths.stream().noneMatch(p -> p.endsWith(".dat") || p.startsWith("data/")))
                 throw new IOException("ZIP contains no game data");
             if (total > Long.MAX_VALUE - 67108864L || games.getUsableSpace() < total + 67108864L)
@@ -206,6 +218,7 @@ final class GameInstall {
             File temp = stagingDir(games, id);
             try {
                 long done = 0;
+                StringBuilder installLog = new StringBuilder();
                 byte[] buffer = new byte[65536];
                 entries = zip.entries();
                 while (entries.hasMoreElements()) {
@@ -232,7 +245,9 @@ final class GameInstall {
                         }
                     }
                     if (count != e.getSize() || crc.getValue() != e.getCrc()) throw new IOException("Damaged ZIP");
+                    if ("yesterday".equals(id)) YesterdayInstall.skipPointer(out, name, installLog);
                 }
+                if ("yesterday".equals(id)) YesterdayInstall.prepare(temp, installLog);
                 if (repair) {
                     repairInto(temp, dest);
                     return;
@@ -396,7 +411,7 @@ final class GameInstall {
         }
     }
 
-    private static void writeConfig(File temp) throws IOException {
+    static void writeConfig(File temp) throws IOException {
         File cfg = new File(temp, "fallout2.cfg");
         List<String> lines = cfg.isFile() ? Files.readAllLines(cfg.toPath(), StandardCharsets.ISO_8859_1) : new ArrayList<>();
         StringBuilder out = new StringBuilder();

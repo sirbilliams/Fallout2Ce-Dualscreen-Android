@@ -15,7 +15,7 @@ const std::array<GameCatalogEntry, 8>& gameCatalog()
         { "nevada", "Fallout: Nevada", "Nevada Band", "https://www.nma-fallout.com/threads/fallout-nevada-extended.207311/", GameDownloadKind::ProjectPage, true, "Russian; English Fixed edition", { -1, -1, -1, -1 }, "fallout2", false, "https://www.nma-fallout.com/threads/fallout-nevada-extended.207311/" },
         { "olympus2207", "Olympus 2207", "Nebesa Games / Dieselship Studio", "https://olympus2207.com/", GameDownloadKind::ProjectPage, true, "Russian, English", { -1, -1, -1, -1 }, "fallout2", false, "https://olympus2207.com/" },
         { "megamod", "Fallout 2 Megamod", "MIB88 and contributors", "https://www.moddb.com/mods/mib88-megamod", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 }, "fallout2", false, "https://www.moddb.com/mods/mib88-megamod" },
-        { "yesterday", "Fallout: Yesterday", "PJ Hexer and contributors", "https://gitlab.com/falloutfans/fallouty", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 }, "fallout2", false, "https://gitlab.com/falloutfans/fallouty" },
+        { "yesterday", "Fallout: Yesterday", "PJ Hexer and contributors", "https://gitlab.com/falloutfans/fallouty/-/archive/main/fallouty-main.zip", GameDownloadKind::Direct, true, "English", { -1, -1, -1, -1 }, "fallout2", false, "https://gitlab.com/falloutfans/fallouty" },
     } };
     return entries;
 }
