@@ -24,6 +24,7 @@ public class GameInstallJob extends JobService {
                     try {
                         final int[] lastPercent = { -1 };
                         GameInstaller.status(this, id, "Installing 0%");
+                        GameInstall.verifyArchive(id, new File(ModDownloads.gameFolder(this), row.item.file));
                         GameInstall.extract(GameRoots.topRoot(this), id,
                             new File(ModDownloads.gameFolder(this), row.item.file), (done, total) -> {
                                 int percent = total == 0 ? 100 : (int) (100.0 * done / total);

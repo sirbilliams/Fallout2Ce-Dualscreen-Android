@@ -490,7 +490,8 @@ int _scriptsCheckGameEvents(int* moviePtr, int window)
         movieFlags = GAME_MOVIE_FADE_IN | GAME_MOVIE_STOP_MUSIC;
         endgame = true;
     } else {
-        if (day >= gMovieTimerArtimer4 || gameGetGlobalVar(GVAR_FALLOUT_2) >= 3) {
+        // sfall uses -1 to disable a timer (Nevada ships all four disabled).
+        if ((gMovieTimerArtimer4 >= 0 && day >= gMovieTimerArtimer4) || gameGetGlobalVar(GVAR_FALLOUT_2) >= 3) {
             movie = MOVIE_ARTIMER4;
             if (!gameMovieIsSeen(MOVIE_ARTIMER4)) {
                 adjustRep = true;
@@ -498,13 +499,13 @@ int _scriptsCheckGameEvents(int* moviePtr, int window)
                 wmAreaSetVisibleState(CITY_DESTROYED_ARROYO, CITY_STATE_KNOWN, true);
                 wmAreaMarkVisitedState(CITY_DESTROYED_ARROYO, VisitedState::Visited);
             }
-        } else if (day >= gMovieTimerArtimer3 && gameGetGlobalVar(GVAR_FALLOUT_2) != 3) {
+        } else if ((gMovieTimerArtimer3 >= 0 && day >= gMovieTimerArtimer3) && gameGetGlobalVar(GVAR_FALLOUT_2) != 3) {
             adjustRep = true;
             movie = MOVIE_ARTIMER3;
-        } else if (day >= gMovieTimerArtimer2 && gameGetGlobalVar(GVAR_FALLOUT_2) != 3) {
+        } else if ((gMovieTimerArtimer2 >= 0 && day >= gMovieTimerArtimer2) && gameGetGlobalVar(GVAR_FALLOUT_2) != 3) {
             adjustRep = true;
             movie = MOVIE_ARTIMER2;
-        } else if (day >= gMovieTimerArtimer1 && gameGetGlobalVar(GVAR_FALLOUT_2) != 3) {
+        } else if ((gMovieTimerArtimer1 >= 0 && day >= gMovieTimerArtimer1) && gameGetGlobalVar(GVAR_FALLOUT_2) != 3) {
             adjustRep = true;
             movie = MOVIE_ARTIMER1;
         }
