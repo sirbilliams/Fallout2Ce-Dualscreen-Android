@@ -142,8 +142,11 @@ int falloutMain(int argc, char** argv)
 #endif
     // SFALL: Allow to skip intro movies
     int skipOpeningMovies = settings.ui.skip_opening_movies;
-    // CE: With the game picker the opening movies are its Intro button's.
-    if (skipOpeningMovies < 1 && !muiIsEnabled()) {
+    // CE: Only the base game, Fallout 2, plays its opening movies at start
+    // (as the original did, unless the settings skip them); every other
+    // catalog game skips them, and the picker's Intro button plays them on
+    // demand, so they never play twice.
+    if (skipOpeningMovies < 1 && gameActiveIndex() == 0) {
         gameMoviePlay(MOVIE_IPLOGO, GAME_MOVIE_FADE_IN);
         gameMoviePlay(MOVIE_INTRO, 0);
         gameMoviePlay(MOVIE_CREDITS, 0);
