@@ -7,8 +7,7 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.zip.*;
 
-// Pure installer logic. Temporary private root helpers until picker-java-game
-// supplies GameRoots; top is ALWAYS getExternalFilesDir(null), never active cwd.
+// Pure installer logic. Paths come from GameRoots; top is ALWAYS getExternalFilesDir(null), never active cwd.
 final class GameInstall {
     static boolean supported(String id) {
         return "ettu".equals(id) || "sonora".equals(id) || "resurrection".equals(id);
@@ -69,8 +68,8 @@ final class GameInstall {
 
     static File target(File top, String id) throws IOException {
         if (top == null || !supported(id)) throw new IOException("Invalid game root");
-        File games = new File(top.getCanonicalFile(), "games");
-        File target = new File(games, id);
+        File target = GameRoots.gameRoot(top.getCanonicalFile(), id);
+        File games = target.getParentFile();
         if (!games.getCanonicalFile().equals(games) || !target.getCanonicalFile().equals(target))
             throw new IOException("Game roots must not be symlinks");
         return target;
@@ -83,7 +82,7 @@ final class GameInstall {
 
     static void requireBase(File top, String id) throws IOException {
         if (top == null) throw new IOException("Game storage unavailable");
-        if ("ettu".equals(id) && !new File(top, "base/fallout1").isDirectory())
+        if ("ettu".equals(id) && !GameRoots.baseRoot(top, "fallout1").isDirectory())
             throw new IOException("Et Tu needs your Fallout 1 files. Choose Add Fallout 1 files first.");
     }
 

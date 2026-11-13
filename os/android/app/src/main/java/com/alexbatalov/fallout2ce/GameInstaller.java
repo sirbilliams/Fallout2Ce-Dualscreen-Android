@@ -32,7 +32,7 @@ final class GameInstaller {
     }
 
     static String status(Context context, String id) {
-        File top = context.getExternalFilesDir(null);
+        File top = GameRoots.topRoot(context);
         if (!GameInstall.supported(id)) return "Not installed";
         if (GameInstall.installed(top, id)) return "Installed";
         try {
@@ -55,7 +55,7 @@ final class GameInstaller {
         new Thread(() -> {
             boolean handedToUi = false;
             try {
-                File top = activity.getExternalFilesDir(null);
+                File top = GameRoots.topRoot(activity);
                 if (top == null) throw new IOException("Game storage unavailable");
                 GameInstall.requireBase(top, id);
                 if (GameInstall.installed(top, id)) return;
