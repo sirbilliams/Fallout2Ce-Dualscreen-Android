@@ -2,6 +2,7 @@
 #include "game_movie.h"
 #include "save_storage.h"
 #include <cstdio>
+#include <fstream>
 #include <cstdlib>
 #include <set>
 #include <unistd.h>
@@ -57,5 +58,56 @@ int main()
     CHECK(gamePickerLoadPage(root) == 0);
     CHECK(!gamePickerSavePage(1, root + "/missing/parent"));
     CHECK(saveStorage::removeTree(root));
+
+    // Game roots: Fallout 2 unchanged, others under games/<id>.
+    CHECK(gameRootPath("", "fallout2") == "");
+    CHECK(gameRootPath("/data/app", "fallout2") == "/data/app");
+    CHECK(gameRootPath("", "sonora") == "games/sonora");
+    CHECK(gameRootPath("/data/app", "sonora") == "/data/app/games/sonora");
+    CHECK(gameRootPath("/data/app", "../../bad") == "/data/app");
+    char top[] = "/tmp/game-roots-XXXXXX";
+    CHECK(mkdtemp(top));
+    std::string base(top);
+    auto exists = [](const std::string& p) { return access(p.c_str(), F_OK) == 0; };
+    // Fallout 2 only run: nothing is created, selection stays at the top.
+    CHECK(gameRootEnsure(base, "fallout2"));
+    CHECK(gamePickerSavePage(0, base));
+    CHECK(gameRootActivate(base) == 0 && gameActiveIndex() == 0 && gameTopRoot().empty());
+    CHECK(!exists(base + "/games"));
+    CHECK(exists(base + "/profiles/last-game.txt"));
+    // Selected but not installed: still Fallout 2, nothing created.
+    CHECK(gamePickerSavePage(2, base));
+    CHECK(gameRootActivate(base) == 0 && !exists(base + "/games"));
+    // Second game: lazily created, isolated data.
+    char* cwd = getcwd(nullptr, 0);
+    CHECK(cwd);
+    CHECK(gameRootEnsure(base, "sonora"));
+    CHECK(exists(base + "/games/sonora"));
+    CHECK(gameRootActivate(base) == 2 && gameActiveIndex() == 2);
+    char* now = getcwd(nullptr, 0);
+    CHECK(std::string(now) == std::string(realpath((base + "/games/sonora").c_str(), nullptr)));
+    CHECK(gameTopRoot() == base);
+    // Game B writes (relative to its root) never reach game A and back.
+    CHECK(saveStorage::makeDirectory("profiles") && saveStorage::makeDirectory("profiles/P"));
+    CHECK(saveStorage::writeFile("profiles/active.txt", "P\n"));
+    CHECK(saveStorage::writeFile("fallout2.cfg", "b\n"));
+    CHECK(saveStorage::writeFile("data_b.sav", "b\n"));
+    CHECK(!exists(base + "/profiles/active.txt") && !exists(base + "/fallout2.cfg") && !exists(base + "/profiles/P"));
+    // Selection is still read and written at the top root.
+    CHECK(gamePickerSavePage(0, gameTopRoot()));
+    CHECK(exists(base + "/profiles/last-game.txt"));
+    CHECK(!exists(base + "/games/sonora/profiles/last-game.txt"));
+    CHECK(gamePickerLoadPage(gameTopRoot()) == 0);
+    CHECK(chdir(cwd) == 0);
+    CHECK(saveStorage::writeFile(base + "/fallout2.cfg", "a\n"));
+    CHECK(!exists(base + "/games/sonora/profiles/last-game.txt"));
+    CHECK(exists(base + "/games/sonora/fallout2.cfg"));
+    std::ifstream cfgB(base + "/games/sonora/fallout2.cfg");
+    std::string line;
+    std::getline(cfgB, line);
+    CHECK(line == "b");
+    free(now);
+    free(cwd);
+    CHECK(saveStorage::removeTree(base));
     return 0;
 }
