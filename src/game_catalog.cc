@@ -116,11 +116,13 @@ std::string gameResolveBaseFile(const std::string& topRoot, int index, const std
     if (rel.empty() || fs::exists(rel, ec)) return configured;
     if (gameCatalog()[index].ownDats) {
         // The game ships its own dats: a missing one must stay missing (the
-        // caller reports an incomplete install), never Fallout 2's.
+        // caller reports an incomplete install), never Fallout 2's. This covers
+        // every .dat, including patchNNN.dat: Fallout 2's patch000.dat mounted
+        // above the game's master.dat swaps in Fallout 2's scripts.lst.
         std::string lower = rel;
         for (char& c : lower)
             c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
-        if (lower == "master.dat" || lower == "critter.dat") return configured;
+        if (lower.size() >= 4 && lower.compare(lower.size() - 4, 4, ".dat") == 0) return configured;
     }
     std::string base = gameBasePath(topRoot, index);
     if (base.empty()) return configured;

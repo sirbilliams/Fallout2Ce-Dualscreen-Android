@@ -1010,6 +1010,18 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
         target_link_options(sfall_arrays_test PRIVATE -Wl,--gc-sections)
     endif()
     set_tests_properties(sfall_arrays_test PROPERTIES TIMEOUT 10)
+    # A script error with no running script must not crash. Engine services
+    # that interpreter.cc needs are stubbed in the test's own stubs file.
+    ce_add_test(interpreter_fatal_test "src/interpreter.cc" "tests/interpreter_fatal_stubs.cc")
+    target_include_directories(interpreter_fatal_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(interpreter_fatal_test ${SDL2_LIBRARIES})
+    target_compile_options(interpreter_fatal_test PRIVATE -ffunction-sections -fdata-sections)
+    if(APPLE)
+        target_link_options(interpreter_fatal_test PRIVATE -Wl,-dead_strip)
+    else()
+        target_link_options(interpreter_fatal_test PRIVATE -Wl,--gc-sections)
+    endif()
+    set_tests_properties(interpreter_fatal_test PROPERTIES TIMEOUT 10)
 endif()
 
 # Dustlight HD port: one block. L1 portable core + L2 hooks + L3 GLES map

@@ -286,11 +286,13 @@ static void programPrintError(const char* format, va_list args)
     if (gInterpreterCurrentProgram) {
         longjmp(gInterpreterCurrentProgram->env, 1);
     }
-#ifdef _MSC_VER
-    __assume(0);
-#else
-    __builtin_unreachable();
-#endif
+
+    // There is no running program to unwind to (for example, a script file
+    // failed to load while a map was being set up). Do not fall into undefined
+    // behavior here: the compiler is free to drop the null check above, which
+    // turns this into a longjmp into a null `Program`.
+    debugPrint("Fatal script error with no running program");
+    abort();
 }
 
 void programPrintError(const char* format, ...)
@@ -496,6 +498,13 @@ Program* programCreateByPath(const char* path)
 {
     File* stream = fileOpen(path, "rb");
     if (stream == nullptr) {
+        if (gInterpreterCurrentProgram == nullptr) {
+            // Nothing to unwind to: report the error and let the caller handle
+            // the missing script (callers check for `nullptr`).
+            programPrintError("Couldn't open %s for read\n", path);
+            return nullptr;
+        }
+
         programFatalError("Couldn't open %s for read\n", path);
         return nullptr;
     }

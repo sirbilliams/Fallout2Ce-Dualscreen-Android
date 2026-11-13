@@ -153,6 +153,11 @@ int main()
     CHECK(gameResolveBaseFile(tp, 2, "master.dat") == "master.dat");
     CHECK(gameResolveBaseFile(tp, 2, "Master.DAT") == "Master.DAT");
     CHECK(gameResolveBaseFile(tp, 2, "critter.dat") == "critter.dat");
+    // Fallout 2's patch000.dat (and its scripts.lst) must not leak in either.
+    CHECK(saveStorage::writeFile(tp + "/patch000.dat", "f2patch"));
+    CHECK(gameResolveBaseFile(tp, 2, "patch000.dat") == "patch000.dat");
+    CHECK(gameResolveBaseFile(tp, 2, "Patch001.DAT") == "Patch001.DAT");
+    CHECK(gameResolveBaseFile(tp, 3, "patch000.dat") == tp + "/patch000.dat"); // non-ownDats still borrow
     CHECK(gameResolveBaseFile(tp, 2, "") == "");
     CHECK(gameResolveBaseFile(tp, 2, "/abs/master.dat") == "/abs/master.dat");
     // Write paths (master/critter patches) are never passed to the resolver; a
