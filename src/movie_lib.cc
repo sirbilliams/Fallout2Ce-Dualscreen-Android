@@ -927,6 +927,9 @@ static void _MVE_sndSync()
     unsigned int v9;
 
     v0 = false;
+    // CE: Bounded wait for the audio play cursor; a stalled audio device
+    // must not hang the movie (it plays on without sound sync).
+    unsigned int waitStart = compat_timeGetTime();
 
     sync_late = syncWaitLevel(sync_wait_quanta / 4) > -sync_wait_quanta / 2 && !sync_FrameDropped;
     sync_FrameDropped = 0;
@@ -1037,9 +1040,10 @@ static void _MVE_sndSync()
         }
         v0 = true;
 
-#if defined(__EMSCRIPTEN__)
+        if (compat_timeGetTime() - waitStart > 500) {
+            break;
+        }
         delay_ms(1);
-#endif
     }
 
     if (dword_6B3660 != dword_6B3AE4) {

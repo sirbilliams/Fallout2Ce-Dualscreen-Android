@@ -380,7 +380,9 @@ namespace {
             return ui.button(id, r, value, primary ? MuiButtonStyle::Primary : MuiButtonStyle::Normal);
         };
         if (installedGame) {
-            bool hasIntro = gameCatalogIntroCount(index) > 0;
+            // Movies are read through the running game's data, so only the
+            // active game can play its intro (other roots are not mounted).
+            bool hasIntro = gameCatalogIntroCount(index) > 0 && index == gameActiveIndex();
             MuiRect playRect = action;
             if (hasIntro) {
                 // Intro sits beside Play.
@@ -499,7 +501,7 @@ bool muiGamePickerAccept(MuiSurface surface)
 
 bool muiGamePickerIntro()
 {
-    if (!active || !active->interactive || gameCatalogIntroCount(active->page) == 0 || active->page != 0) return false;
+    if (!active || !active->interactive || gameCatalogIntroCount(active->page) == 0 || active->page != gameActiveIndex()) return false;
     active->intro = true;
     return true;
 }
