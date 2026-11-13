@@ -1373,6 +1373,14 @@ static void TryLoadBaseCEMod()
         return;
     }
 
+    // CE: In games/<id> (cwd) ce.dat only exists in the top app root.
+    if (!gameTopRoot().empty()) {
+        std::string topPath = gameResolveTopRootFile(gameTopRoot(), kBaseModPath);
+        if (topPath != kBaseModPath && tryLoadBaseCEModAtPath(topPath.c_str(), &found, &openFailed)) {
+            return;
+        }
+    }
+
 #if __APPLE__ && TARGET_OS_OSX
     const char* bundleResourcesPath = getMacOsBundleResourcesPath();
     if (bundleResourcesPath != nullptr) {

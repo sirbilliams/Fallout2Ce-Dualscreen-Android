@@ -102,6 +102,14 @@ std::string gameResolveBaseFile(const std::string& topRoot, int index, const std
     std::string candidate = base + "/" + rel;
     return fs::exists(candidate, ec) ? candidate : configured;
 }
+std::string gameResolveTopRootFile(const std::string& topRoot, const std::string& rel)
+{
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    if (topRoot.empty() || fs::exists(rel, ec)) return rel;
+    std::string candidate = topRoot + "/" + rel;
+    return fs::exists(candidate, ec) ? candidate : rel;
+}
 int gameActiveIndex() { return gActive; }
 const std::string& gameTopRoot() { return gTopRoot; }
 static std::string profiles(const std::string& root)

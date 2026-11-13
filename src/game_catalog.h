@@ -56,6 +56,10 @@ bool gameBaseHasFiles(const std::string& topRoot, int index);
 // exists in the game folder (its own file always wins) or in no base; else the
 // same name under the game's base dir. "\\" separators are accepted.
 std::string gameResolveBaseFile(const std::string& topRoot, int index, const std::string& configured);
+// App-level read-only file/folder (e.g. "ce.dat") that exists only at the top
+// root: [rel] when it exists in the working dir (or there is no top root), else
+// "<top>/rel" when that exists, else [rel]. Pure.
+std::string gameResolveTopRootFile(const std::string& topRoot, const std::string& rel);
 int gamePickerLoadPage(const std::string& root = "");
 bool gamePickerSavePage(int page, const std::string& root = "");
 } // namespace fallout

@@ -2,8 +2,8 @@
 #include "game_movie.h"
 #include "save_storage.h"
 #include <cstdio>
-#include <fstream>
 #include <cstdlib>
+#include <fstream>
 #include <set>
 #include <unistd.h>
 #define CHECK(c)                                                 \
@@ -156,6 +156,13 @@ int main()
     CHECK(chdir((tp + "/games/ettu").c_str()) == 0);
     CHECK(gameResolveBaseFile(tp, 1, "master.dat") == tp + "/base/fallout1/master.dat");
     CHECK(gameResolveBaseFile(tp, 1, "sound\\music\\") == "sound\\music\\");
+    // Top-root-only app files (ce.dat): missing in the game folder -> top root.
+    CHECK(gameResolveTopRootFile(tp, "ce.dat") == "ce.dat"); // absent everywhere
+    CHECK(saveStorage::makeDirectory(tp + "/ce.dat"));
+    CHECK(gameResolveTopRootFile(tp, "ce.dat") == tp + "/ce.dat");
+    CHECK(gameResolveTopRootFile("", "ce.dat") == "ce.dat");
+    CHECK(saveStorage::makeDirectory("ce.dat")); // game folder's own wins
+    CHECK(gameResolveTopRootFile(tp, "ce.dat") == "ce.dat");
     CHECK(chdir(cw) == 0);
     free(cw);
     CHECK(saveStorage::removeTree(tp));
