@@ -20,6 +20,8 @@ struct GameCatalogEntry {
     // Vanilla game whose base files (master.dat, critter.dat, patches, music)
     // this game shares: "fallout1", "fallout2" or "" (none; Fallout 2 is a base).
     const char* baseGame;
+    // Creator-controlled page (GitHub repository or project page), resolved at runtime.
+    const char* pictureSource;
 };
 // Number of intro movies of a catalog entry.
 int gameCatalogIntroCount(int index);

@@ -413,6 +413,7 @@ set(FALLOUT_PLATFORM_SOURCES
     "src/mui_mods.cc"
     "src/mui_game_picker.cc"
     "src/game_catalog.cc"
+    "src/picker_picture.cc"
     "src/mui_preferences.cc"
     "src/mui_loadsave.cc"
     "src/mui_notify.cc"
@@ -986,6 +987,7 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
 
     ce_add_test(save_catalog_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(suspend_slot_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
+    ce_add_test(picker_picture_test "src/picker_picture.cc")
     ce_add_test(game_catalog_test "src/game_catalog.cc" "src/save_storage.cc")
     ce_add_test(suspend_gate_test)
     ce_add_test(sound_tempo_test "src/sound_tempo.cc")
