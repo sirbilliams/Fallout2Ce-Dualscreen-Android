@@ -1,4 +1,6 @@
 #include "loadsave.h"
+
+#include "game_catalog.h"
 #include "suspend_gate.h"
 
 #include <assert.h>
@@ -560,6 +562,14 @@ static std::string portDataPath(const char* name)
 #ifdef __ANDROID__
     const char* internal = SDL_AndroidGetInternalStoragePath();
     if (internal != nullptr) {
+        // CE: Non-Fallout 2 games keep their records apart (game_catalog.h).
+        int game = gameActiveIndex();
+        if (game != 0) {
+            std::string path = gameRootPath(internal, gameCatalog()[game].id) + "/" + name;
+            std::error_code ec;
+            std::filesystem::create_directories(std::filesystem::path(path).parent_path(), ec);
+            return path;
+        }
         return std::string(internal) + "/" + name;
     }
 #endif
