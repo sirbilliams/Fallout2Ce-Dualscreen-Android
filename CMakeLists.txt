@@ -357,6 +357,8 @@ set(FALLOUT_PLATFORM_SOURCES
     "src/sfall_metarules.h"
     "src/sfall_object_name.cc"
     "src/sfall_object_name.h"
+    "src/sfall_compat.cc"
+    "src/sfall_compat.h"
     "src/sfall_opcodes.cc"
     "src/sfall_opcodes.h"
     "src/sfall_script_hooks.cc"
@@ -1043,6 +1045,17 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
         target_link_options(interpreter_fatal_test PRIVATE -Wl,--gc-sections)
     endif()
     set_tests_properties(interpreter_fatal_test PROPERTIES TIMEOUT 10)
+    ce_add_test(sfall_compat_test "src/sfall_compat.cc" "src/interpreter.cc" "src/opcode_context.cc" "tests/sfall_compat_stubs.cc")
+    target_include_directories(sfall_compat_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(sfall_compat_test ${SDL2_LIBRARIES})
+    target_compile_options(sfall_compat_test PRIVATE -ffunction-sections -fdata-sections)
+    if(APPLE)
+        target_link_options(sfall_compat_test PRIVATE -Wl,-dead_strip)
+    else()
+        target_link_options(sfall_compat_test PRIVATE -Wl,--gc-sections)
+    endif()
+    set_tests_properties(sfall_compat_test PROPERTIES TIMEOUT 10)
+
 endif()
 
 # Dustlight HD port: one block. L1 portable core + L2 hooks + L3 GLES map

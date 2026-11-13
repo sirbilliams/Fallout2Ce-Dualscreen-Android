@@ -1,0 +1,103 @@
+Shipping Nevada scan (audit tools/scan.py stream layout; DAT2 tools/dat2.py format).
+Package: /var/mnt/Elements/f2ds-work/nevada/pkg_hog/Fallout-Nevada-English
+sfall.dat entries: 15 ; .int: 0
+Loose globals: 13
+Parsed scripts: 13 ; malformed: 0; distinct opcodes: 200
+Used-but-missing in current source: 0
+All sfall-range opcodes:
+0x8158 1 sfall/scripts/gl_z_sfall-mods.int
+0x8162 2 sfall/scripts/gl_key_mod.int, sfall/scripts/gl_z_sfall-mods.int
+0x8164 13 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_auto_closebox.int, sfall/scripts/gl_autodoors.int, sfall/scripts/gl_damage_info.int, sfall/scripts/gl_dialog_fx.int, sfall/scripts/gl_key_mod.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_party_nevada.int, sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8165 1 sfall/scripts/gl_dialog_fx.int
+0x8166 1 sfall/scripts/gl_dialog_fx.int
+0x8168 1 sfall/scripts/gl_dialog_fx.int
+0x8169 1 sfall/scripts/gl_dialog_fx.int
+0x816a 4 sfall/scripts/gl_damage_info.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_sfall-mods.int
+0x816c 2 sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int
+0x816d 1 sfall/scripts/gl_dialog_fx.int
+0x8170 1 sfall/scripts/gl_z_sfall-mods.int
+0x8193 3 sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_sfall-mods.int
+0x819b 3 sfall/scripts/gl_party_nevada.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_sfall-mods.int
+0x819d 4 sfall/scripts/gl_key_mod.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_party_nevada.int, sfall/scripts/gl_z_sfall-mods.int
+0x819e 4 sfall/scripts/gl_key_mod.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_party_nevada.int, sfall/scripts/gl_z_sfall-mods.int
+0x81ac 10 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_auto_closebox.int, sfall/scripts/gl_autodoors.int, sfall/scripts/gl_dialog_fx.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x81ad 1 sfall/scripts/gl_dialog_fx.int
+0x81af 7 sfall/scripts/gl_auto_closebox.int, sfall/scripts/gl_dialog_fx.int, sfall/scripts/gl_key_mod.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x81b3 1 sfall/scripts/gl_z_sfall-mods.int
+0x81cc 1 sfall/scripts/gl_z_sfall-mods.int
+0x81d1 1 sfall/scripts/gl_z_sfall-mods.int
+0x81dc 2 sfall/scripts/gl_damage_info.int, sfall/scripts/gl_z_partycontrol.int
+0x81dd 2 sfall/scripts/gl_damage_info.int, sfall/scripts/gl_z_partycontrol.int
+0x81de 1 sfall/scripts/gl_damage_info.int
+0x81df 1 sfall/scripts/gl_z_granate_throwing.int
+0x81e4 8 sfall/scripts/gl_autodoors.int, sfall/scripts/gl_key_mod.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x81e5 5 sfall/scripts/gl_key_mod.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x81ea 1 sfall/scripts/gl_dialog_fx.int
+0x81eb 5 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8204 5 sfall/scripts/gl_autodoors.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_sfall-mods.int
+0x8205 2 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_autodoors.int
+0x8206 2 sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_sfall-mods.int
+0x8207 2 sfall/scripts/gl_dialog_fx.int, sfall/scripts/gl_key_mod.int
+0x820d 1 sfall/scripts/gl_p_party_orders.int
+0x820e 1 sfall/scripts/gl_p_party_orders.int
+0x820f 1 sfall/scripts/gl_p_party_orders.int
+0x8210 3 sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int
+0x8211 3 sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int
+0x8212 3 sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int
+0x8216 1 sfall/scripts/gl_p_party_orders.int
+0x8217 2 sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_sfall-mods.int
+0x8218 1 sfall/scripts/gl_p_party_orders.int
+0x8219 3 sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_sfall-mods.int
+0x821a 3 sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_sfall-mods.int
+0x821c 1 sfall/scripts/gl_z_sfall-mods.int
+0x821d 1 sfall/scripts/gl_z_sfall-mods.int
+0x8220 1 sfall/scripts/gl_z_sfall-mods.int
+0x8221 1 sfall/scripts/gl_dialog_fx.int
+0x8226 1 sfall/scripts/gl_z_sfall-mods.int
+0x8228 2 sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_sfall-mods.int
+0x822d 5 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_autodoors.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x822e 6 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_autodoors.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x822f 7 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_autodoors.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8231 7 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_autodoors.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8232 3 sfall/scripts/gl_autodoors.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_sfall-mods.int
+0x8233 2 sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_partycontrol.int
+0x8234 3 sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_partycontrol.int
+0x8235 3 sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_partycontrol.int
+0x8236 4 sfall/scripts/gl_autodoors.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_sfall-mods.int
+0x8237 4 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_partycontrol.int
+0x8239 3 sfall/scripts/gl_autodoors.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_partycontrol.int
+0x823d 4 sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x824b 1 sfall/scripts/gl_z_granate_throwing.int
+0x824e 1 sfall/scripts/gl_z_sfall-mods.int
+0x8250 1 sfall/scripts/gl_z_sfall-mods.int
+0x8253 4 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8256 7 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_autodoors.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8257 1 sfall/scripts/gl_p_party_orders.int
+0x8258 1 sfall/scripts/gl_ammoMod.int
+0x825c 1 sfall/scripts/gl_z_sfall-mods.int
+0x8262 7 sfall/scripts/gl_autodoors.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8266 1 sfall/scripts/gl_p_party_orders.int
+0x826b 3 sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x826e 2 sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_sfall-mods.int
+0x826f 2 sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_sfall-mods.int
+0x8271 3 sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_sfall-mods.int
+0x8272 2 sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_sfall-mods.int
+0x8274 1 sfall/scripts/gl_npcArmor.int
+0x8275 1 sfall/scripts/gl_z_sfall-mods.int
+0x8276 5 sfall/scripts/gl_auto_closebox.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8277 7 sfall/scripts/gl_auto_closebox.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8278 9 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_auto_closebox.int, sfall/scripts/gl_dialog_fx.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_p_party_orders.int, sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8279 3 sfall/scripts/gl_z_granate_throwing.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x827a 1 sfall/scripts/gl_z_sfall-mods.int
+0x827b 1 sfall/scripts/gl_z_sfall-mods.int
+0x827c 1 sfall/scripts/gl_z_sfall-mods.int
+0x827d 3 sfall/scripts/gl_auto_closebox.int, sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_sfall-mods.int
+0x8282 3 sfall/scripts/gl_ammoMod.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+0x8284 1 sfall/scripts/gl_dialog_fx.int
+0x8285 4 sfall/scripts/gl_npcArmor.int, sfall/scripts/gl_z_highlighting.int, sfall/scripts/gl_z_partycontrol.int, sfall/scripts/gl_z_sfall-mods.int
+Metarule strings of interest:
+set_dude_obj sfall/scripts/gl_z_partycontrol.int
+intface_hide sfall/scripts/gl_z_sfall-mods.int
+intface_show sfall/scripts/gl_z_sfall-mods.int
+intface_is_hidden sfall/scripts/gl_z_sfall-mods.int
+[OS-RECEIPT id=9931a665 tool=compat-census-verified model=- rc=0 time=0.0s first="Shipping Nevada scan (audit tools/scan.py stream layout; DAT2 tools/dat2.py form"]
