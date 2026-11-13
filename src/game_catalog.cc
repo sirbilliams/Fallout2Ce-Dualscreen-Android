@@ -77,6 +77,14 @@ std::string gameBasePath(const std::string& topRoot, int index)
     if (base == "fallout1") return topRoot.empty() ? "base/fallout1" : topRoot + "/base/fallout1";
     return "";
 }
+bool gameBaseHasFiles(const std::string& topRoot, int index)
+{
+    namespace fs = std::filesystem;
+    std::string base = gameBasePath(topRoot, index);
+    if (base.empty()) return false;
+    std::error_code ec;
+    return fs::is_regular_file(base + "/master.dat", ec) && fs::is_regular_file(base + "/critter.dat", ec);
+}
 std::string gameResolveBaseFile(const std::string& topRoot, int index, const std::string& configured)
 {
     namespace fs = std::filesystem;

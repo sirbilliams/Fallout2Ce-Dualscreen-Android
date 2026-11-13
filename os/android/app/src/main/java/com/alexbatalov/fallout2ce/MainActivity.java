@@ -229,7 +229,12 @@ public class MainActivity extends SDLActivity {
     public void installGame(String gameId, String officialUrl) { }
     public void openGameProjectPage(String gameId, String projectUrl) { }
     // Et Tu import contract, reserved for the user-owned Fallout 1 files.
-    public void addFallout1Files(String gameId) { }
+    // Opens the import screen for the player's Fallout 1 files (the shared
+    // base, Fallout1Import); the game stays paused behind it.
+    public void addFallout1Files(String gameId) {
+        runOnUiThread(() -> startActivity(new Intent(this, ImportActivity.class)
+            .putExtra(ImportActivity.MODE, ImportActivity.MODE_FALLOUT1)));
+    }
 
     public void openGameFiles(String mode) {
         runOnUiThread(() -> {

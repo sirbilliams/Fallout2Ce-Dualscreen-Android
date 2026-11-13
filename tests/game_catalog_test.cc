@@ -124,6 +124,19 @@ int main()
     CHECK(saveStorage::makeDirectory(tp + "/base/fallout1"));
     CHECK(saveStorage::writeFile(tp + "/master.dat", "f2"));
     CHECK(saveStorage::writeFile(tp + "/base/fallout1/master.dat", "f1"));
+    // gameBaseHasFiles: needs master.dat and critter.dat in the Fallout 1 base.
+    {
+        char hb[] = "/tmp/game-basefiles-XXXXXX";
+        CHECK(mkdtemp(hb));
+        std::string hp(hb);
+        CHECK(!gameBaseHasFiles(hp, 1) && !gameBaseHasFiles(hp, 0) && !gameBaseHasFiles(hp, 99));
+        CHECK(saveStorage::makeDirectory(hp + "/base") && saveStorage::makeDirectory(hp + "/base/fallout1"));
+        CHECK(saveStorage::writeFile(hp + "/base/fallout1/master.dat", "m"));
+        CHECK(!gameBaseHasFiles(hp, 1));
+        CHECK(saveStorage::writeFile(hp + "/base/fallout1/critter.dat", "c"));
+        CHECK(gameBaseHasFiles(hp, 1));
+        CHECK(!gameBaseHasFiles(hp, 0)); // Fallout 2 has no base dir
+    }
     // Index 0: unchanged, even when a base file exists.
     CHECK(gameResolveBaseFile(tp, 0, "master.dat") == "master.dat");
     // Sonora (Fallout 2 based): no local file -> top root; the path is relative to the game folder.

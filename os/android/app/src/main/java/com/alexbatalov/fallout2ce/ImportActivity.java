@@ -39,6 +39,8 @@ public class ImportActivity extends ImmersiveActivity {
     static final String MODE_MOD = "mod";
     static final String MODE_SAVES_IMPORT = "saves_import";
     static final String MODE_SAVES_EXPORT = "saves_export";
+    // The player's Fallout 1 files into the shared base (Fallout1Import).
+    static final String MODE_FALLOUT1 = "fallout1";
 
     private TextView title;
     private TextView message;
@@ -82,8 +84,9 @@ public class ImportActivity extends ImmersiveActivity {
         });
 
         applyFont(findViewById(R.id.import_panel));
-        replacing = GameImport.isInstalled(getExternalFilesDir(null));
         mode = getIntent().getStringExtra(MODE);
+        replacing = fallout1() ? Fallout1Import.isInstalled(getExternalFilesDir(null))
+            : GameImport.isInstalled(getExternalFilesDir(null));
         if (MODE_MOD.equals(mode)) {
             showWelcome();
             if (savedInstanceState == null) chooseArchive();
@@ -92,6 +95,10 @@ public class ImportActivity extends ImmersiveActivity {
         } else {
             showWelcome();
         }
+    }
+
+    private boolean fallout1() {
+        return MODE_FALLOUT1.equals(mode);
     }
 
     private boolean savesMode() {
@@ -119,10 +126,10 @@ public class ImportActivity extends ImmersiveActivity {
 
     private void show(String messageText, String detailsText, String primaryText, View.OnClickListener onPrimary,
         String secondaryText, View.OnClickListener onSecondary) {
-        title.setText(MODE_MOD.equals(mode) ? R.string.mod_title : savesMode() ? R.string.saves_title : R.string.import_title);
+        title.setText(fallout1() ? R.string.fo1_title : MODE_MOD.equals(mode) ? R.string.mod_title : savesMode() ? R.string.saves_title : R.string.import_title);
         // Opened from the game (not the first install): back to it, but not
         // while copying (its own cancel).
-        backToGame.setVisibility((replacing || savesMode()) && !busy ? View.VISIBLE : View.GONE);
+        backToGame.setVisibility((replacing || savesMode() || fallout1()) && !busy ? View.VISIBLE : View.GONE);
         message.setText(messageText);
         details.setText(detailsText);
         details.setVisibility(detailsText != null ? View.VISIBLE : View.GONE);
@@ -149,6 +156,12 @@ public class ImportActivity extends ImmersiveActivity {
         if (MODE_MOD.equals(mode)) {
             show(getString(R.string.mod_welcome), null,
                 getString(R.string.import_choose_archive), v -> chooseArchive(), null, null);
+            return;
+        }
+        if (fallout1()) {
+            show(getString(replacing ? R.string.fo1_replace_welcome : R.string.fo1_welcome), null,
+                getString(R.string.import_choose_folder), v -> chooseFolder(),
+                getString(R.string.import_choose_archive), v -> chooseArchive());
             return;
         }
         int text = MODE_SAVES_IMPORT.equals(mode) ? R.string.saves_import_welcome
@@ -287,9 +300,16 @@ public class ImportActivity extends ImmersiveActivity {
                     }
                     return;
                 }
-                found = GameImport.find(source, replacing);
-                if (found != null) {
-                    plan = GameImport.plan(found, getExternalFilesDir(null), !replacing);
+                if (fallout1()) {
+                    found = Fallout1Import.find(source);
+                    if (found != null) {
+                        plan = Fallout1Import.plan(found, getExternalFilesDir(null));
+                    }
+                } else {
+                    found = GameImport.find(source, replacing);
+                    if (found != null) {
+                        plan = GameImport.plan(found, getExternalFilesDir(null), !replacing);
+                    }
                 }
             } catch (GameImport.CancelledException e) {
                 closeQuietly(source);
@@ -305,7 +325,7 @@ public class ImportActivity extends ImmersiveActivity {
 
             if (found == null) {
                 closeQuietly(source);
-                runOnUiThread(() -> showError(getString(R.string.import_not_found)));
+                runOnUiThread(() -> showError(getString(fallout1() ? R.string.fo1_not_found : R.string.import_not_found)));
                 return;
             }
 
@@ -321,6 +341,11 @@ public class ImportActivity extends ImmersiveActivity {
 
         File target = getExternalFilesDir(null);
         long free = target != null ? target.getUsableSpace() : 0;
+
+        if (fallout1()) {
+            showFoundFallout1(source, found, plan, free);
+            return;
+        }
 
         StringBuilder text = new StringBuilder();
         if (!found.root.isEmpty()) {
@@ -371,6 +396,27 @@ public class ImportActivity extends ImmersiveActivity {
             getString(R.string.import_choose_other), other);
     }
 
+    private void showFoundFallout1(GameImport.Source source, GameImport.Found found, GameFiles.Plan plan, long free) {
+        StringBuilder text = new StringBuilder();
+        if (!found.root.isEmpty()) {
+            text.append(getString(R.string.import_root, folderName(found.root))).append('\n');
+        }
+        text.append(getString(R.string.import_size, size(plan.bytesToWrite), size(free)));
+        View.OnClickListener other = v -> {
+            closeQuietly(source);
+            showWelcome();
+        };
+        long needed = Fallout1Import.neededBytes(plan);
+        if (free < needed) {
+            show(getString(R.string.fo1_found) + " " + getString(R.string.import_no_space, size(needed - free)), text.toString(),
+                getString(R.string.import_choose_other), other, null, null);
+            return;
+        }
+        show(getString(R.string.fo1_found), text.toString(),
+            getString(R.string.import_copy), v -> copy(source, found, plan),
+            getString(R.string.import_choose_other), other);
+    }
+
     private void copy(GameImport.Source source, GameImport.Found found, GameFiles.Plan plan) {
         busy = true;
         cancelled = false;
@@ -383,12 +429,12 @@ public class ImportActivity extends ImmersiveActivity {
 
         new Thread(() -> {
             try {
-                if (replacing && !waitForGameToClose()) {
+                if (replacing && !fallout1() && !waitForGameToClose()) {
                     String text = getString(R.string.import_game_running);
                     runOnUiThread(() -> showError(text));
                     return;
                 }
-                GameImport.install(source, found, plan, !replacing, getExternalFilesDir(null), new GameImport.Progress() {
+                GameImport.Progress copyProgress = new GameImport.Progress() {
                     @Override
                     public void update(long copied, long total, String path) {
                         runOnUiThread(() -> {
@@ -401,7 +447,12 @@ public class ImportActivity extends ImmersiveActivity {
                     public boolean isCancelled() {
                         return cancelled;
                     }
-                });
+                };
+                if (fallout1()) {
+                    Fallout1Import.install(source, found, plan, getExternalFilesDir(null), copyProgress);
+                } else {
+                    GameImport.install(source, found, plan, !replacing, getExternalFilesDir(null), copyProgress);
+                }
             } catch (GameImport.CancelledException e) {
                 runOnUiThread(() -> showError(getString(replacing ? R.string.import_replace_cancelled : R.string.import_cancelled)));
                 return;
@@ -457,6 +508,9 @@ public class ImportActivity extends ImmersiveActivity {
         }
         if (MODE_MOD.equals(mode) && e instanceof NativeArchive.Failure) {
             return getString(R.string.mod_unreadable);
+        }
+        if (e instanceof Fallout1Import.NotFallout1Exception) {
+            return getString(((Fallout1Import.NotFallout1Exception) e).fallout2 ? R.string.fo1_is_fallout2 : R.string.fo1_not_fallout1);
         }
         if (e instanceof GameImport.SeveralGamesException) {
             List<String> names = new ArrayList<>();
@@ -548,7 +602,7 @@ public class ImportActivity extends ImmersiveActivity {
             Runnable back = onBack;
             onBack = null;
             back.run();
-        } else if (replacing) {
+        } else if (replacing || fallout1()) {
             startGame();
         } else {
             super.onBackPressed();
