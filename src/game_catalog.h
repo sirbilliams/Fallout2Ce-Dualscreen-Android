@@ -20,6 +20,9 @@ struct GameCatalogEntry {
     // Vanilla game whose base files (master.dat, critter.dat, patches, music)
     // this game shares: "fallout1", "fallout2" or "" (none; Fallout 2 is a base).
     const char* baseGame;
+    // True when the game's own release ships master.dat and critter.dat (Sonora):
+    // they live in the game folder and must never be replaced by the shared base.
+    bool ownDats;
     // Creator-controlled page (GitHub repository or project page), resolved at runtime.
     const char* pictureSource;
 };
@@ -60,6 +63,12 @@ std::string gameResolveBaseFile(const std::string& topRoot, int index, const std
 // root: [rel] when it exists in the working dir (or there is no top root), else
 // "<top>/rel" when that exists, else [rel]. Pure.
 std::string gameResolveTopRootFile(const std::string& topRoot, const std::string& rel);
+// True when a game that ships its own master.dat/critter.dat lacks either file
+// in its folder. False for games without own dats and for Fallout 2. Pure.
+bool gameOwnDatsMissing(const std::string& topRoot, int index);
+// True when the game folder has an ".installed" marker but its own dats are
+// missing: the install is incomplete and the picker offers Repair. Pure.
+bool gameNeedsRepair(const std::string& topRoot, int index);
 int gamePickerLoadPage(const std::string& root = "");
 bool gamePickerSavePage(int page, const std::string& root = "");
 // One-shot "Play" marker (<root>/profiles/play-once.txt): the picker's game

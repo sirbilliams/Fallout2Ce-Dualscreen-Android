@@ -67,7 +67,9 @@ public class GameInstallTest {
             File root = GameInstall.target(top, id);
             assertEquals(new File(top, "games/" + id), root);
             for (String file : new String[] {"mods/game.dat", "mods/mods_order.txt", "data/maps/test.map"}) assertTrue(new File(root, file).isFile());
-            for (String file : new String[] {"master.dat", "critter.dat", "fallout2.exe"}) assertFalse(new File(root, file).exists());
+            assertFalse(new File(root, "fallout2.exe").exists());
+            // Sonora ships its own dats and keeps them; Et Tu and Resurrection use the player's.
+            for (String file : new String[] {"master.dat", "critter.dat"}) assertEquals(id.equals("sonora"), new File(root, file).exists());
             assertEquals(42, Files.readAllBytes(new File(top, "master.dat").toPath())[0]);
             assertEquals(43, Files.readAllBytes(new File(top, "critter.dat").toPath())[0]);
             String cfg = new String(Files.readAllBytes(new File(root, "fallout2.cfg").toPath()), java.nio.charset.StandardCharsets.UTF_8);
@@ -79,6 +81,54 @@ public class GameInstallTest {
             org.junit.Assume.assumeTrue(root.toPath().getFileSystem().supportedFileAttributeViews().contains("posix"));
             assertTrue(Files.getPosixFilePermissions(root.toPath()).contains(java.nio.file.attribute.PosixFilePermission.GROUP_READ));
         }
+    }
+
+    @Test public void perGameDatRule() throws Exception {
+        assertTrue(GameInstall.ownDats("sonora"));
+        assertFalse(GameInstall.ownDats("ettu"));
+        assertFalse(GameInstall.ownDats("resurrection"));
+        assertEquals("master.dat", GameInstall.mapped("sonora", "Fallout_Sonora_1_16_E/Master.DAT"));
+        assertEquals("critter.dat", GameInstall.mapped("sonora", "Fallout_Sonora_1_16_E/critter.dat"));
+        assertNull(GameInstall.mapped("ettu", "Fallout1in2/master.dat"));
+        assertNull(GameInstall.mapped("resurrection", "Resurrection/master.dat"));
+        assertNull(GameInstall.mapped("sonora", "Fallout_Sonora_1_16_E/fallout2.exe"));
+    }
+
+    @Test public void sonoraWithoutDatsIsIncompleteAndRepairKeepsPlayerFiles() throws Exception {
+        File top = temp.newFolder();
+        File root = GameInstall.target(top, "sonora");
+        // An install made by the old installer: marker present, dats dropped.
+        assertTrue(new File(root, "data/SAVEGAME/SLOT01").mkdirs());
+        assertTrue(new File(root, "mods").mkdirs());
+        Files.write(new File(root, ".installed").toPath(), "sonora\n".getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(root, "data/SAVEGAME/SLOT01/SAVE.DAT").toPath(), "save".getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(root, "mods/mine.dat").toPath(), "mine".getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(root, "fallout2.cfg").toPath(), "[system]\nmaster_dat=master.dat\n[mine]\nx=1\n".getBytes(StandardCharsets.UTF_8));
+        assertFalse(GameInstall.installed(top, "sonora"));
+        assertTrue(GameInstall.needsRepair(top, "sonora"));
+        GameInstall.extract(top, "sonora", zip("Fallout_Sonora_1_16_E/master.dat", "Fallout_Sonora_1_16_E/critter.dat",
+            "Fallout_Sonora_1_16_E/data/new.txt", "Fallout_Sonora_1_16_E/fallout2.cfg"), (d, t) -> {});
+        assertTrue(GameInstall.installed(top, "sonora"));
+        assertFalse(GameInstall.needsRepair(top, "sonora"));
+        assertTrue(new File(root, "master.dat").isFile() && new File(root, "critter.dat").isFile());
+        assertTrue(new File(root, "data/new.txt").isFile());
+        assertEquals("save", new String(Files.readAllBytes(new File(root, "data/SAVEGAME/SLOT01/SAVE.DAT").toPath()), StandardCharsets.UTF_8));
+        assertEquals("mine", new String(Files.readAllBytes(new File(root, "mods/mine.dat").toPath()), StandardCharsets.UTF_8));
+        assertTrue(new String(Files.readAllBytes(new File(root, "fallout2.cfg").toPath()), StandardCharsets.UTF_8).contains("[mine]"));
+        String[] left = root.list((d, n) -> n.endsWith(".repair-part"));
+        assertEquals(0, left.length);
+    }
+
+    @Test public void gamesWithoutOwnDatsAreNeverIncomplete() throws Exception {
+        File top = temp.newFolder();
+        File root = GameInstall.target(top, "resurrection");
+        assertTrue(root.mkdirs());
+        Files.write(new File(root, ".installed").toPath(), "resurrection\n".getBytes(StandardCharsets.UTF_8));
+        assertTrue(GameInstall.installed(top, "resurrection"));
+        assertFalse(GameInstall.needsRepair(top, "resurrection"));
+        File none = temp.newFolder();
+        assertFalse(GameInstall.needsRepair(none, "sonora")); // not installed at all
+        assertFalse(GameInstall.installed(none, "sonora"));
     }
 
     @Test public void shareTreeAddsGroupAccessToOwnerOnlyTree() throws Exception {

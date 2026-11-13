@@ -1,20 +1,21 @@
 #include "game_catalog.h"
 #include "game_movie.h"
 #include "save_storage.h"
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 namespace fallout {
 const std::array<GameCatalogEntry, 8>& gameCatalog()
 {
     static const std::array<GameCatalogEntry, 8> entries = { {
-        { "fallout2", "Fallout 2", "Black Isle Studios", "https://www.gog.com/en/game/fallout_2", GameDownloadKind::ProjectPage, false, "Language: installed game data", { MOVIE_IPLOGO, MOVIE_INTRO, MOVIE_CREDITS, -1 }, "", "https://fallout.bethesda.net/en/games/fallout-2" },
-        { "ettu", "Fallout 1 (Et Tu)", "rotators", "https://github.com/rotators/Fo1in2/releases", GameDownloadKind::GithubRelease, true, "English; requires Fallout 1 files", { -1, -1, -1, -1 }, "fallout1", "https://github.com/rotators/Fo1in2" },
-        { "sonora", "Fallout: Sonora", "Nevada Band / Cambragol / NovaRain", "https://github.com/NovaRain/Fallout-Sonora-English/releases", GameDownloadKind::GithubRelease, true, "English, Russian, Spanish", { -1, -1, -1, -1 }, "fallout2", "https://github.com/NovaRain/Fallout-Sonora-English" },
-        { "resurrection", "Fallout 1.5: Resurrection", "Resurrection Team", "https://resurrection.cz/en/download/", GameDownloadKind::Direct, true, "English; Polish patch available", { -1, -1, -1, -1 }, "fallout2", "https://resurrection.cz/en/download/" },
-        { "nevada", "Fallout: Nevada", "Nevada Band", "https://www.nma-fallout.com/threads/fallout-nevada-extended.207311/", GameDownloadKind::ProjectPage, true, "Russian; English Fixed edition", { -1, -1, -1, -1 }, "fallout2", "https://www.nma-fallout.com/threads/fallout-nevada-extended.207311/" },
-        { "olympus2207", "Olympus 2207", "Nebesa Games / Dieselship Studio", "https://olympus2207.com/", GameDownloadKind::ProjectPage, true, "Russian, English", { -1, -1, -1, -1 }, "fallout2", "https://olympus2207.com/" },
-        { "megamod", "Fallout 2 Megamod", "MIB88 and contributors", "https://www.moddb.com/mods/mib88-megamod", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 }, "fallout2", "https://www.moddb.com/mods/mib88-megamod" },
-        { "yesterday", "Fallout: Yesterday", "PJ Hexer and contributors", "https://gitlab.com/falloutfans/fallouty", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 }, "fallout2", "https://gitlab.com/falloutfans/fallouty" },
+        { "fallout2", "Fallout 2", "Black Isle Studios", "https://www.gog.com/en/game/fallout_2", GameDownloadKind::ProjectPage, false, "Language: installed game data", { MOVIE_IPLOGO, MOVIE_INTRO, MOVIE_CREDITS, -1 }, "", false, "https://fallout.bethesda.net/en/games/fallout-2" },
+        { "ettu", "Fallout 1 (Et Tu)", "rotators", "https://github.com/rotators/Fo1in2/releases", GameDownloadKind::GithubRelease, true, "English; requires Fallout 1 files", { -1, -1, -1, -1 }, "fallout1", false, "https://github.com/rotators/Fo1in2" },
+        { "sonora", "Fallout: Sonora", "Nevada Band / Cambragol / NovaRain", "https://github.com/NovaRain/Fallout-Sonora-English/releases", GameDownloadKind::GithubRelease, true, "English, Russian, Spanish", { -1, -1, -1, -1 }, "fallout2", true, "https://github.com/NovaRain/Fallout-Sonora-English" },
+        { "resurrection", "Fallout 1.5: Resurrection", "Resurrection Team", "https://resurrection.cz/en/download/", GameDownloadKind::Direct, true, "English; Polish patch available", { -1, -1, -1, -1 }, "fallout2", false, "https://resurrection.cz/en/download/" },
+        { "nevada", "Fallout: Nevada", "Nevada Band", "https://www.nma-fallout.com/threads/fallout-nevada-extended.207311/", GameDownloadKind::ProjectPage, true, "Russian; English Fixed edition", { -1, -1, -1, -1 }, "fallout2", false, "https://www.nma-fallout.com/threads/fallout-nevada-extended.207311/" },
+        { "olympus2207", "Olympus 2207", "Nebesa Games / Dieselship Studio", "https://olympus2207.com/", GameDownloadKind::ProjectPage, true, "Russian, English", { -1, -1, -1, -1 }, "fallout2", false, "https://olympus2207.com/" },
+        { "megamod", "Fallout 2 Megamod", "MIB88 and contributors", "https://www.moddb.com/mods/mib88-megamod", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 }, "fallout2", false, "https://www.moddb.com/mods/mib88-megamod" },
+        { "yesterday", "Fallout: Yesterday", "PJ Hexer and contributors", "https://gitlab.com/falloutfans/fallouty", GameDownloadKind::ProjectPage, true, "English", { -1, -1, -1, -1 }, "fallout2", false, "https://gitlab.com/falloutfans/fallouty" },
     } };
     return entries;
 }
@@ -60,6 +61,7 @@ int gameRootActivate(const std::string& topRoot)
     std::error_code ec;
     std::string root = gameRootPath(topRoot, gameCatalog()[index].id);
     if (!fs::is_directory(root, ec)) return 0; // not installed yet
+    if (gameOwnDatsMissing(topRoot, index)) return 0; // incomplete install: picker offers Repair
     fs::path top = topRoot.empty() ? fs::current_path(ec) : fs::absolute(topRoot, ec);
     fs::path target = fs::absolute(root, ec);
     if (ec) return 0;
@@ -85,6 +87,21 @@ bool gameBaseHasFiles(const std::string& topRoot, int index)
     std::error_code ec;
     return fs::is_regular_file(base + "/master.dat", ec) && fs::is_regular_file(base + "/critter.dat", ec);
 }
+bool gameOwnDatsMissing(const std::string& topRoot, int index)
+{
+    namespace fs = std::filesystem;
+    if (index <= 0 || index >= static_cast<int>(gameCatalog().size()) || !gameCatalog()[index].ownDats) return false;
+    std::string root = gameRootPath(topRoot, gameCatalog()[index].id);
+    std::error_code ec;
+    return !fs::is_regular_file(root + "/master.dat", ec) || !fs::is_regular_file(root + "/critter.dat", ec);
+}
+bool gameNeedsRepair(const std::string& topRoot, int index)
+{
+    namespace fs = std::filesystem;
+    if (!gameOwnDatsMissing(topRoot, index)) return false;
+    std::error_code ec;
+    return fs::is_regular_file(gameRootPath(topRoot, gameCatalog()[index].id) + "/.installed", ec);
+}
 std::string gameResolveBaseFile(const std::string& topRoot, int index, const std::string& configured)
 {
     namespace fs = std::filesystem;
@@ -97,6 +114,14 @@ std::string gameResolveBaseFile(const std::string& topRoot, int index, const std
         rel.pop_back();
     std::error_code ec;
     if (rel.empty() || fs::exists(rel, ec)) return configured;
+    if (gameCatalog()[index].ownDats) {
+        // The game ships its own dats: a missing one must stay missing (the
+        // caller reports an incomplete install), never Fallout 2's.
+        std::string lower = rel;
+        for (char& c : lower)
+            c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        if (lower == "master.dat" || lower == "critter.dat") return configured;
+    }
     std::string base = gameBasePath(topRoot, index);
     if (base.empty()) return configured;
     std::string candidate = base + "/" + rel;

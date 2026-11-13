@@ -31,6 +31,12 @@ final class GameInstaller {
         Files.write(new File(ModDownloads.folder(context), "game-" + id + ".status").toPath(), text.getBytes(StandardCharsets.UTF_8));
     }
 
+    static boolean busy(String text) {
+        for (String prefix : new String[] { "Downloading", "Waiting", "Looking up", "Installing" })
+            if (text.startsWith(prefix)) return true;
+        return false;
+    }
+
     static String status(Context context, String id) {
         File top = GameRoots.topRoot(context);
         if (!GameInstall.supported(id)) return "Not installed";
@@ -44,10 +50,16 @@ final class GameInstaller {
                 break; // newest completed row; old failures must not hide extraction progress
             }
             File state = new File(ModDownloads.folder(context), "game-" + id + ".status");
-            if (state.isFile()) return new String(Files.readAllBytes(state.toPath()), StandardCharsets.UTF_8);
+            if (state.isFile()) {
+                String text = new String(Files.readAllBytes(state.toPath()), StandardCharsets.UTF_8);
+                // A leftover status from the earlier install must not hide the repair.
+                if (!GameInstall.needsRepair(top, id) || busy(text)) return text;
+            }
         } catch (IOException | RuntimeException ignored) { }
-        return "Not installed";
+        return GameInstall.needsRepair(top, id) ? REPAIR : "Not installed";
     }
+
+    static final String REPAIR = "Needs repair: game files incomplete";
 
     private static final Map<String, String> sizes = new HashMap<>();
     private static final Map<String, Long> sizeTried = new HashMap<>();

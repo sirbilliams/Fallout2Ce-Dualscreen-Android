@@ -13,6 +13,28 @@ final class GameInstall {
         return "ettu".equals(id) || "sonora".equals(id) || "resurrection".equals(id);
     }
 
+    // Games whose own release ships master.dat and critter.dat (kept in the game
+    // folder; mirrors GameCatalogEntry.ownDats in src/game_catalog.cc). Et Tu uses
+    // the player's Fallout 1 files and Resurrection (fores*.dat) the player's
+    // Fallout 2 files, so an archive's dats never replace those.
+    static boolean ownDats(String id) {
+        return "sonora".equals(id);
+    }
+
+    // Marker present but the game's own dats are missing (installed by a build
+    // that dropped them): needs a repair, not "Installed".
+    static boolean needsRepair(File top, String id) {
+        if (!ownDats(id)) return false;
+        try {
+            File target = target(top, id);
+            return new File(target, ".installed").isFile() && !hasOwnDats(target);
+        } catch (IOException e) { return false; }
+    }
+
+    private static boolean hasOwnDats(File target) {
+        return new File(target, "master.dat").isFile() && new File(target, "critter.dat").isFile();
+    }
+
     static String repo(String id) throws IOException {
         if ("ettu".equals(id)) return "rotators/Fo1in2";
         if ("sonora".equals(id)) return "NovaRain/Fallout-Sonora-English";
@@ -76,8 +98,10 @@ final class GameInstall {
     }
 
     static boolean installed(File top, String id) {
-        try { return new File(target(top, id), ".installed").isFile(); }
-        catch (IOException e) { return false; }
+        try {
+            File target = target(top, id);
+            return new File(target, ".installed").isFile() && (!ownDats(id) || hasOwnDats(target));
+        } catch (IOException e) { return false; }
     }
 
     static void requireBase(File top, String id) throws IOException {
@@ -99,7 +123,8 @@ final class GameInstall {
         if ("sonora".equals(id) && path.matches("fallout_sonora_[a-z0-9_]+/.*"))
             path = path.substring(path.indexOf('/') + 1);
         String leaf = path.substring(path.lastIndexOf('/') + 1);
-        if (leaf.equals("master.dat") || leaf.equals("critter.dat") || leaf.equals(".installed")
+        boolean dat = leaf.equals("master.dat") || leaf.equals("critter.dat");
+        if ((dat && !ownDats(id)) || leaf.equals(".installed")
             || leaf.endsWith(".exe") || leaf.endsWith(".dll")) return null;
         return path;
     }
@@ -113,7 +138,8 @@ final class GameInstall {
         try (RandomAccessFile lockFile = new RandomAccessFile(new File(games, ".install-" + id + ".lock"), "rw");
              FileLock lock = lockFile.getChannel().lock(); ZipFile zip = new ZipFile(archive)) {
             if (installed(top, id)) return; // process restart after atomic publication
-            if (dest.exists()) throw new IOException("Game folder already exists; leaving it untouched");
+            boolean repair = needsRepair(top, id);
+            if (dest.exists() && !repair) throw new IOException("Game folder already exists; leaving it untouched");
             long total = 0;
             Set<String> paths = new HashSet<>();
             Enumeration<? extends ZipEntry> entries = zip.entries();
@@ -159,6 +185,10 @@ final class GameInstall {
                     }
                     if (count != e.getSize() || crc.getValue() != e.getCrc()) throw new IOException("Damaged ZIP");
                 }
+                if (repair) {
+                    repairInto(temp, dest);
+                    return;
+                }
                 writeConfig(temp);
                 Files.write(new File(temp, ".installed").toPath(), (id + "\n").getBytes(StandardCharsets.UTF_8));
                 // Same filesystem; rename publishes the complete tree. No replacement.
@@ -168,6 +198,34 @@ final class GameInstall {
                 // Only this invocation's private staging directory is removed.
                 cleanTemp(temp);
             }
+        }
+    }
+
+    // Repair: the staged tree is copied over the existing game folder. Only files
+    // the player's folder lacks are added, plus the game's own dats (the reason for
+    // the repair); saves, mods, fallout2.cfg and edited files stay untouched, and
+    // nothing is deleted.
+    static void repairInto(File staged, File dest) throws IOException {
+        copyMissing(staged, dest, true);
+        shareTree(dest);
+    }
+
+    private static void copyMissing(File from, File to, boolean top) throws IOException {
+        File[] children = from.listFiles();
+        if (children == null) return;
+        for (File child : children) {
+            File out = new File(to, child.getName());
+            if (child.isDirectory()) {
+                if (!out.isDirectory() && !out.mkdirs()) throw new IOException("Cannot create folder");
+                copyMissing(child, out, false);
+                continue;
+            }
+            String lower = child.getName().toLowerCase(Locale.ROOT);
+            boolean dat = top && (lower.equals("master.dat") || lower.equals("critter.dat"));
+            if (out.exists() && !dat) continue;
+            File part = new File(to, child.getName() + ".repair-part");
+            Files.copy(child.toPath(), part.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            Files.move(part.toPath(), out.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         }
     }
 

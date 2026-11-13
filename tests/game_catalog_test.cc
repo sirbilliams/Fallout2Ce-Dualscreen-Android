@@ -139,12 +139,17 @@ int main()
     }
     // Index 0: unchanged, even when a base file exists.
     CHECK(gameResolveBaseFile(tp, 0, "master.dat") == "master.dat");
-    // Sonora (Fallout 2 based): no local file -> top root; the path is relative to the game folder.
+    // Resurrection (Fallout 2 based, no own dats): no local file -> top root; the path is relative to the game folder.
     char* cw = getcwd(nullptr, 0);
     CHECK(cw);
     CHECK(chdir((tp + "/games/sonora").c_str()) == 0);
-    CHECK(gameResolveBaseFile(tp, 2, "master.dat") == tp + "/master.dat");
-    CHECK(gameResolveBaseFile(tp, 2, "critter.dat") == "critter.dat"); // in no base: unchanged
+    CHECK(gameResolveBaseFile(tp, 3, "master.dat") == tp + "/master.dat");
+    CHECK(gameResolveBaseFile(tp, 3, "critter.dat") == "critter.dat"); // in no base: unchanged
+    // Sonora ships its own dats: a missing one never resolves to Fallout 2's.
+    CHECK(gameCatalog()[2].ownDats && !gameCatalog()[3].ownDats && !gameCatalog()[1].ownDats);
+    CHECK(gameResolveBaseFile(tp, 2, "master.dat") == "master.dat");
+    CHECK(gameResolveBaseFile(tp, 2, "Master.DAT") == "Master.DAT");
+    CHECK(gameResolveBaseFile(tp, 2, "critter.dat") == "critter.dat");
     CHECK(gameResolveBaseFile(tp, 2, "") == "");
     CHECK(gameResolveBaseFile(tp, 2, "/abs/master.dat") == "/abs/master.dat");
     // Write paths (master/critter patches) are never passed to the resolver; a
@@ -153,6 +158,15 @@ int main()
     CHECK(gameResolveBaseFile(tp, 2, "data") == "data");
     CHECK(saveStorage::writeFile("master.dat", "own"));
     CHECK(gameResolveBaseFile(tp, 2, "master.dat") == "master.dat"); // local wins
+    // Incomplete-install status for a game with own dats.
+    CHECK(gameOwnDatsMissing(tp, 2) && !gameNeedsRepair(tp, 2)); // no marker: just not installed
+    CHECK(saveStorage::writeFile(tp + "/games/sonora/.installed", "sonora\n"));
+    CHECK(gameNeedsRepair(tp, 2)); // installed without dats (the old installer)
+    CHECK(saveStorage::writeFile(tp + "/games/sonora/master.dat", "m"));
+    CHECK(gameNeedsRepair(tp, 2)); // critter.dat still missing
+    CHECK(saveStorage::writeFile(tp + "/games/sonora/critter.dat", "c"));
+    CHECK(!gameNeedsRepair(tp, 2) && !gameOwnDatsMissing(tp, 2));
+    CHECK(!gameNeedsRepair(tp, 0) && !gameNeedsRepair(tp, 3) && !gameNeedsRepair(tp, 99)); // no own dats
     CHECK(chdir((tp + "/games/ettu").c_str()) == 0);
     CHECK(gameResolveBaseFile(tp, 1, "master.dat") == tp + "/base/fallout1/master.dat");
     CHECK(gameResolveBaseFile(tp, 1, "sound\\music\\") == "sound\\music\\");

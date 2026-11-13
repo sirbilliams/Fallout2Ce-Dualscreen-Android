@@ -43,6 +43,7 @@ namespace {
     }
     bool gameInstalled(int index)
     {
+        if (index != 0 && gameOwnDatsMissing(gameTopRoot(), index)) return false; // incomplete: Repair
         return index == 0 || std::ifstream(gameRootPath(gameTopRoot(), gameCatalog()[index].id) + "/.installed").good();
     }
 
@@ -57,7 +58,7 @@ namespace {
         if (page == index && uiTicks() - checked < 1000) return status;
         checked = uiTicks();
         page = index;
-        status = "Not installed";
+        status = gameNeedsRepair(gameTopRoot(), index) ? "Needs repair: game files incomplete" : "Not installed";
         JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
         jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
         if (!env || !activity) return status;
@@ -81,7 +82,7 @@ namespace {
         env->DeleteLocalRef(activity);
         return status;
 #else
-        return "Not installed";
+        return gameNeedsRepair(gameTopRoot(), index) ? "Needs repair: game files incomplete" : "Not installed";
 #endif
     }
 
@@ -402,6 +403,7 @@ namespace {
             } else {
                 auto caption = addBase                                    ? text(430, "Add Fallout 1 files")
                     : entry.downloadKind == GameDownloadKind::ProjectPage ? text(402, "Open project page")
+                    : gameNeedsRepair(gameTopRoot(), index)               ? muiDecodeUtf8("Repair")
                                                                           : text(401, "Install");
                 if (button("picker.install", action, caption, true)) {
                     if (addBase) {

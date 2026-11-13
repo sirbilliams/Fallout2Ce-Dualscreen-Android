@@ -1471,6 +1471,13 @@ static int gameDbInit()
     // Resulting chain (head = highest priority):
     //   master_patches > critter_patches > mods > patchXXX.dat > ce.dat > f2_res_dat > critter.dat > master.dat
 
+    // CE: a game that ships its own dats is never run on the shared Fallout 2 ones.
+    if (gameOwnDatsMissing(gameTopRoot(), gameActiveIndex())) {
+        debugPrint("Game files incomplete: %s lacks its own master.dat/critter.dat\n", gameCatalog()[gameActiveIndex()].id);
+        showMessageBox("This game's files are incomplete (master.dat or critter.dat is missing). Open the game picker and press Repair to reinstall it.");
+        return -1;
+    }
+
     if (dbOpen(master_dat_path) == -1) {
         showMessageBox("Could not find the master datafile. Please make sure the FALLOUT CD is in the drive and that you are running FALLOUT from the directory you installed it to.");
         return -1;
