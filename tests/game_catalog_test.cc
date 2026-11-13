@@ -27,8 +27,8 @@ int main()
         CHECK(game.title[0] && game.creator[0] && game.languageNote[0]);
         CHECK(std::string(game.projectUrl).find("https://") == 0);
         CHECK(game.experimental == (i != 0));
-        auto expected = i == 1 || i == 2 || i == 4 ? GameDownloadKind::GithubRelease : i == 3 ? GameDownloadKind::Direct
-                                                                                              : GameDownloadKind::ProjectPage;
+        auto expected = i == 1 || i == 2 || i == 4 ? GameDownloadKind::GithubRelease : (i == 3 || i == 7) ? GameDownloadKind::Direct
+                                                                                                         : GameDownloadKind::ProjectPage;
         CHECK(game.downloadKind == expected);
     }
     CHECK(gameCatalog()[4].ownDats);

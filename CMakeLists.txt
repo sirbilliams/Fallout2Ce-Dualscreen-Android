@@ -985,6 +985,17 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
         add_test(NAME ${name} COMMAND ${name})
     endfunction()
 
+    ce_add_test(loose_patch_test "src/db.cc" "src/xfile.cc" "src/dfile.cc" "src/platform_compat.cc" "src/file_find.cc")
+    target_include_directories(loose_patch_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(loose_patch_test ${SDL2_LIBRARIES} ${ZLIB_LIBRARIES} fpattern::fpattern fpattern_windows::fpattern_windows)
+    target_compile_options(loose_patch_test PRIVATE -ffunction-sections -fdata-sections)
+    if(APPLE)
+        target_link_options(loose_patch_test PRIVATE -Wl,-dead_strip)
+    else()
+        target_link_options(loose_patch_test PRIVATE -Wl,--gc-sections)
+    endif()
+    set_tests_properties(loose_patch_test PROPERTIES TIMEOUT 10)
+
     ce_add_test(save_catalog_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(suspend_slot_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(picker_picture_test "src/picker_picture.cc")

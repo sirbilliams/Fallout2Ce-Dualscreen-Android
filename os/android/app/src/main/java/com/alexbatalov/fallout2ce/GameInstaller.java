@@ -82,7 +82,9 @@ final class GameInstaller {
         new Thread(() -> {
             try {
                 long bytes;
-                if (id.equals("resurrection")) {
+                if (id.equals("yesterday")) {
+                    bytes = YesterdayInstall.ARCHIVE_BYTES;
+                } else if (id.equals("resurrection")) {
                     HttpURLConnection connection = connect(RESURRECTION, "HEAD");
                     try { bytes = connection.getResponseCode() == 200 ? connection.getContentLengthLong() : -1; }
                     finally { connection.disconnect(); }
@@ -126,7 +128,9 @@ final class GameInstaller {
                 }
                 status(activity, id, "Looking up official release");
                 RpuRelease.Asset asset;
-                if (id.equals("resurrection")) {
+                if (id.equals("yesterday")) {
+                    asset = new RpuRelease.Asset("fallouty-main.zip", YesterdayInstall.ARCHIVE_BYTES, YesterdayInstall.URL);
+                } else if (id.equals("resurrection")) {
                     HttpURLConnection connection = connect(RESURRECTION, "HEAD");
                     try {
                         if (connection.getResponseCode() != 200) throw new IOException("Official archive is unavailable");
@@ -137,7 +141,7 @@ final class GameInstaller {
                 } else {
                     asset = GameInstall.asset(id, read(GameInstall.releaseApi(id)));
                 }
-                long need = GameInstall.preflight(id, asset.size);
+                long need = id.equals("yesterday") ? YesterdayInstall.preflight() : GameInstall.preflight(id, asset.size);
                 if (top.getUsableSpace() < need) throw new IOException("Not enough space: reserve " + DownloadIndex.formatSize(need));
                 final RpuRelease.Asset selected = asset;
                 handedToUi = true;
