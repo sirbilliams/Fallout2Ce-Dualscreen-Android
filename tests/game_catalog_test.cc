@@ -163,6 +163,12 @@ int main()
     CHECK(gameResolveTopRootFile("", "ce.dat") == "ce.dat");
     CHECK(saveStorage::makeDirectory("ce.dat")); // game folder's own wins
     CHECK(gameResolveTopRootFile(tp, "ce.dat") == "ce.dat");
+    // One-shot play marker.
+    CHECK(gamePickerConsumePlayOnce(tp) == "");
+    CHECK(gamePickerWritePlayOnce("sonora", tp));
+    CHECK(gamePickerConsumePlayOnce(tp) == "sonora");
+    CHECK(gamePickerConsumePlayOnce(tp) == ""); // consumed
+    CHECK(!gamePickerWritePlayOnce("", tp));
     CHECK(chdir(cw) == 0);
     free(cw);
     CHECK(saveStorage::removeTree(tp));

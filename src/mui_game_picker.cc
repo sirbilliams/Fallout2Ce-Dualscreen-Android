@@ -462,6 +462,12 @@ static void playIntro(int index)
 
 bool muiGamePickerRun()
 {
+    // CE: After a game switch restart, Play was already pressed for this game.
+    std::string playOnce = gamePickerConsumePlayOnce(gameTopRoot());
+    if (!playOnce.empty() && playOnce == gameCatalog()[gameActiveIndex()].id) {
+        debugPrint("Picker: skipped, Play already pressed for %s\n", playOnce.c_str());
+        return true;
+    }
     PickerState state;
     // No initial slide; both surfaces share the same transition clock.
     state.changed = uiTicks() - 240;
@@ -532,6 +538,7 @@ bool muiGamePickerRun()
         // top root, and the app restarts as a profile switch does.
         if (gameRootEnsure(gameTopRoot(), gameCatalog()[state.page].id)) {
             debugPrint("Picker: switching game to %s\n", gameCatalog()[state.page].id);
+            if (!gamePickerWritePlayOnce(gameCatalog()[state.page].id, gameTopRoot())) debugPrint("Picker play-once marker could not be saved\n");
             muiRequestAppRestart();
             state.quit = true;
         } else {

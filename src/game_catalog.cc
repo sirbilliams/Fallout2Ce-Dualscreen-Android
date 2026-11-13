@@ -129,4 +129,23 @@ bool gamePickerSavePage(int page, const std::string& root)
     return saveStorage::makeDirectory(profiles(root))
         && saveStorage::writeFile(profiles(root) + "/last-game.txt", std::string(gameCatalog()[page].id) + "\n");
 }
+bool gamePickerWritePlayOnce(const std::string& id, const std::string& root)
+{
+    return !id.empty() && saveStorage::makeDirectory(profiles(root))
+        && saveStorage::writeFile(profiles(root) + "/play-once.txt", id + "\n");
+}
+std::string gamePickerConsumePlayOnce(const std::string& root)
+{
+    std::string path = profiles(root) + "/play-once.txt";
+    std::string id;
+    {
+        std::ifstream file(path);
+        if (!file.good()) return "";
+        std::getline(file, id);
+    }
+    saveStorage::removeTree(path);
+    while (!id.empty() && (id.back() == '\r' || id.back() == ' '))
+        id.pop_back();
+    return id;
+}
 } // namespace fallout

@@ -62,5 +62,11 @@ std::string gameResolveBaseFile(const std::string& topRoot, int index, const std
 std::string gameResolveTopRootFile(const std::string& topRoot, const std::string& rel);
 int gamePickerLoadPage(const std::string& root = "");
 bool gamePickerSavePage(int page, const std::string& root = "");
+// One-shot "Play" marker (<root>/profiles/play-once.txt): the picker's game
+// switch writes the target id before restarting, so the restarted app does not
+// ask for Play a second time. Consume removes the marker and returns its id
+// ("" when absent or empty).
+bool gamePickerWritePlayOnce(const std::string& id, const std::string& root = "");
+std::string gamePickerConsumePlayOnce(const std::string& root = "");
 } // namespace fallout
 #endif
