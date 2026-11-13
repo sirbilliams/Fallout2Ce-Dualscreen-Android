@@ -94,12 +94,12 @@ public class GameArtTest {
         assertNull(GameArt.readDat2(junk, "other.txt"));
     }
 
-    @Test public void generatesArtAndCreditFromTheGamesOwnDatPickingTheLargestSplash() throws Exception {
+    @Test public void generatesArtAndCreditFromTheGamesOwnDatPickingTheRichestSplash() throws Exception {
         File top = temp.newFolder("top");
         File root = new File(new File(top, "games"), "sonora");
         assertTrue(root.mkdirs());
         Map<String, byte[]> entries = new LinkedHashMap<>();
-        entries.put("art/splash/splash0.rix", rix(4, 2, 1));
+        entries.put("art/splash/splash0.rix", rix(4, 2, 3)); // gray: loses on richness
         entries.put("art/splash/splash1.rix", rix(8, 6, 2));
         dat2(new File(root, "master.dat"), entries, true);
         File dir = new File(root, "picker");
@@ -149,5 +149,33 @@ public class GameArtTest {
         assertTrue(new File(top4, "games/sonora").mkdirs());
         assertFalse(GameArt.generate(top4, "sonora", new File(top4, "games/sonora/picker"), "c", "u"));
         assertFalse(new File(top4, "games/sonora/picker/art.rgba").exists());
+    }
+
+    @Test public void gameUniqueColorfulSplashBeatsStockGraySplash() throws Exception {
+        File top = temp.newFolder("top5");
+        byte[] gray = rix(8, 6, 3);
+        Map<String, byte[]> base = new LinkedHashMap<>();
+        base.put("art/splash/splash0.rix", gray);
+        dat2(new File(top, "master.dat"), base, true);
+        File root = new File(new File(top, "games"), "sonora");
+        assertTrue(root.mkdirs());
+        byte[] colourful = rix(4, 4, 1);
+        for (int i = 0; i < 16; ++i) colourful[10 + 768 + i] = (byte) (i % 2 == 0 ? 1 : 2);
+        Map<String, byte[]> own = new LinkedHashMap<>();
+        own.put("art/splash/splash0.rix", gray);
+        own.put("art/splash/splash3.rix", colourful);
+        dat2(new File(root, "master.dat"), own, true);
+        assertTrue(GameArt.richness(GameArt.rixToPraw(colourful)) > GameArt.richness(GameArt.rixToPraw(gray)));
+        File dir = new File(root, "picker");
+        assertTrue(GameArt.generate(top, "sonora", dir, "c", "u"));
+        String credit = new String(Files.readAllBytes(new File(dir, "credit.txt").toPath()), StandardCharsets.UTF_8);
+        assertTrue(credit, credit.contains("splash3.rix"));
+        // Only stock images exist: they are still used.
+        File top2 = temp.newFolder("top6");
+        dat2(new File(top2, "master.dat"), base, true);
+        File root2 = new File(new File(top2, "games"), "sonora");
+        assertTrue(root2.mkdirs());
+        dat2(new File(root2, "master.dat"), base, true);
+        assertTrue(GameArt.generate(top2, "sonora", new File(root2, "picker"), "c", "u"));
     }
 }

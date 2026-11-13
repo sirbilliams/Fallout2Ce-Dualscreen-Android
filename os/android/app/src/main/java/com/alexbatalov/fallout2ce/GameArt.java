@@ -25,7 +25,7 @@ final class GameArt {
     private GameArt() { }
 
     /** A readable file set: loose roots and DAT2 archives, searched in order. */
-    static final class Source {
+    static class Source {
         final List<File> looseRoots = new ArrayList<>();
         final List<File> dats = new ArrayList<>();
         String origin = "";
@@ -177,22 +177,61 @@ final class GameArt {
         return b.getInt(0) == 0x50524157 ? (long) b.getInt(4) * b.getInt(8) : 0;
     }
 
+    /** Hasler-Suesstrunk colorfulness plus luminance spread of a PRAW image: grayscale test cards score low. */
+    static double richness(byte[] praw) {
+        long n = area(praw);
+        if (n <= 0) return 0;
+        double sRg = 0, sYb = 0, qRg = 0, qYb = 0, sL = 0, qL = 0;
+        for (long i = 0; i < n; ++i) {
+            int o = 12 + (int) i * 4;
+            double r = praw[o] & 0xFF, g = praw[o + 1] & 0xFF, bl = praw[o + 2] & 0xFF;
+            double rg = r - g, yb = 0.5 * (r + g) - bl, l = 0.299 * r + 0.587 * g + 0.114 * bl;
+            sRg += rg; qRg += rg * rg; sYb += yb; qYb += yb * yb; sL += l; qL += l * l;
+        }
+        double mRg = sRg / n, mYb = sYb / n, mL = sL / n;
+        double sdRg = Math.sqrt(Math.max(0, qRg / n - mRg * mRg)), sdYb = Math.sqrt(Math.max(0, qYb / n - mYb * mYb));
+        double colorfulness = Math.sqrt(sdRg * sdRg + sdYb * sdYb) + 0.3 * Math.sqrt(mRg * mRg + mYb * mYb);
+        double detail = Math.sqrt(Math.max(0, qL / n - mL * mL));
+        return colorfulness + 0.25 * detail;
+    }
+
     /**
-     * The best picture the game's files give: the largest splash (first on a tie),
-     * else the main menu background. Returns {praw bytes, entry name} or null.
+     * The best picture the game's files give. Splashes that are identical to the
+     * same entry in the player's Fallout 2 files ([base], may be null) are the
+     * stock ones and only used when nothing else exists; the rest are ranked by
+     * richness. The main menu background comes last. Returns {praw, entry} or null.
      */
-    static Object[] pick(Source source) {
-        byte[] best = null;
-        String name = null;
+    static Object[] pick(Source source, Source base) {
+        Object[] bestOwn = null, bestStock = null;
+        double ownScore = -1, stockScore = -1;
         for (int i = 0; i < 16; ++i) {
             String entry = "art/splash/splash" + i + ".rix";
             byte[] praw = rixToPraw(source.read(entry));
-            if (praw != null && area(praw) > area(best)) { best = praw; name = entry + "@" + source.origin; }
+            if (praw == null) continue;
+            String name = entry + "@" + source.origin;
+            double score = richness(praw);
+            boolean stock = base != null && Arrays.equals(praw, rixToPraw(base.read(entry)));
+            if (stock) { if (score > stockScore) { stockScore = score; bestStock = new Object[] { praw, name }; } }
+            else if (score > ownScore) { ownScore = score; bestOwn = new Object[] { praw, name }; }
         }
-        if (best != null) return new Object[] { best, name };
+        if (bestOwn != null) return bestOwn;
         byte[] menu = frmToPraw(source.read("art/intrface/mainmenu.frm"), palette(source));
+        if (bestStock != null) return bestStock;
         if (menu != null) return new Object[] { menu, "art/intrface/mainmenu.frm@" + source.origin };
         return null;
+    }
+
+    static Object[] pick(Source source) { return pick(source, null); }
+
+    /** The player's Fallout 2 files, used to recognise stock images. */
+    static Source baseSource(File top) {
+        Source base = new Source();
+        File root = GameRoots.baseRoot(top, "fallout2");
+        if (root == null) return base;
+        base.looseRoots.add(new File(root, "data"));
+        File master = ci(root, "master.dat");
+        if (master != null) base.dats.add(master);
+        return base;
     }
 
     private static byte[] palette(Source source) {
@@ -237,7 +276,7 @@ final class GameArt {
      * first, then art, atomically). False when the game has no usable picture.
      */
     static boolean generate(File top, String id, File dir, String creator, String projectUrl) throws IOException {
-        Object[] picked = pick(sourceFor(top, id));
+        Object[] picked = pick(sourceFor(top, id), baseSource(top));
         if (picked == null) return false;
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("picture directory");
         File art = new File(dir, "art.rgba.part"), credit = new File(dir, "credit.txt.part");
