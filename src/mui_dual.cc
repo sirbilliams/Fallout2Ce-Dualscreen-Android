@@ -12,6 +12,7 @@
 
 #include "critter.h"
 #include "game.h"
+#include "game_catalog.h"
 #include "main.h"
 #include "map.h"
 #include "object.h"
@@ -349,7 +350,22 @@ void muiDualCompanion(MuiContext& ui)
         // Outside a game: the title.
         float y = monitor(ui.dp(84.0f), false);
         MuiRect title = { x, y, width, ui.dp(56.0f) };
-        muiDrawTextAligned(muiDecodeUtf8("FALLOUT 2"), title, ui.dp(44.0f), theme.accent, MuiAlign::Center, MuiAlign::Center);
+        // CE: the active game's catalog title; shrink to fit long names.
+        std::string gameTitle = "FALLOUT 2";
+        int activeGame = gameActiveIndex();
+        if (activeGame >= 0 && activeGame < static_cast<int>(gameCatalog().size())) {
+            gameTitle = gameCatalog()[activeGame].title;
+            for (char& c : gameTitle) {
+                if (c >= 'a' && c <= 'z') c = static_cast<char>(c - 'a' + 'A');
+            }
+        }
+        std::u32string titleText = muiDecodeUtf8(gameTitle.c_str());
+        float titleSize = ui.dp(44.0f);
+        float titleWidth = muiTextWidth(titleText, titleSize);
+        if (titleWidth > title.w && titleWidth > 0.0f) {
+            titleSize = std::max(ui.dp(12.0f), titleSize * title.w / titleWidth);
+        }
+        muiDrawTextAligned(titleText, title, titleSize, theme.accent, MuiAlign::Center, MuiAlign::Center);
         MuiRect subtitle = { x, title.bottom(), width, ui.dp(28.0f) };
         muiDrawTextAligned(text(kTextDualScreen, "Dual screen"), subtitle, ui.dp(16.0f), theme.textDim, MuiAlign::Center, MuiAlign::Center);
         return;
