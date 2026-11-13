@@ -379,7 +379,7 @@ public class DownloadsActivity extends ImmersiveActivity {
             try {
                 if (!waitForGameToClose()) throw new IOException(getString(R.string.import_game_running));
                 File file = new File(ModDownloads.folder(this), row.item.file);
-                File gameDir = getExternalFilesDir(null);
+                File gameDir = GameRoots.activeGameRoot(this);
                 boolean rpu = DownloadIndex.RPU.equals(row.item.source);
                 String modName = rpu && row.item.title != null && !row.item.title.trim().isEmpty()
                     ? row.item.title : row.item.file;

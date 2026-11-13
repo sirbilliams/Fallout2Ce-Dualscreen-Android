@@ -38,7 +38,7 @@ public class HdPackActivity extends ImmersiveActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        game = getExternalFilesDir(null);
+        game = GameRoots.activeGameRoot(this);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);

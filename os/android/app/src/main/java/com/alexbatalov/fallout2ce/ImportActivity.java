@@ -212,7 +212,7 @@ public class ImportActivity extends ImmersiveActivity {
                     runOnUiThread(() -> showError(getString(R.string.import_game_running)));
                     return;
                 }
-                ModInstall.Result result = ModInstall.install(this, uri, getExternalFilesDir(null), new ModInstall.Progress() {
+                ModInstall.Result result = ModInstall.install(this, uri, GameRoots.activeGameRoot(this), new ModInstall.Progress() {
                     @Override
                     public void update(long done, long total, String path) {
                         runOnUiThread(() -> {

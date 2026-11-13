@@ -16,7 +16,7 @@ import java.util.Map;
 // Background mod downloads through Android's DownloadManager: they go on
 // while the game is played or the app is closed, show progress in the
 // notification bar and resume after a network loss. Files land in
-// getExternalFilesDir()/mod-downloads, indexed by DownloadIndex.
+// <active game root>/mod-downloads, indexed by DownloadIndex.
 //
 // Entry point for any downloader (Nexus browser, RPU):
 //   long id = ModDownloads.enqueue(context, url, "name.zip", "Mod title",
@@ -28,7 +28,7 @@ final class ModDownloads {
     private ModDownloads() { }
 
     static File folder(Context context) {
-        File base = context.getExternalFilesDir(null);
+        File base = GameRoots.activeGameRoot(context);
         File folder = new File(base, FOLDER);
         folder.mkdirs();
         return folder;
