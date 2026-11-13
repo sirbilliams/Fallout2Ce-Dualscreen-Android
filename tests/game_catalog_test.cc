@@ -83,6 +83,9 @@ int main()
     CHECK(cwd);
     CHECK(gameRootEnsure(base, "sonora"));
     CHECK(exists(base + "/games/sonora"));
+    CHECK(gameRootActivate(base) == 0); // Sonora keeps its own dats: without them it is incomplete
+    CHECK(saveStorage::writeFile(base + "/games/sonora/master.dat", "m"));
+    CHECK(saveStorage::writeFile(base + "/games/sonora/critter.dat", "c"));
     CHECK(gameRootActivate(base) == 2 && gameActiveIndex() == 2);
     char* now = getcwd(nullptr, 0);
     CHECK(std::string(now) == std::string(realpath((base + "/games/sonora").c_str(), nullptr)));
@@ -166,6 +169,12 @@ int main()
     CHECK(gameNeedsRepair(tp, 2)); // critter.dat still missing
     CHECK(saveStorage::writeFile(tp + "/games/sonora/critter.dat", "c"));
     CHECK(!gameNeedsRepair(tp, 2) && !gameOwnDatsMissing(tp, 2));
+    // Picker details: the real size replaces the pending text; incomplete beats "not installed".
+    CHECK(gameSizeText("Version: not installed | Size: download pending", "1.4 GB") == "Version: not installed | Size: 1.4 GB");
+    CHECK(gameSizeText("Version: not installed | Size: %s", "1.4 GB") == "Version: not installed | Size: 1.4 GB");
+    CHECK(gameVersionDetail(false, "Version: incomplete", "Version: not installed", "Size: %s", "") == "Version: not installed");
+    CHECK(gameVersionDetail(false, "Version: incomplete", "Version: not installed", "Size: %s", "12 MB") == "Size: 12 MB");
+    CHECK(gameVersionDetail(true, "Version: incomplete", "Version: not installed", "Size: %s", "12 MB") == "Version: incomplete");
     CHECK(!gameNeedsRepair(tp, 0) && !gameNeedsRepair(tp, 3) && !gameNeedsRepair(tp, 99)); // no own dats
     CHECK(chdir((tp + "/games/ettu").c_str()) == 0);
     CHECK(gameResolveBaseFile(tp, 1, "master.dat") == tp + "/base/fallout1/master.dat");

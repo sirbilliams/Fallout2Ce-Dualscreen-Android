@@ -363,8 +363,9 @@ namespace {
         auto details = index == 0         ? muiDecodeGameText(installed)
             : installedGame               ? muiDecodeUtf8("Version: installed release")
             : wantsFo1                    ? (state.fo1Ready ? text(431, "Fallout 1 files: ready") : text(432, "Needs your own Fallout 1 files"))
-            : downloadSize(index).empty() ? text(433, "Version: not installed")
-                                          : text(410, "Version: not installed | Size: ") + muiDecodeUtf8(downloadSize(index).c_str());
+            : muiDecodeGameText(gameVersionDetail(gameNeedsRepair(gameTopRoot(), index),
+                muiText(434, "Version: incomplete"), muiText(433, "Version: not installed"),
+                muiText(410, "Version: not installed | Size: %s"), downloadSize(index)).c_str());
         muiDrawTextAligned(details, { inner.x, inner.y + inner.h * 0.27f, inner.w, inner.h * 0.08f }, muiFitTextSize(details, inner.w, ui.dp(13), ui.dp(9)), theme.textDim, MuiAlign::Center, MuiAlign::Center);
         auto lang = index == 0 ? text(411, "Language: ") + muiDecodeUtf8(settings.system.language.c_str())
                                : muiDecodeUtf8(muiText(411 + index, entry.languageNote));

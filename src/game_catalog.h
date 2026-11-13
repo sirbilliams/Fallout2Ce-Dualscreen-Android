@@ -69,6 +69,13 @@ bool gameOwnDatsMissing(const std::string& topRoot, int index);
 // True when the game folder has an ".installed" marker but its own dats are
 // missing: the install is incomplete and the picker offers Repair. Pure.
 bool gameNeedsRepair(const std::string& topRoot, int index);
+// Picker "details" line for a game that is not playable yet. [sizeMsg] is the
+// size message ("... Size: %s"; an old "download pending" placeholder is also
+// replaced), [size] the real download size ("1.4 GB") or "" while unknown.
+// An incomplete install shows [incompleteMsg]. Pure.
+std::string gameSizeText(const std::string& sizeMsg, const std::string& size);
+std::string gameVersionDetail(bool incomplete, const std::string& incompleteMsg, const std::string& notInstalledMsg,
+    const std::string& sizeMsg, const std::string& size);
 int gamePickerLoadPage(const std::string& root = "");
 bool gamePickerSavePage(int page, const std::string& root = "");
 // One-shot "Play" marker (<root>/profiles/play-once.txt): the picker's game

@@ -423,7 +423,7 @@
 {407}{}{Selection could not be saved}
 {408}{}{by}
 {409}{}{Version: unknown | Base files: %llu MiB}
-{410}{}{Version: not installed | Size: download pending}
+{410}{}{Version: not installed | Size: %s}
 {411}{}{Language: }
 {412}{}{English; requires Fallout 1 files}
 {413}{}{English, Russian, Spanish}
@@ -436,3 +436,5 @@
 {430}{}{Add Fallout 1 files}
 {431}{}{Fallout 1 files: ready}
 {432}{}{Needs your own Fallout 1 files}
+{433}{}{Version: not installed}
+{434}{}{Version: incomplete}

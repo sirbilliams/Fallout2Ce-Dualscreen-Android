@@ -173,4 +173,22 @@ std::string gamePickerConsumePlayOnce(const std::string& root)
         id.pop_back();
     return id;
 }
+std::string gameSizeText(const std::string& sizeMsg, const std::string& size)
+{
+    std::string text = sizeMsg;
+    for (const char* marker : { "%s", "download pending" }) {
+        size_t at = text.find(marker);
+        if (at != std::string::npos) {
+            text.replace(at, std::string(marker).size(), size);
+            break;
+        }
+    }
+    return text;
+}
+std::string gameVersionDetail(bool incomplete, const std::string& incompleteMsg, const std::string& notInstalledMsg,
+    const std::string& sizeMsg, const std::string& size)
+{
+    if (incomplete) return incompleteMsg;
+    return size.empty() ? notInstalledMsg : gameSizeText(sizeMsg, size);
+}
 } // namespace fallout
