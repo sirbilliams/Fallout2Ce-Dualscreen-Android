@@ -41,6 +41,50 @@ namespace {
         }
         return bytes / (1024 * 1024);
     }
+    bool gameInstalled(int index)
+    {
+        return index == 0 || std::ifstream(gameRootPath(gameTopRoot(), gameCatalog()[index].id) + "/.installed").good();
+    }
+
+    std::string installStatus(int index)
+    {
+        if (gameInstalled(index)) return "Installed";
+#ifdef __ANDROID__
+        // One poll per second across both surfaces.
+        static unsigned int checked = 0;
+        static int page = -1;
+        static std::string status;
+        if (page == index && uiTicks() - checked < 1000) return status;
+        checked = uiTicks();
+        page = index;
+        status = "Not installed";
+        JNIEnv* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+        jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+        if (!env || !activity) return status;
+        jclass cls = env->GetObjectClass(activity);
+        jmethodID method = env->GetMethodID(cls, "gameInstallStatus", "(Ljava/lang/String;)Ljava/lang/String;");
+        if (method) {
+            jstring id = env->NewStringUTF(gameCatalog()[index].id);
+            jstring result = static_cast<jstring>(env->CallObjectMethod(activity, method, id));
+            if (!env->ExceptionCheck() && result) {
+                const char* value = env->GetStringUTFChars(result, nullptr);
+                if (value) {
+                    status = value;
+                    env->ReleaseStringUTFChars(result, value);
+                }
+            }
+            if (result) env->DeleteLocalRef(result);
+            env->DeleteLocalRef(id);
+        }
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        env->DeleteLocalRef(cls);
+        env->DeleteLocalRef(activity);
+        return status;
+#else
+        return "Not installed";
+#endif
+    }
+
     struct PickerState {
         unsigned long long baseMiB = baseFileMiB();
         int page = gamePickerLoadPage(gameTopRoot());
@@ -72,8 +116,7 @@ namespace {
     };
     PickerState* active = nullptr;
 
-    // Stable JNI entry points for step 3. Both are deliberately inert in Java
-    // in step 1; the engine presents the same localized notice on every platform.
+    // Android install/project actions stay behind the platform boundary.
     void requestGameAction(const GameCatalogEntry& entry)
     {
 #ifdef __ANDROID__
@@ -262,12 +305,14 @@ namespace {
         MuiRect inner = rect.inset(ui.dp(18));
         auto label = muiDecodeUtf8(entry.title);
         muiDrawTextAligned(label, { inner.x, inner.y, inner.w, inner.h * 0.16f }, muiFitTextSize(label, inner.w, ui.dp(26), ui.dp(14)), theme.accent, MuiAlign::Center, MuiAlign::Center);
-        std::u32string status = index == 0 ? text(399, "Installed") : text(400, "Not installed");
+        bool installedGame = gameInstalled(index);
+        std::u32string status = installedGame ? text(399, "Installed") : muiDecodeUtf8(installStatus(index).c_str());
         muiDrawTextAligned(status, { inner.x, inner.y + inner.h * 0.17f, inner.w, inner.h * 0.09f }, ui.dp(18), theme.text, MuiAlign::Center, MuiAlign::Center);
         char installed[160];
         std::snprintf(installed, sizeof(installed), muiText(409, "Version: unknown | Base files: %llu MiB"), state.baseMiB);
         bool wantsFo1 = std::string(entry.baseGame) == "fallout1";
         auto details = index == 0 ? muiDecodeGameText(installed)
+            : installedGame       ? muiDecodeUtf8("Version: installed release")
             : wantsFo1            ? (state.fo1Ready ? text(431, "Fallout 1 files: ready") : text(432, "Needs your own Fallout 1 files"))
                                   : text(410, "Version: not installed | Size: download pending");
         muiDrawTextAligned(details, { inner.x, inner.y + inner.h * 0.27f, inner.w, inner.h * 0.08f }, muiFitTextSize(details, inner.w, ui.dp(13), ui.dp(9)), theme.textDim, MuiAlign::Center, MuiAlign::Center);
@@ -285,7 +330,7 @@ namespace {
             }
             return ui.button(id, r, value, primary ? MuiButtonStyle::Primary : MuiButtonStyle::Normal);
         };
-        if (index == 0) {
+        if (installedGame) {
             bool hasIntro = gameCatalogIntroCount(index) > 0;
             MuiRect playRect = action;
             if (hasIntro) {
@@ -384,7 +429,7 @@ bool muiGamePickerAccept(MuiSurface surface)
     const auto& widgets = muiPadWidgets(surface);
     bool validFocus = std::any_of(widgets.begin(), widgets.end(), [&](const MuiPadWidget& widget) { return widget.id == focus; });
     if (!validFocus || focus == "picker.play" || focus == "picker.install") {
-        if (active->page == 0)
+        if (gameInstalled(active->page))
             active->play = true;
         else if (needsFallout1Files(*active, active->page))
             active->addBase = true;
@@ -435,7 +480,7 @@ bool muiGamePickerRun()
         }
         if (key == KEY_ARROW_LEFT) state.select(state.page - 1);
         if (key == KEY_ARROW_RIGHT) state.select(state.page + 1);
-        if (key == KEY_RETURN && state.page == 0) state.play = true;
+        if (key == KEY_RETURN && gameInstalled(state.page)) state.play = true;
         devAutotestTick();
         renderPresent();
         if (state.intro) {
@@ -463,10 +508,18 @@ bool muiGamePickerRun()
                 }
             } else {
                 state.stub = false;
-                if (state.install) requestGameAction(gameCatalog()[state.page]);
+                bool showNotice = true;
+                if (state.install) {
+                    requestGameAction(gameCatalog()[state.page]);
+#ifdef __ANDROID__
+                    showNotice = gameCatalog()[state.page].downloadKind == GameDownloadKind::ProjectPage;
+#endif
+                }
                 state.install = false;
-                const char* body[] = { muiText(404, "Coming in the next update") };
-                showDialogBox(gameCatalog()[state.page].title, body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, 0);
+                if (showNotice) {
+                    const char* body[] = { muiText(404, "Coming in the next update") };
+                    showDialogBox(gameCatalog()[state.page].title, body, 1, 0, 0, COLOR_AMBER, nullptr, COLOR_AMBER, 0);
+                }
             }
             state.interactive = true;
         }

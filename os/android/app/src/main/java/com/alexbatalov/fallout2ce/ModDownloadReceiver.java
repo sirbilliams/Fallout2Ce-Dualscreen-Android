@@ -13,6 +13,7 @@ public class ModDownloadReceiver extends BroadcastReceiver {
         String action = intent.getAction();
         if (DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(action)) {
             ModDownloads.rows(context);  // stores the final state in the index
+            GameInstaller.schedule(context);
             // A finished Dustlight HD part installs itself (no confirm).
             final PendingResult pending = goAsync();
             new Thread(() -> {

@@ -148,6 +148,10 @@
             android:screenOrientation="landscape"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
         </activity>
+        <service android:name=".GameInstallJob"
+            android:process=":import"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="true" />
     </application>
 
 </manifest>

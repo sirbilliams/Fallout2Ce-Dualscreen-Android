@@ -238,7 +238,15 @@ public class MainActivity extends SDLActivity {
         GamePictures.request(this, gameId, creator, source, installed);
     }
 
-    public void installGame(String gameId, String officialUrl) { }
+    // JNI contracts: installers use the top external-files root and stay in
+    // the background while the native picker continues to render progress.
+    public void installGame(String gameId, String officialUrl) {
+        runOnUiThread(() -> GameInstaller.start(this, gameId));
+    }
+
+    public String gameInstallStatus(String gameId) {
+        return GameInstaller.status(this, gameId);
+    }
     public void openGameProjectPage(String gameId, String projectUrl) { }
     // Et Tu import contract, reserved for the user-owned Fallout 1 files.
     // Opens the import screen for the player's Fallout 1 files (the shared
