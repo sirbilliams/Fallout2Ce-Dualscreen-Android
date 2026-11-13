@@ -111,7 +111,6 @@ namespace {
             previous = page;
             page = next;
             changed = uiTicks();
-            if (!gamePickerSavePage(page, gameTopRoot())) debugPrint("Picker selection could not be saved\n");
         }
     };
     PickerState* active = nullptr;
