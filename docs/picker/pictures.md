@@ -18,3 +18,7 @@ Call this with the catalog's descriptor, not an archive URL or a user-supplied U
 - Writes publish with atomic renames in the destination directory. Credit is committed before artwork. Partial files are ignored; failed downloads do not replace an existing picture.
 
 No build step fetches pictures. Test fixtures are metadata snippets; the tiny native image is generated at test runtime. Live sources can change, exceed the cap, return SVG/WebP, block automated requests, or lack useful OG metadata; all leave the title fallback available. Android decoding and actual creator-site responses still need device/network validation.
+
+## Installed games: art from the game's own files
+
+`GameArt` (JVM, no network) builds `<game>/picker/art.rgba` + `credit.txt` for installed games (not Fallout 2) from the game's own splash screens (`art/splash/splash*.rix`, RIX3 paletted; largest wins) or else `art/intrface/mainmenu.frm` + `color.pal`, read from loose `data/` files and the game's DAT2 archives (own `master.dat`/patches; Resurrection falls back to the player's Fallout 2 `master.dat`). `credit.txt` carries `Image: game-file:<entry>@<dat>`. It runs from `GamePictures.request` when `art.rgba` is missing or was fetched online earlier. Online README art is only for NOT-installed previews and is ranked: no badges/shields/icons/logos/social cards, width >= 640 and aspect 1.2-2.5, largest wins. Fallout 1 DAT1 (Et Tu base) is not read; Et Tu shows the plain panel unless it ships loose art.

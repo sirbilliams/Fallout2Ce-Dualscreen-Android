@@ -3,6 +3,7 @@ package com.alexbatalov.fallout2ce;
 import java.io.*;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.regex.*;
 
 // Pure source/cache policy. No pictures or network access at build time.
@@ -103,6 +104,59 @@ final class PickerPictures {
         if (md.find()) return safeUrl(page, md.group(1));
         Matcher img = Pattern.compile("<img\\b[^>]*\\bsrc\\s*=\\s*['\"]([^'\"]+)['\"]", Pattern.CASE_INSENSITIVE).matcher(text);
         return img.find() ? safeUrl(page, img.group(1)) : null;
+    }
+
+    /** Names that are never game art: badges, shields, icons, logos, avatars, social cards, vector/animated files. */
+    static boolean unwantedImage(String url) {
+        if (url == null || isSocialCard(url)) return true;
+        String lower = url.toLowerCase(Locale.ROOT);
+        String path = lower.replaceAll("[?#].*$", "");
+        String host = "";
+        try { host = URI.create(url).getHost(); if (host == null) host = ""; } catch (IllegalArgumentException e) { return true; }
+        host = host.toLowerCase(Locale.ROOT);
+        if (host.contains("shields.io") || host.contains("badge") || host.endsWith("travis-ci.org") || host.contains("codecov")
+            || host.contains("opengraph") || host.contains("gravatar")) return true;
+        if (path.endsWith(".svg") || path.endsWith(".gif") || path.endsWith(".ico") || path.endsWith(".webp")) return true;
+        return path.matches(".*(badge|shield|icon|logo|avatar|favicon|button|sponsor|social|banner-ad|emoji).*");
+    }
+
+    /**
+     * Every acceptable image URL on the page, best guess first: og:image, then the
+     * README's markdown and HTML images in document order. At most [max].
+     */
+    static java.util.List<String> imageUrls(String page, String text, int max) {
+        java.util.LinkedHashSet<String> urls = new java.util.LinkedHashSet<>();
+        Matcher tags = Pattern.compile("<meta\\b[^>]*>", Pattern.CASE_INSENSITIVE).matcher(text);
+        while (tags.find()) {
+            String property = null, content = null;
+            Matcher attrs = Pattern.compile("([\\w:-]+)\\s*=\\s*(['\"])(.*?)\\2", Pattern.DOTALL).matcher(tags.group());
+            while (attrs.find()) {
+                if (attrs.group(1).equalsIgnoreCase("property") || attrs.group(1).equalsIgnoreCase("name")) property = attrs.group(3);
+                if (attrs.group(1).equalsIgnoreCase("content")) content = attrs.group(3);
+            }
+            if ("og:image".equalsIgnoreCase(property) && content != null) {
+                String url = safeUrl(page, content.replace("&amp;", "&").replace("&#38;", "&"));
+                if (!unwantedImage(url)) urls.add(url);
+            }
+        }
+        Matcher md = Pattern.compile("!\\[[^\\]]*\\]\\(<?([^\\s)>]+)>?(?:\\s+[^)]*)?\\)|<img\\b[^>]*\\bsrc\\s*=\\s*['\"]([^'\"]+)['\"]",
+            Pattern.CASE_INSENSITIVE).matcher(text);
+        while (md.find() && urls.size() < max) {
+            String url = safeUrl(page, md.group(1) != null ? md.group(1) : md.group(2));
+            if (!unwantedImage(url)) urls.add(url);
+        }
+        java.util.List<String> list = new java.util.ArrayList<>(urls);
+        return list.size() > max ? list.subList(0, max) : list;
+    }
+
+    /**
+     * Rank of a decoded image as picker art: -1 when unsuitable (narrower than 640 px
+     * or an aspect outside 1.2..2.5), else its pixel area (bigger is better).
+     */
+    static long imageScore(int width, int height) {
+        if (width < 640 || height <= 0) return -1;
+        double aspect = width / (double) height;
+        return aspect < 1.2 || aspect > 2.5 ? -1 : (long) width * height;
     }
 
     static byte[] readLimited(InputStream input, int cap) throws IOException {

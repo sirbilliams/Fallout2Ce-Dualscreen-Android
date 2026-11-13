@@ -79,4 +79,21 @@ public class PickerPicturesTest {
         assertNull(PickerPictures.cached(top, "sonora"));
         assertFalse(PickerPictures.purgeSocialCard(dir)); // nothing left
     }
+
+    @Test public void rankingSkipsBadgesLogosAndSocialCardsAndPrefersLargeLandscape() {
+        String md = "[![Build](https://img.shields.io/github/actions/workflow/status/x/y/ci.yml/badge.svg)](https://ci)\n"
+            + "![logo](docs/logo.png)\n![icon](https://example.org/icon-64.png)\n"
+            + "<img src=\"https://opengraph.githubassets.com/abc/x/y\">\n"
+            + "![shot](https://example.org/shot.jpg)\n<img src='https://example.org/wide.png' width=800>\n";
+        java.util.List<String> urls = PickerPictures.imageUrls("https://raw.githubusercontent.com/x/y/main/README.md", md, 6);
+        assertEquals(java.util.Arrays.asList("https://example.org/shot.jpg", "https://example.org/wide.png"), urls);
+        assertTrue(PickerPictures.unwantedImage("https://img.shields.io/badge/a-b.svg"));
+        assertTrue(PickerPictures.unwantedImage("https://example.org/Logo.png"));
+        assertFalse(PickerPictures.unwantedImage("https://example.org/screenshot.png"));
+        assertEquals(-1, PickerPictures.imageScore(320, 200));   // too narrow
+        assertEquals(-1, PickerPictures.imageScore(1000, 1000)); // square
+        assertEquals(-1, PickerPictures.imageScore(1600, 400));  // too wide
+        assertEquals(640L * 480, PickerPictures.imageScore(640, 480));
+        assertTrue(PickerPictures.imageScore(1280, 720) > PickerPictures.imageScore(640, 480));
+    }
 }

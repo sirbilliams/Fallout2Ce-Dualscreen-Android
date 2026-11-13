@@ -49,6 +49,22 @@ public final class GamePictures {
         try { dir = PickerPictures.directory(top, id, installed); }
         catch (IllegalArgumentException e) { return; }
         PickerPictures.purgeSocialCard(dir);
+        // Installed games take their art from their own files; art fetched online for
+        // an installed game earlier is replaced when the game's files give a picture.
+        if (installed && !"fallout2".equals(id)) {
+            if (GameArt.isOwn(dir)) return;
+            String key = dir.getAbsolutePath() + "#own";
+            long now = android.os.SystemClock.elapsedRealtime();
+            if (now - attempted.getOrDefault(key, -60000L) < 60000 || !pending.add(key)) return;
+            attempted.put(key, now);
+            WORKER.execute(() -> {
+                try { GameArt.generate(top, id, dir, creator, source); }
+                catch (IOException | RuntimeException e) {
+                    Log.d("GamePictures", "No game-file art for " + id + ": " + e.getClass().getSimpleName());
+                } finally { pending.remove(key); }
+            });
+            return;
+        }
         if (new File(dir, "art.rgba").isFile()) return;
         String key = dir.getAbsolutePath();
         long now = android.os.SystemClock.elapsedRealtime();
@@ -64,31 +80,35 @@ public final class GamePictures {
                         wifi, cm == null || cm.isActiveNetworkMetered())) return;
                 attempted.put(key, android.os.SystemClock.elapsedRealtime());
                 long deadline = android.os.SystemClock.elapsedRealtime() + 25000;
-                // The project's OG image is usually a useful, small banner. GitHub's
-                // social preview also avoids selecting README badges as game artwork.
-                String image = null;
+                // Online art is only for not-installed previews: the best large landscape image
+                // of the project page / README (no badges, logos, icons or GitHub social cards).
+                java.util.List<String> candidates = new java.util.ArrayList<>();
                 String api = PickerPictures.readmeApi(source);
-                // GitHub pages only offer a generated social card: use the README's own image instead.
-                if (api == null) {
-                    try {
-                        image = PickerPictures.imageUrl(source,
-                                PickerPictures.utf8(fetch(source, PickerPictures.PAGE_CAP, deadline)));
-                    } catch (IOException ignored) { /* No page art. */ }
-                }
-                if (image == null && api != null) {
-                    String raw = PickerPictures.readmeUrl(PickerPictures.utf8(fetch(api, PickerPictures.PAGE_CAP, deadline)));
-                    if (raw != null) image = PickerPictures.imageUrl(raw,
-                            PickerPictures.utf8(fetch(raw, PickerPictures.PAGE_CAP, deadline)));
-                    if (image != null && PickerPictures.isSocialCard(image)) image = null;
-                }
-                if (image == null) return;
-                byte[] data = fetch(image, installed ? PickerPictures.FULL_CAP : PickerPictures.PREVIEW_CAP, deadline);
+                try {
+                    if (api == null) {
+                        candidates.addAll(PickerPictures.imageUrls(source, PickerPictures.utf8(fetch(source, PickerPictures.PAGE_CAP, deadline)), 6));
+                    } else {
+                        String raw = PickerPictures.readmeUrl(PickerPictures.utf8(fetch(api, PickerPictures.PAGE_CAP, deadline)));
+                        if (raw != null) candidates.addAll(PickerPictures.imageUrls(raw, PickerPictures.utf8(fetch(raw, PickerPictures.PAGE_CAP, deadline)), 6));
+                    }
+                } catch (IOException ignored) { /* No page art. */ }
+                String image = null;
+                byte[] data = null;
                 BitmapFactory.Options bounds = new BitmapFactory.Options();
-                bounds.inJustDecodeBounds = true;
-                BitmapFactory.decodeByteArray(data, 0, data.length, bounds);
-                if (bounds.outWidth <= 0 || bounds.outHeight <= 0 || bounds.outWidth > 16384 || bounds.outHeight > 16384
-                        || (long) bounds.outWidth * bounds.outHeight > 64000000) return;
-                if (!"image/png".equals(bounds.outMimeType) && !"image/jpeg".equals(bounds.outMimeType)) return;
+                long bestScore = -1;
+                for (String candidate : candidates) {
+                    try {
+                        byte[] bytes = fetch(candidate, installed ? PickerPictures.FULL_CAP : PickerPictures.PREVIEW_CAP, deadline);
+                        BitmapFactory.Options probe = new BitmapFactory.Options();
+                        probe.inJustDecodeBounds = true;
+                        BitmapFactory.decodeByteArray(bytes, 0, bytes.length, probe);
+                        if (probe.outWidth > 16384 || probe.outHeight > 16384 || (long) probe.outWidth * probe.outHeight > 64000000) continue;
+                        if (!"image/png".equals(probe.outMimeType) && !"image/jpeg".equals(probe.outMimeType)) continue;
+                        long score = PickerPictures.imageScore(probe.outWidth, probe.outHeight);
+                        if (score > bestScore) { bestScore = score; image = candidate; data = bytes; bounds = probe; }
+                    } catch (IOException ignored) { /* skip this candidate */ }
+                }
+                if (image == null || data == null) return;
                 int edge = installed ? 1920 : 480;
                 BitmapFactory.Options opts = new BitmapFactory.Options();
                 opts.inSampleSize = 1;
