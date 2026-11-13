@@ -111,6 +111,20 @@ final class DownloadIndex {
         }
     }
 
+    // The one place a download is written: [folder]/[file].
+    static File destination(File folder, String file) {
+        return new File(folder, file);
+    }
+
+    // A name not used by a file in [folder] or by an indexed download.
+    static String uniqueName(File folder, String wanted) throws IOException {
+        List<String> existing = new ArrayList<>();
+        String[] names = folder.list();
+        if (names != null) for (String n : names) existing.add(n);
+        for (Item i : read(folder)) existing.add(i.file);
+        return NexusDownloads.uniqueFile(existing, NexusDownloads.sanitize(wanted));
+    }
+
     static boolean isArchiveName(String name) {
         String lower = name.toLowerCase(Locale.ROOT);
         return lower.endsWith(".zip") || lower.endsWith(".7z") || lower.endsWith(".rar");

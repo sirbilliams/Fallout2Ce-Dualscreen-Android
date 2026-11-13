@@ -14,7 +14,7 @@ public class GameInstallJob extends JobService {
         worker = new Thread(() -> {
             boolean retry = false;
             try {
-                for (DownloadIndex.Row row : ModDownloads.rows(this)) {
+                for (DownloadIndex.Row row : ModDownloads.rows(this, ModDownloads.gameFolder(this))) {
                     String id = GameInstaller.game(row);
                     if (id == null || row.item.installed) continue;
                     if (row.state.active()) { retry = true; continue; }
@@ -25,14 +25,14 @@ public class GameInstallJob extends JobService {
                         final int[] lastPercent = { -1 };
                         GameInstaller.status(this, id, "Installing 0%");
                         GameInstall.extract(GameRoots.topRoot(this), id,
-                            new File(ModDownloads.folder(this), row.item.file), (done, total) -> {
+                            new File(ModDownloads.gameFolder(this), row.item.file), (done, total) -> {
                                 int percent = total == 0 ? 100 : (int) (100.0 * done / total);
                                 if (lastPercent[0] != percent) {
                                     lastPercent[0] = percent;
                                     GameInstaller.status(this, id, "Installing " + percent + "%");
                                 }
                             });
-                        DownloadIndex.update(ModDownloads.folder(this), items -> {
+                        DownloadIndex.update(ModDownloads.gameFolder(this), items -> {
                             for (DownloadIndex.Item item : items) if (item.id == row.item.id) item.installed = true;
                         });
                         GameInstaller.status(this, id, "Installed");

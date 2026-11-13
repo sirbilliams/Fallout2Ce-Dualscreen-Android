@@ -43,14 +43,25 @@ final class ModDownloads {
     // [referer] may be null. Returns the DownloadManager id, or -1.
     static long enqueue(Context context, String url, String fileName, String title, String cookies,
                         String userAgent, String referer, boolean wifiOnly, String source) {
+        return enqueue(context, folder(context.getApplicationContext()), url, fileName, title, cookies, userAgent,
+            referer, wifiOnly, source);
+    }
+
+    // The game installers' fixed folder: games install no matter which game is active.
+    static File gameFolder(Context context) {
+        File folder = GameInstall.downloadsFolder(GameRoots.topRoot(context));
+        folder.mkdirs();
+        return folder;
+    }
+
+    // The file lands in exactly [folder]/<unique name>: index, uniqueness check
+    // and DownloadManager destination all use the same folder.
+    static long enqueue(Context context, File folder, String url, String fileName, String title, String cookies,
+                        String userAgent, String referer, boolean wifiOnly, String source) {
         try {
             Context app = context.getApplicationContext();
-            File folder = folder(app);
-            List<String> existing = new ArrayList<>();
-            String[] names = folder.list();
-            if (names != null) for (String n : names) existing.add(n);
-            for (DownloadIndex.Item i : DownloadIndex.read(folder)) existing.add(i.file);
-            String file = NexusDownloads.uniqueFile(existing, NexusDownloads.sanitize(fileName));
+            folder.mkdirs();
+            String file = DownloadIndex.uniqueName(folder, fileName);
             String shown = title == null || title.trim().isEmpty() ? file : title.trim();
 
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
@@ -59,7 +70,7 @@ final class ModDownloads {
             request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
             request.setAllowedOverMetered(!wifiOnly);
             request.setAllowedOverRoaming(!wifiOnly);
-            request.setDestinationInExternalFilesDir(app, null, FOLDER + "/" + file);
+            request.setDestinationUri(Uri.fromFile(DownloadIndex.destination(folder, file)));
             if (cookies != null && !cookies.isEmpty()) request.addRequestHeader("Cookie", cookies);
             if (userAgent != null && !userAgent.isEmpty()) request.addRequestHeader("User-Agent", userAgent);
             if (referer != null && !referer.isEmpty()) request.addRequestHeader("Referer", referer);
@@ -108,7 +119,10 @@ final class ModDownloads {
     // Current rows for the screen; also stores finished/failed states in the
     // index so they survive the manager forgetting the id.
     static List<DownloadIndex.Row> rows(Context context) {
-        File folder = folder(context);
+        return rows(context, folder(context));
+    }
+
+    static List<DownloadIndex.Row> rows(Context context, File folder) {
         List<DownloadIndex.Item> items;
         try {
             items = DownloadIndex.read(folder);

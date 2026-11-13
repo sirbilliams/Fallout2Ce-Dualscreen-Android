@@ -28,7 +28,7 @@ final class GameInstaller {
     }
 
     static void status(Context context, String id, String text) throws IOException {
-        Files.write(new File(ModDownloads.folder(context), "game-" + id + ".status").toPath(), text.getBytes(StandardCharsets.UTF_8));
+        Files.write(new File(ModDownloads.gameFolder(context), "game-" + id + ".status").toPath(), text.getBytes(StandardCharsets.UTF_8));
     }
 
     static boolean busy(String text) {
@@ -42,14 +42,14 @@ final class GameInstaller {
         if (!GameInstall.supported(id)) return "Not installed";
         if (GameInstall.installed(top, id)) return "Installed";
         try {
-            for (DownloadIndex.Row row : ModDownloads.rows(context)) {
+            for (DownloadIndex.Row row : ModDownloads.rows(context, ModDownloads.gameFolder(context))) {
                 if (!id.equals(game(row)) || row.item.installed) continue;
                 if (row.state.active()) return row.state.kind == DownloadIndex.Kind.DOWNLOADING
                     ? "Downloading " + (row.state.percent < 0 ? "" : row.state.percent + "%") : "Waiting for network / Wi-Fi";
                 if (row.state.kind == DownloadIndex.Kind.FAILED) return "Download failed; tap Install to retry";
                 break; // newest completed row; old failures must not hide extraction progress
             }
-            File state = new File(ModDownloads.folder(context), "game-" + id + ".status");
+            File state = new File(ModDownloads.gameFolder(context), "game-" + id + ".status");
             if (state.isFile()) {
                 String text = new String(Files.readAllBytes(state.toPath()), StandardCharsets.UTF_8);
                 // A leftover status from the earlier install must not hide the repair.
@@ -105,10 +105,20 @@ final class GameInstaller {
                 if (top == null) throw new IOException("Game storage unavailable");
                 GameInstall.requireBase(top, id);
                 if (GameInstall.installed(top, id)) return;
-                for (DownloadIndex.Row row : ModDownloads.rows(activity)) {
+                for (DownloadIndex.Row row : ModDownloads.rows(activity, ModDownloads.gameFolder(activity))) {
                     if (!id.equals(game(row)) || row.item.installed) continue;
                     if (row.state.active()) return;
                     if (row.state.kind == DownloadIndex.Kind.DOWNLOADED) {
+                        status(activity, id, "Waiting to install");
+                        schedule(activity);
+                        return;
+                    }
+                }
+                // Repair re-extracts from an archive already on disk instead of downloading again.
+                if (GameInstall.needsRepair(top, id)) {
+                    File reuse = GameInstall.reusableArchive(ModDownloads.gameFolder(activity), id, null, -1);
+                    if (reuse != null) {
+                        GameInstall.adoptArchive(ModDownloads.gameFolder(activity), id, reuse);
                         status(activity, id, "Waiting to install");
                         schedule(activity);
                         return;
@@ -168,7 +178,7 @@ final class GameInstaller {
 
     private static void enqueue(Context context, String id, RpuRelease.Asset asset, boolean wifi) {
         releaseResolution(id);
-        long download = ModDownloads.enqueue(context, asset.url, "game-" + id + "-" + asset.name,
+        long download = ModDownloads.enqueue(context, ModDownloads.gameFolder(context), asset.url, "game-" + id + "-" + asset.name,
             id + " game installer", null, "Fallout2CE", null, wifi, "game:" + id);
         try { status(context, id, download < 0 ? "Could not start download; tap Install to retry" : "Downloading"); }
         catch (IOException ignored) { }

@@ -35,6 +35,54 @@ final class GameInstall {
         return new File(target, "master.dat").isFile() && new File(target, "critter.dat").isFile();
     }
 
+    // Game installer archives and status files live here whichever game is active.
+    static File downloadsFolder(File top) {
+        return new File(top, "mod-downloads");
+    }
+
+    private static boolean validZip(File file) {
+        try (ZipFile zip = new ZipFile(file)) {
+            return zip.entries().hasMoreElements();
+        } catch (IOException | RuntimeException e) { return false; }
+    }
+
+    // A complete archive of this game already in [folder] (so Repair need not
+    // download again): the expected asset name with exactly the expected size
+    // when those are known, otherwise any game-<id>-*.zip that opens as a zip.
+    // Newest first; null when none.
+    static File reusableArchive(File folder, String id, String assetName, long assetSize) {
+        File[] files = folder == null ? null : folder.listFiles();
+        if (files == null) return null;
+        Arrays.sort(files, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+        String prefix = "game-" + id + "-";
+        for (File f : files) {
+            String n = f.getName();
+            if (!f.isFile() || !n.startsWith(prefix) || !n.toLowerCase(Locale.ROOT).endsWith(".zip")) continue;
+            if (assetName != null && assetSize > 0) {
+                if (n.equals(prefix + assetName) && f.length() == assetSize) return f;
+                continue;
+            }
+            if (validZip(f)) return f;
+        }
+        return null;
+    }
+
+    // Makes [archive] a finished, not yet installed download of this game in the folder's index.
+    static void adoptArchive(File folder, String id, File archive) throws IOException {
+        final String file = archive.getName();
+        DownloadIndex.update(folder, items -> {
+            DownloadIndex.Item item = DownloadIndex.find(items, file);
+            if (item == null) {
+                item = new DownloadIndex.Item(-1, file, id + " game installer", "game:" + id, DownloadIndex.DONE, false);
+                items.add(item);
+            }
+            item.id = -1;
+            item.source = "game:" + id;
+            item.status = DownloadIndex.DONE;
+            item.installed = false;
+        });
+    }
+
     static String repo(String id) throws IOException {
         if ("ettu".equals(id)) return "rotators/Fo1in2";
         if ("sonora".equals(id)) return "NovaRain/Fallout-Sonora-English";
