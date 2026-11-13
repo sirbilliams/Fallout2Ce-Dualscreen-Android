@@ -73,7 +73,7 @@ final class DustlightAuto {
 
     static Report report(Context context) {
         Report report = new Report();
-        File game = context.getExternalFilesDir(null);
+        File game = GameRoots.activeGameRoot(context);
         report.status = game == null ? new DustlightHd.Status(0, 0, -1, new ArrayList<>()) : DustlightHd.status(game);
         report.working = working;
         report.workingPercent = workingPercent;
@@ -99,7 +99,7 @@ final class DustlightAuto {
     // any thread; does nothing while the game runs (it owns the files then).
     static void processPending(Context context) {
         synchronized (LOCK) {
-            File game = context.getExternalFilesDir(null);
+            File game = GameRoots.activeGameRoot(context);
             if (game == null || gameRunning(context)) return;
             for (DownloadIndex.Row row : ModDownloads.rows(context)) {
                 if (!ready(context, row)) continue;
@@ -119,7 +119,7 @@ final class DustlightAuto {
     // The player agreed to change tier: installs the parts that waited for it.
     static void switchTier(Context context, int tier) {
         synchronized (LOCK) {
-            File game = context.getExternalFilesDir(null);
+            File game = GameRoots.activeGameRoot(context);
             if (game == null || gameRunning(context)) return;
             for (DownloadIndex.Row row : ModDownloads.rows(context)) {
                 Integer waiting = blocked.get(row.item.file);

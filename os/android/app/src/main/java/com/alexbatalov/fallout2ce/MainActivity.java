@@ -46,7 +46,7 @@ public class MainActivity extends SDLActivity {
             }
         }
         try {
-            ModInstall.cleanup(externalFilesDir);
+            ModInstall.cleanup(GameRoots.activeGameRoot(this));
         } catch (IOException e) {
             e.printStackTrace();
         }

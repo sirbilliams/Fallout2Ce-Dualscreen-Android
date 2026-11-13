@@ -17,6 +17,7 @@
 #include "dev_autotest.h"
 #include "fps_limiter.h"
 #include "game.h"
+#include "game_catalog.h"
 #include "input.h"
 #include "kb.h"
 #include "mod_list.h"
@@ -271,7 +272,10 @@ namespace {
         bool twoRows = fifth < ui.dp(130.0f);
         float footerTotal = twoRows ? footerHeight * 2.0f + gap : footerHeight;
         MuiRect footer = { safe.x, safe.bottom() - footerTotal, safe.w, footerTotal };
+        // RPU is a Fallout 2 mod: the button is hidden for the other games.
+        const bool rpuAvailable = gameActiveIndex() == 0;
         for (int i = 0; i < 5; i++) {
+            if (i == 1 && !rpuAvailable) continue;
             MuiRect cell;
             if (!twoRows) {
                 cell = { footer.x + (fifth + gap) * i, footer.y, fifth, footerHeight };

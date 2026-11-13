@@ -51,6 +51,11 @@ public class RpuActivity extends ImmersiveActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // RPU is a Fallout 2 mod: other games never reach it (the Mods button is hidden).
+        if (!GameRoots.isFallout2(this)) {
+            finish();
+            return;
+        }
         setContentView(R.layout.activity_import);
         title = findViewById(R.id.import_title);
         message = findViewById(R.id.import_message);
@@ -167,7 +172,7 @@ public class RpuActivity extends ImmersiveActivity {
     }
 
     private boolean isVanilla() {
-        File base = getExternalFilesDir(null);
+        File base = GameRoots.activeGameRoot(this);
         if (base == null) return true;
         try (InputStream in = new FileInputStream(new File(base, "profiles/active.txt"))) {
             String active = new String(readAll(in), StandardCharsets.UTF_8).trim();
@@ -189,7 +194,7 @@ public class RpuActivity extends ImmersiveActivity {
     }
 
     private void beforeDownload() {
-        File base = getExternalFilesDir(null);
+        File base = GameRoots.activeGameRoot(this);
         if (base == null) {
             showError(getString(R.string.rpu_download_failed, "no storage"));
             return;
