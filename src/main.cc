@@ -23,6 +23,7 @@
 #include "draw.h"
 #include "endgame.h"
 #include "game.h"
+#include "game_catalog.h"
 #include "game_commands.h"
 #include "game_mouse.h"
 #include "game_movie.h"
@@ -108,6 +109,10 @@ int falloutMain(int argc, char** argv)
     if (!autorunMutexCreate()) {
         return 1;
     }
+
+    // CE: A selected, existing non-Fallout 2 game folder becomes the working
+    // directory before any config, profile or save is read.
+    gameRootActivate();
 
     if (!falloutInit(argc, argv)) {
         return 1;

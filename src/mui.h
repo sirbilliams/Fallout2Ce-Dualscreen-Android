@@ -412,6 +412,8 @@ void muiModsScreenRun();
 // True once the Mods screen was left with changes (the game restart was
 // requested; autotests check it).
 bool muiModsRestartRequested();
+// Closes the app and opens it again (a game switch).
+void muiRequestAppRestart();
 
 // Save / load screen (mui_loadsave.cc, loadsave.cc `lsgSaveGame` /
 // `lsgLoadGame`), [fromMainMenu] - load only. 1 - saved or loaded, 0 -

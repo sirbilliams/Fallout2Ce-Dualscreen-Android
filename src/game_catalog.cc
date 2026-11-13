@@ -1,6 +1,7 @@
 #include "game_catalog.h"
 #include "game_movie.h"
 #include "save_storage.h"
+#include <filesystem>
 #include <fstream>
 namespace fallout {
 const std::array<GameCatalogEntry, 8>& gameCatalog()
@@ -34,6 +35,42 @@ int gameCatalogIndex(const std::string& id)
     }
     return 0;
 }
+static std::string gTopRoot;
+static int gActive = 0;
+std::string gameRootPath(const std::string& topRoot, const std::string& id)
+{
+    int index = gameCatalogIndex(id);
+    if (index == 0) return topRoot;
+    std::string games = std::string("games/") + gameCatalog()[index].id;
+    return topRoot.empty() ? games : topRoot + "/" + games;
+}
+bool gameRootEnsure(const std::string& topRoot, const std::string& id)
+{
+    if (gameCatalogIndex(id) == 0) return true;
+    return saveStorage::makeDirectory(topRoot.empty() ? "games" : topRoot + "/games")
+        && saveStorage::makeDirectory(gameRootPath(topRoot, id));
+}
+int gameRootActivate(const std::string& topRoot)
+{
+    gActive = 0;
+    gTopRoot.clear();
+    int index = gamePickerLoadPage(topRoot);
+    if (index == 0) return 0;
+    namespace fs = std::filesystem;
+    std::error_code ec;
+    std::string root = gameRootPath(topRoot, gameCatalog()[index].id);
+    if (!fs::is_directory(root, ec)) return 0; // not installed yet
+    fs::path top = topRoot.empty() ? fs::current_path(ec) : fs::absolute(topRoot, ec);
+    fs::path target = fs::absolute(root, ec);
+    if (ec) return 0;
+    fs::current_path(target, ec);
+    if (ec) return 0;
+    gTopRoot = top.string();
+    gActive = index;
+    return index;
+}
+int gameActiveIndex() { return gActive; }
+const std::string& gameTopRoot() { return gTopRoot; }
 static std::string profiles(const std::string& root)
 {
     return root.empty() ? "profiles" : root + "/profiles";

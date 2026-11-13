@@ -612,6 +612,11 @@ namespace {
 
 } // namespace
 
+void muiRequestAppRestart()
+{
+    requestRestart(nullptr);
+}
+
 bool muiModsRestartRequested()
 {
     return gRestartRequested;

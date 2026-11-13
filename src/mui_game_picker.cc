@@ -41,7 +41,7 @@ namespace {
     }
     struct PickerState {
         unsigned long long baseMiB = baseFileMiB();
-        int page = gamePickerLoadPage();
+        int page = gamePickerLoadPage(gameTopRoot());
         int previous = page;
         unsigned int changed = 0;
         bool play = false;
@@ -59,7 +59,7 @@ namespace {
             previous = page;
             page = next;
             changed = uiTicks();
-            if (!gamePickerSavePage(page)) debugPrint("Picker selection could not be saved\n");
+            if (!gamePickerSavePage(page, gameTopRoot())) debugPrint("Picker selection could not be saved\n");
         }
     };
     PickerState* active = nullptr;
@@ -350,7 +350,20 @@ bool muiGamePickerRun()
         sharedFpsLimiter.throttle();
     }
     debugPrint("Picker: done play=%d quit=%d wantsQuit=%d\n", state.play ? 1 : 0, state.quit ? 1 : 0, _game_user_wants_to_quit);
-    if (state.play && !gamePickerSavePage(state.page)) debugPrint("Picker selection could not be saved\n");
+    if (state.play && !gamePickerSavePage(state.page, gameTopRoot())) debugPrint("Picker selection could not be saved\n");
+    bool switchGame = state.play && !state.quit && state.page != gameActiveIndex();
+    if (switchGame) {
+        // CE: Another game: its root exists, the selection is saved at the
+        // top root, and the app restarts as a profile switch does.
+        if (gameRootEnsure(gameTopRoot(), gameCatalog()[state.page].id)) {
+            debugPrint("Picker: switching game to %s\n", gameCatalog()[state.page].id);
+            muiRequestAppRestart();
+            state.quit = true;
+        } else {
+            debugPrint("Picker: game root could not be created\n");
+            state.play = false;
+        }
+    }
     muiRemove(&bottom);
     muiRemove(&top);
     active = nullptr;
