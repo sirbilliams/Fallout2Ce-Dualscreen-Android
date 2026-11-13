@@ -85,6 +85,17 @@ namespace {
 #endif
     }
 
+    // True while a download or install is in flight (statuses written by
+    // GameInstaller/GameInstallJob); failures and "Not installed" are not busy,
+    // so the Install button returns after a failure or cancel.
+    bool installBusy(const std::string& status)
+    {
+        for (const char* prefix : { "Downloading", "Waiting", "Looking up", "Installing" }) {
+            if (status.rfind(prefix, 0) == 0) return true;
+        }
+        return false;
+    }
+
     struct PickerState {
         unsigned long long baseMiB = baseFileMiB();
         int page = gamePickerLoadPage(gameTopRoot());
@@ -343,18 +354,24 @@ namespace {
             if (enabled) ui.padPrefer("picker.play");
         } else {
             bool addBase = needsFallout1Files(state, index);
-            auto caption = addBase                                    ? text(430, "Add Fallout 1 files")
-                : entry.downloadKind == GameDownloadKind::ProjectPage ? text(402, "Open project page")
-                                                                      : text(401, "Install");
-            if (button("picker.install", action, caption, true)) {
-                if (addBase) {
-                    state.addBase = true;
-                } else {
-                    state.stub = true;
-                    state.install = true;
+            // Progress text replaces the button while the install runs.
+            if (!addBase && entry.downloadKind != GameDownloadKind::ProjectPage && installBusy(installStatus(index))) {
+                muiFillRoundRect(action, ui.dp(theme.radius), theme.button);
+                muiDrawTextAligned(status, action, muiFitTextSize(status, action.w - ui.dp(16), ui.dp(18), ui.dp(10)), theme.textDim, MuiAlign::Center, MuiAlign::Center);
+            } else {
+                auto caption = addBase                                    ? text(430, "Add Fallout 1 files")
+                    : entry.downloadKind == GameDownloadKind::ProjectPage ? text(402, "Open project page")
+                                                                          : text(401, "Install");
+                if (button("picker.install", action, caption, true)) {
+                    if (addBase) {
+                        state.addBase = true;
+                    } else {
+                        state.stub = true;
+                        state.install = true;
+                    }
                 }
+                if (enabled) ui.padPrefer("picker.install");
             }
-            if (enabled) ui.padPrefer("picker.install");
         }
         action.y += height + ui.dp(10);
         if (button("picker.mods", action, text(380, "Mods"), false)) {
