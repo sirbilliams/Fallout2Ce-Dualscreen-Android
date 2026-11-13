@@ -76,7 +76,27 @@ public class GameInstallTest {
             assertFalse(cfg.contains("C:"));
             assertTrue(GameInstall.installed(top, id));
             assertFalse(new File(top, "fallout2.cfg").exists());
+            org.junit.Assume.assumeTrue(root.toPath().getFileSystem().supportedFileAttributeViews().contains("posix"));
+            assertTrue(Files.getPosixFilePermissions(root.toPath()).contains(java.nio.file.attribute.PosixFilePermission.GROUP_READ));
         }
+    }
+
+    @Test public void shareTreeAddsGroupAccessToOwnerOnlyTree() throws Exception {
+        org.junit.Assume.assumeTrue(temp.getRoot().toPath().getFileSystem().supportedFileAttributeViews().contains("posix"));
+        File top = temp.newFolder();
+        File game = new File(top, "games/x");
+        File sub = new File(game, "data/maps");
+        assertTrue(sub.mkdirs());
+        File f = new File(sub, "a.map");
+        Files.write(f.toPath(), new byte[] {1});
+        java.util.Set<java.nio.file.attribute.PosixFilePermission> own = java.nio.file.attribute.PosixFilePermissions.fromString("rwx------");
+        for (File d : new File[] {sub, sub.getParentFile(), game}) Files.setPosixFilePermissions(d.toPath(), own);
+        Files.setPosixFilePermissions(f.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+        GameInstall.shareGames(top);
+        java.nio.file.attribute.PosixFilePermission gr = java.nio.file.attribute.PosixFilePermission.GROUP_READ;
+        assertTrue(Files.getPosixFilePermissions(game.toPath()).contains(gr));
+        assertTrue(Files.getPosixFilePermissions(sub.toPath()).contains(java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE));
+        assertTrue(Files.getPosixFilePermissions(f.toPath()).contains(gr));
     }
 
     @Test public void missingFallout1AndExistingRootsAreUntouched() throws Exception {

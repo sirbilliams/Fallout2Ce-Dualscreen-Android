@@ -129,7 +129,7 @@ final class GameInstall {
                 throw new IOException("ZIP contains no game data");
             if (total > Long.MAX_VALUE - 67108864L || games.getUsableSpace() < total + 67108864L)
                 throw new IOException("Not enough free space to extract");
-            File temp = Files.createTempDirectory(games.toPath(), ".install-" + id + "-").toFile();
+            File temp = stagingDir(games, id);
             try {
                 long done = 0;
                 byte[] buffer = new byte[65536];
@@ -163,10 +163,74 @@ final class GameInstall {
                 Files.write(new File(temp, ".installed").toPath(), (id + "\n").getBytes(StandardCharsets.UTF_8));
                 // Same filesystem; rename publishes the complete tree. No replacement.
                 if (dest.exists() || !temp.renameTo(dest)) throw new IOException("Cannot publish game folder");
+                shareTree(dest);
             } finally {
                 // Only this invocation's private staging directory is removed.
                 cleanTemp(temp);
             }
+        }
+    }
+
+    // Plain mkdir keeps the default mode (createTempDirectory makes 0700, which
+    // file managers and USB cannot read).
+    private static File stagingDir(File games, String id) throws IOException {
+        for (int i = 0; i < 20; i++) {
+            File dir = new File(games, ".install-" + id + "-" + System.nanoTime());
+            if (dir.mkdir()) return dir;
+        }
+        throw new IOException("Cannot create installer staging folder");
+    }
+
+    // Adds owner+group rwx to folders and rw to files (no symlinks followed).
+    // Errors are ignored: some filesystems have no POSIX permissions.
+    static void shareTree(File dir) {
+        try {
+            Files.walkFileTree(dir.toPath(), new java.nio.file.SimpleFileVisitor<java.nio.file.Path>() {
+                @Override public java.nio.file.FileVisitResult preVisitDirectory(java.nio.file.Path p, java.nio.file.attribute.BasicFileAttributes a) {
+                    share(p, true);
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+                @Override public java.nio.file.FileVisitResult visitFile(java.nio.file.Path p, java.nio.file.attribute.BasicFileAttributes a) {
+                    if (a.isRegularFile()) share(p, false);
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+                @Override public java.nio.file.FileVisitResult visitFileFailed(java.nio.file.Path p, IOException e) {
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException | RuntimeException ignored) {
+        }
+    }
+
+    private static void share(java.nio.file.Path p, boolean dir) {
+        try {
+            Set<java.nio.file.attribute.PosixFilePermission> perms =
+                new HashSet<>(Files.getPosixFilePermissions(p, java.nio.file.LinkOption.NOFOLLOW_LINKS));
+            perms.add(java.nio.file.attribute.PosixFilePermission.OWNER_READ);
+            perms.add(java.nio.file.attribute.PosixFilePermission.OWNER_WRITE);
+            perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_READ);
+            perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE);
+            if (dir) {
+                perms.add(java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE);
+                perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE);
+            }
+            Files.setPosixFilePermissions(p, perms);
+        } catch (IOException | RuntimeException ignored) {
+        }
+    }
+
+    // App start: repairs owner-only game folders of older installs.
+    static void shareGames(File top) {
+        File[] games = new File(top, "games").listFiles();
+        if (games == null) return;
+        for (File game : games) {
+            if (game.getName().startsWith(".") || !game.isDirectory() || Files.isSymbolicLink(game.toPath())) continue;
+            try {
+                if (Files.getPosixFilePermissions(game.toPath()).contains(java.nio.file.attribute.PosixFilePermission.GROUP_READ)) continue;
+            } catch (IOException | RuntimeException e) {
+                continue;
+            }
+            shareTree(game);
         }
     }
 
