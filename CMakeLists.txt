@@ -1002,6 +1002,7 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
     ce_add_test(game_catalog_test "src/game_catalog.cc" "src/save_storage.cc")
     ce_add_test(scripts_timer_test)
     target_include_directories(scripts_timer_test PRIVATE ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(scripts_timer_test ${SDL2_LIBRARIES})
     target_compile_options(scripts_timer_test PRIVATE -ffunction-sections -fdata-sections)
     if(APPLE)
         target_link_options(scripts_timer_test PRIVATE -Wl,-dead_strip)
