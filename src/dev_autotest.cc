@@ -382,6 +382,9 @@ enum DevAutotestAction {
     // FAIL unless the text file `widget` (relative to the working dir) holds
     // exactly `target`.
     DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT,
+    // Overwrites the text file `widget` (relative to the working dir) with
+    // `target`; FAIL if it cannot be written. Seeds state for CHECK_FILE_TEXT.
+    DEV_AUTOTEST_ACTION_WRITE_FILE_TEXT,
     // FAIL unless the Mods screen asked for a restart ([a] 1) or did not
     // ([a] 0).
     DEV_AUTOTEST_ACTION_CHECK_MODS_RESTART,
@@ -1274,6 +1277,8 @@ static const DevAutotestStep kDevAutotestModsUiSteps[] = {
 // Starts at the picker; exercises both surfaces, the stub, organizer and Play.
 static const DevAutotestStep kDevAutotestGamePickerSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 40, "gp00_picker" },
+    // The fixture starts with Fallout 2 selected and saved.
+    { DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT, 0, 0, 0, 1, "gp00b_saved_start", "profiles/last-game.txt", "fallout2\n" },
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp01_play", "picker.play" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp02_ettu", "picker.page.1" },
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp03_install", "picker.install" },
@@ -1281,6 +1286,8 @@ static const DevAutotestStep kDevAutotestGamePickerSteps[] = {
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp05_notice", "dialog.primary" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp06_close", "dialog.primary" },
     { DEV_AUTOTEST_ACTION_PAD, 10, 0, 0, 30, "gp07_shoulder_sonora" },
+    // Browsing to Sonora must not save: the file still names Fallout 2.
+    { DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT, 0, 0, 0, 1, "gp07b_browse_unsaved", "profiles/last-game.txt", "fallout2\n" },
     { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, -0.25f, 0, 0, 50, "gp08a_top_swipe", "picker.swipe.art" },
     { DEV_AUTOTEST_ACTION_MUI_DRAG_BY, -0.25f, 0, 0, 50, "gp08c_bottom_swipe", "picker.swipe.controls" },
     {
@@ -1293,11 +1300,15 @@ static const DevAutotestStep kDevAutotestGamePickerSteps[] = {
     },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp08g_megamod", "picker.page.6" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp08h_yesterday", "picker.page.7" },
+    { DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT, 0, 0, 0, 1, "gp08i_browse_unsaved", "profiles/last-game.txt", "fallout2\n" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp09_fallout2", "picker.page.0" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp10_mods", "picker.mods" },
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp11_organizer", "mods.profile" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 30, "gp12_back", "mods.back" },
+    // Make the file stale so only Play can bring it back to Fallout 2.
+    { DEV_AUTOTEST_ACTION_WRITE_FILE_TEXT, 0, 0, 0, 1, "gp12b_seed_stale", "profiles/last-game.txt", "sonora\n" },
     { DEV_AUTOTEST_ACTION_PAD, 0, 0, 0, 40, "gp13_play" },
+    { DEV_AUTOTEST_ACTION_CHECK_FILE_TEXT, 0, 0, 0, 1, "gp13b_play_saved", "profiles/last-game.txt", "fallout2\n" },
     { DEV_AUTOTEST_ACTION_CHECK_WIDGET, 1, 0, 0, 1, "gp14_main_menu", "mainmenu.new" },
 };
 
@@ -5221,6 +5232,16 @@ void devAutotestTick()
             devAutotestLog("  file %s %s: %s\n", step->widget != nullptr ? step->widget : "?", stream != nullptr ? "read" : "MISSING", ok ? "PASS" : "FAIL");
             if (!ok) {
                 devAutotestLog("    expected: [%s]\n    actual:   [%s]\n", step->target != nullptr ? step->target : "", actual.c_str());
+                exit(EXIT_FAILURE);
+            }
+            break;
+        }
+        case DEV_AUTOTEST_ACTION_WRITE_FILE_TEXT: {
+            FILE* stream = step->widget != nullptr ? fopen(step->widget, "wb") : nullptr;
+            bool ok = stream != nullptr && step->target != nullptr && fputs(step->target, stream) >= 0;
+            if (stream != nullptr && fclose(stream) != 0) ok = false;
+            devAutotestLog("  write file %s: %s\n", step->widget != nullptr ? step->widget : "?", ok ? "PASS" : "FAIL");
+            if (!ok) {
                 exit(EXIT_FAILURE);
             }
             break;
