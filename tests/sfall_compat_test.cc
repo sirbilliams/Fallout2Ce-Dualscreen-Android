@@ -1,5 +1,10 @@
 #include "sfall_compat.h"
 
+// Exercise the private EAX handlers without adding a production test API.
+// As in scripts_timer_test, unused engine code is discarded by the linker.
+#include "../src/sfall_opcodes.cc"
+#include "../src/scan_unimplemented_opcodes.h"
+
 #include <algorithm>
 #include <cassert>
 #include <climits>
@@ -131,6 +136,35 @@ static int query(Program& program, int opcode, int argument)
     return result;
 }
 
+static void checkEax(Program& program)
+{
+    std::vector<ScannedStackValue> scanned = { knownIntStackValue(99) };
+    simulate_scanned_stack_opcode(scanned, 0x81a3, nullptr, 0);
+    assert(scanned.size() == 2 && scanned.back().isKnownInt && scanned.back().value == 0);
+    simulate_scanned_stack_opcode(scanned, 0x81a4, nullptr, 0);
+    assert(scanned.size() == 1 && scanned.back().value == 99);
+
+    programStackPushInteger(&program, 99);
+    op_eax_available(&program);
+    assert(program.stackValues->size() == 2);
+    assert(programStackPopInteger(&program) == 0);
+    assert(programStackPopInteger(&program) == 99);
+
+    for (int type = 0; type < 3; type++) {
+        programStackPushInteger(&program, 99);
+        if (type == 0) {
+            programStackPushInteger(&program, 5);
+        } else if (type == 1) {
+            programStackPushFloat(&program, 1.5f);
+        } else {
+            programStackPushString(&program, "ignored EAX environment");
+        }
+        op_set_eax_environment(&program);
+        assert(program.stackValues->size() == 1);
+        assert(programStackPopInteger(&program) == 99);
+    }
+}
+
 static void checkMetarules(Program& program)
 {
     const MetaruleInfo rules[] = {
@@ -172,6 +206,7 @@ int main()
     ProgramStack stack;
     program.stackValues = &stack;
     sfallCompatibilityInit();
+    checkEax(program);
     for (const auto& contract : contracts) {
         checkOpcode(program, contract);
     }
@@ -205,5 +240,5 @@ int main()
     checkMetarules(program);
     assert(stack.empty());
     free(program.dynamicStrings);
-    printf("ok: %zu stub contracts, real queries/increment, six metarules, once-only logs\n", sizeof(contracts) / sizeof(contracts[0]) + 1);
+    printf("ok: %zu stub contracts, two EAX handlers, real queries/increment, six metarules, once-only logs\n", sizeof(contracts) / sizeof(contracts[0]) + 1);
 }

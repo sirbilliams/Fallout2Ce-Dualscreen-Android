@@ -40,6 +40,43 @@ call_offset forms and shader free/float/vector setters).
 
 ## Signature verification
 
+Rechecked for Sonora on 2026-11-13 against sfall-team/sfall commit
+[`50f40ae561f35d4e054676dfb9c87aabb8f0232f`](https://github.com/sfall-team/sfall/tree/50f40ae561f35d4e054676dfb9c87aabb8f0232f/sfall/Modules/Scripting).
+Its table is `Modules/Scripting/Opcodes.cpp` (there is no
+`ScriptExtender/Opcodes.cpp` in that tree). `Handlers/Misc.cpp` consumes no
+arguments and returns integer zero for `eax_available`; `set_eax_environment`
+consumes one argument even on type mismatch and returns nothing. CE now also
+discards non-integer environment values without raising a VM type error.
+`Handlers/Memory.cpp` consumes two values and returns nothing for each of
+`write_byte`, `write_short`, and `write_int`; CE's existing compatibility
+handlers already match the stack contract and never write host memory.
+
+The four 5.x extensions **cannot be checked against that upstream table**:
+0x8258 is explicitly reserved for arrays, and 0x8282/84/85 are absent.
+Do not attribute their signatures to sfall-team/sfall. The packaged 5.x DLL
+registration data/handlers described below were rechecked instead:
+
+| Opcode | CE arguments | Packaged sfall 5.x arguments | Result | Status |
+| --- | --- | --- | --- | --- |
+| 0x8258 array_key_exists | 2 | 2 | integer | Already right |
+| 0x8282 get_config_setting | 3 | 3 | integer | Already right |
+| 0x8284 set_shader_type | 2 | 2 | void | Already right |
+| 0x8285 increment | 1 | 1 | numeric | Already right |
+
+Source-table verification of these four remains unavailable in the requested
+repository; no argument counts were changed. The scanner explicitly simulates
+both EAX opcodes; missing-opcode detection uses the live registered-handler
+table. Regression coverage checks EAX stack sentinels, non-integer arguments,
+scanner effects, all three write stubs and all four 5.x stack contracts.
+
+Sonora validation: Debug host engine/mapper built with system libraries
+(`FALLOUT_VENDORED=OFF`, because the default dependency fetch failed DNS);
+all 13 CTests passed after explicitly building the `EXCLUDE_FROM_ALL` test
+targets. The prescribed Gradle task was blocked by the read-only default
+cache, then sandbox socket denial with a writable cache. Direct JDK 17
+compilation with generated R/BuildConfig placeholders and JUnit ran all 185
+JVM tests successfully; this does not verify Gradle or an Android APK.
+
 Ordinary contracts come from the [sfall opcode list](https://github.com/sfall-team/sfall/blob/master/artifacts/scripting/sfall%20opcode%20list.txt)
 and [Opcodes.cpp registration table](https://github.com/sfall-team/sfall/blob/master/sfall/Modules/Scripting/Opcodes.cpp).
 Memory calls have an address argument in addition to the suffix count;
