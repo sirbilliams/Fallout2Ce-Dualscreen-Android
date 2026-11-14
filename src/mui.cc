@@ -1,4 +1,5 @@
 #include "mui.h"
+#include "menu_branding.h"
 #include "mui_display_settings.h"
 #include "mui_dual.h"
 #include "mui_gameskin.h"
@@ -364,7 +365,7 @@ const char* muiText(int id, const char* fallback)
         MessageListItem item;
         item.num = id;
         if (messageListGetItem(messageList, &item)) {
-            return item.text;
+            return menuTextOrDefault(item.text, fallback);
         }
     }
 

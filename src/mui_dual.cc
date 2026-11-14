@@ -1,4 +1,6 @@
 #include "mui_dual.h"
+#include "menu_branding.h"
+#include "version.h"
 #include "mui_gameskin.h"
 #include "mui_skin.h"
 #include "settings.h"
@@ -351,13 +353,16 @@ void muiDualCompanion(MuiContext& ui)
         float y = monitor(ui.dp(84.0f), false);
         MuiRect title = { x, y, width, ui.dp(56.0f) };
         // CE: the active game's catalog title; shrink to fit long names.
-        std::string gameTitle = "FALLOUT 2";
+        std::string catalogTitle;
         int activeGame = gameActiveIndex();
         if (activeGame >= 0 && activeGame < static_cast<int>(gameCatalog().size())) {
-            gameTitle = gameCatalog()[activeGame].title;
-            for (char& c : gameTitle) {
-                if (c >= 'a' && c <= 'z') c = static_cast<char>(c - 'a' + 'A');
-            }
+            catalogTitle = gameCatalog()[activeGame].title;
+        }
+        char versionString[VERSION_MAX];
+        versionGetVersion(versionString, sizeof(versionString));
+        std::string gameTitle = menuBrandingTitle(catalogTitle, versionString);
+        for (char& c : gameTitle) {
+            if (c >= 'a' && c <= 'z') c = static_cast<char>(c - 'a' + 'A');
         }
         std::u32string titleText = muiDecodeUtf8(gameTitle.c_str());
         float titleSize = ui.dp(44.0f);
