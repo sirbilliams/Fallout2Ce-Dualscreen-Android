@@ -46,6 +46,7 @@ namespace {
     // the notifications).
     bool gHudThisFrame = false;
     MuiRect gHudArea;
+    bool gHudClip = false;
     bool gHudLogOpen = false;
     bool gHudShownLast = false;
 
@@ -106,6 +107,9 @@ namespace {
         float rowHeight = muiLineHeight(size) + padding;
         float y = area.bottom() - lines.size() * (rowHeight + ui.dp(2.0f));
         bool cursorShown = false;
+        if (gHudClip) {
+            muiPushClip(area);
+        }
         for (const Line& line : lines) {
             if (line.typed == 0) {
                 y += rowHeight + ui.dp(2.0f);
@@ -129,6 +133,9 @@ namespace {
                 }
             }
             y += rowHeight + ui.dp(2.0f);
+        }
+        if (gHudClip) {
+            muiPopClip();
         }
     }
 
@@ -219,10 +226,11 @@ void muiNotifyClear()
     gNotices.clear();
 }
 
-void muiNotifyHudArea(const MuiRect& area, bool logOpen)
+void muiNotifyHudArea(const MuiRect& area, bool logOpen, bool clip)
 {
     gHudThisFrame = true;
     gHudArea = area;
+    gHudClip = clip;
     gHudLogOpen = logOpen;
 }
 

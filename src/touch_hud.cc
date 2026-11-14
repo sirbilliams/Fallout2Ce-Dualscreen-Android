@@ -1830,21 +1830,26 @@ namespace {
             bottom = std::min(toolsGroup.y, weaponGroup.y) - gap;
         }
 
-        // In combat the notifications go over the foot of the combat panel's
-        // list.
+        // Keep both the open log and notifications in the tool column,
+        // outside the combat panel.
         if (combatPanel && panelRect.w > 0.0f) {
-            left = panelRect.x + gap;
-            right = panelRect.right() - gap;
-            bottom = panelRect.bottom() - ui.dp(42.0f + 58.0f + 24.0f);
+            left = safe.x;
+            right = panelRect.x - gap;
+            bottom = safe.bottom();
         }
 
         if (gLogOpen) {
-            float top = systemGroup.bottom() + gap;
-            buildLog(ui, { left, top, std::max(right - left, ui.dp(120.0f)), std::max(bottom - top, ui.dp(80.0f)) });
+            float top = (combatPanel ? toolsGroup.bottom() : systemGroup.bottom()) + gap;
+            float width = combatPanel ? right - left : std::max(right - left, ui.dp(120.0f));
+            float height = combatPanel ? std::max(bottom - top, 0.0f) : std::max(bottom - top, ui.dp(80.0f));
+            buildLog(ui, { left, top, width, height });
             muiNotifyHudArea({}, true);
         } else {
             float toastHeight = ui.dp(4.0f * 26.0f);
-            muiNotifyHudArea({ left, bottom - toastHeight, std::min(right - left, screen.w * 0.45f), toastHeight }, false);
+            if (combatPanel) {
+                toastHeight = std::clamp(bottom - toolsGroup.bottom() - gap, 0.0f, toastHeight);
+            }
+            muiNotifyHudArea({ left, bottom - toastHeight, std::min(right - left, screen.w * 0.45f), toastHeight }, false, combatPanel);
         }
 
         buildTargetHint(ui);

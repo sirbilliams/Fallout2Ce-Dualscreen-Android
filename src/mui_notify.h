@@ -35,7 +35,8 @@ void muiNotifyClear();
 
 // Touch HUD: shows log notifications next to its log button this frame in
 // [area] (bottom aligned), or none while [logOpen] (the log shows them).
-void muiNotifyHudArea(const MuiRect& area, bool logOpen);
+// [clip] confines narrow combat-sidebar notifications to their area.
+void muiNotifyHudArea(const MuiRect& area, bool logOpen, bool clip = false);
 
 // mui.cc: draws notifications over every screen.
 void muiNotifyRender(MuiContext& ui);
