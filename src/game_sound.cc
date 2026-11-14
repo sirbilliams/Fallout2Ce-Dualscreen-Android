@@ -1870,7 +1870,7 @@ int _gsound_background_allocate(Sound** soundPtr, GameSoundStorageType storageTy
 // 0x451B30 gsound_background_find_with_copy
 // CE: replace use of audioFile with newer audio system, and avoid the need to copy files from
 // music_path2 -> music_path1
-// Note: .wav and .ogg files are memory-backed even if streaming is requested.
+// Note: .wav, .ogg and .mp3 files are memory-backed even if streaming is requested.
 int gameSoundFindBackgroundSoundPath(char* dest, const char* src)
 {
     if (gGameSoundDebugEnabled) {
@@ -1884,6 +1884,8 @@ int gameSoundFindBackgroundSoundPath(char* dest, const char* src)
         ".wav",
         ".OGG",
         ".ogg",
+        ".MP3",
+        ".mp3",
     };
 
     const char* paths[] = {

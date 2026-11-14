@@ -227,6 +227,8 @@ set(FALLOUT_ENGINE_SOURCES
     "src/obj_types.h"
     "src/object.cc"
     "src/object.h"
+    "src/mp3_decoder.cc"
+    "src/mp3_decoder.h"
     "src/ogg_decoder.cc"
     "src/ogg_decoder.h"
     "src/opcode_context.cc"
@@ -461,6 +463,7 @@ target_sources(${EXECUTABLE_NAME} PUBLIC ${FALLOUT_PLATFORM_SOURCES})
 
 target_include_directories(${EXECUTABLE_NAME} PUBLIC "third_party/lodepng")
 target_include_directories(${EXECUTABLE_NAME} PRIVATE "third_party/stb")
+target_include_directories(${EXECUTABLE_NAME} PRIVATE "third_party/dr_libs")
 
 set(FALLOUT_HAVE_STB_VORBIS OFF)
 if(FALLOUT_AUDIO_OGG)
@@ -892,6 +895,7 @@ if((NOT ANDROID) AND (NOT IOS) AND (NOT CMAKE_SYSTEM_NAME MATCHES "Emscripten"))
 
     target_include_directories(mapper-ce PUBLIC "third_party/lodepng")
     target_include_directories(mapper-ce PRIVATE "third_party/stb")
+    target_include_directories(mapper-ce PRIVATE "third_party/dr_libs")
     target_include_directories(mapper-ce PRIVATE "src")
     target_include_directories(mapper-ce PRIVATE ${ZLIB_INCLUDE_DIRS})
     target_include_directories(mapper-ce PRIVATE ${SDL2_INCLUDE_DIRS})
@@ -998,6 +1002,9 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
     endif()
     set_tests_properties(loose_patch_test PROPERTIES TIMEOUT 10)
 
+    ce_add_test(mp3_decoder_test "src/mp3_decoder.cc" "src/memory_manager.cc" "src/db.cc" "src/xfile.cc" "src/dfile.cc" "src/platform_compat.cc" "src/file_find.cc")
+    target_include_directories(mp3_decoder_test PRIVATE "third_party/dr_libs" ${SDL2_INCLUDE_DIRS} ${ZLIB_INCLUDE_DIRS})
+    target_link_libraries(mp3_decoder_test ${SDL2_LIBRARIES} ${ZLIB_LIBRARIES} fpattern::fpattern fpattern_windows::fpattern_windows)
     ce_add_test(save_catalog_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(suspend_slot_test "src/save_catalog.cc" "src/save_records.cc" "src/save_storage.cc")
     ce_add_test(picker_picture_test "src/picker_picture.cc")

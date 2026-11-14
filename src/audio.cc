@@ -9,6 +9,7 @@
 #include "db.h"
 #include "debug.h"
 #include "memory_manager.h"
+#include "mp3_decoder.h"
 #include "ogg_decoder.h"
 #include "platform_compat.h"
 #include "sound.h"
@@ -47,6 +48,7 @@ enum AudioOpenMode : int {
     AUDIO_OPEN_MODE_COMPRESSED = 1, // ACM
     AUDIO_OPEN_MODE_WAV = 2,
     AUDIO_OPEN_MODE_OGG = 3,
+    AUDIO_OPEN_MODE_MP3 = 4,
 };
 
 static bool defaultCompressionFunc(char* filePath);
@@ -198,6 +200,8 @@ int audioOpen(const char* fname, AudioFileInfo* info, bool* isMemoryBackedPtr)
         openMode = AUDIO_OPEN_MODE_WAV;
     } else if (oggDecoderIsFilePath(path)) {
         openMode = AUDIO_OPEN_MODE_OGG;
+    } else if (mp3DecoderIsFilePath(path)) {
+        openMode = AUDIO_OPEN_MODE_MP3;
     } else if (queryCompressedFunc(path)) {
         openMode = AUDIO_OPEN_MODE_COMPRESSED;
     } else {
@@ -231,12 +235,18 @@ int audioOpen(const char* fname, AudioFileInfo* info, bool* isMemoryBackedPtr)
     audioFile->flags = AUDIO_IN_USE;
     audioFile->stream = stream;
 
-    if (openMode == AUDIO_OPEN_MODE_WAV || openMode == AUDIO_OPEN_MODE_OGG) {
+    if (openMode == AUDIO_OPEN_MODE_WAV || openMode == AUDIO_OPEN_MODE_OGG || openMode == AUDIO_OPEN_MODE_MP3) {
         AudioFileInfo decodedInfo = {};
         audioFile->flags |= AUDIO_MEMORY;
         bool decoded = false;
         if (openMode == AUDIO_OPEN_MODE_WAV) {
             decoded = audioDecodeWave(stream, &decodedInfo, &(audioFile->data), &(audioFile->fileSize));
+        } else if (openMode == AUDIO_OPEN_MODE_MP3) {
+            AudioFileInfo audioFileInfo = {};
+            decoded = mp3DecoderDecode(stream, &audioFileInfo, &(audioFile->data), &(audioFile->fileSize));
+            decodedInfo.sampleRate = audioFileInfo.sampleRate;
+            decodedInfo.channels = audioFileInfo.channels;
+            decodedInfo.bitsPerSample = audioFileInfo.bitsPerSample;
         } else {
             AudioFileInfo audioFileInfo = {};
             decoded = oggDecoderDecode(stream, &audioFileInfo, &(audioFile->data), &(audioFile->fileSize));
@@ -266,6 +276,13 @@ int audioOpen(const char* fname, AudioFileInfo* info, bool* isMemoryBackedPtr)
     } else if (openMode == AUDIO_OPEN_MODE_COMPRESSED) {
         audioFile->flags |= AUDIO_COMPRESSED;
         audioFile->soundDecoder = soundDecoderInit(audioSoundDecoderReadHandler, audioFile->stream, &(audioFile->channels), &(audioFile->sampleRate), &(audioFile->fileSize));
+        if (audioFile->soundDecoder == nullptr) {
+            fileClose(stream);
+            memset(audioFile, 0, sizeof(*audioFile));
+            debugPrint("AudioOpen: Couldn't init decoder for %s\n", path);
+            return -1;
+        }
+
         audioFile->fileSize *= 2;
         audioFile->bitsPerSample = 16;
 
@@ -335,6 +352,10 @@ int audioRead(int handle, void* buffer, unsigned int size)
             memcpy(buffer, audioFile->data + audioFile->position, bytesRead);
         }
     } else if ((audioFile->flags & AUDIO_COMPRESSED) != AUDIO_NONE) {
+        if (audioFile->soundDecoder == nullptr) {
+            return 0;
+        }
+
         bytesRead = soundDecoderDecode(audioFile->soundDecoder, buffer, size);
     } else {
         bytesRead = fileRead(buffer, 1, size, audioFile->stream);
@@ -385,6 +406,11 @@ long audioSeek(int handle, long offset, int origin)
             fileSeek(audioFile->stream, 0, SEEK_SET);
             audioFile->soundDecoder = soundDecoderInit(audioSoundDecoderReadHandler, audioFile->stream, &(audioFile->channels), &(audioFile->sampleRate), &(audioFile->fileSize));
             audioFile->position = 0;
+            if (audioFile->soundDecoder == nullptr) {
+                audioFile->fileSize = 0;
+                return -1;
+            }
+
             audioFile->fileSize *= 2;
 
             if (pos != 0) {
