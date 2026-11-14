@@ -20,7 +20,12 @@ final class GameInstaller {
         return source.startsWith("game:") && GameInstall.supported(source.substring(5)) ? source.substring(5) : null;
     }
 
+    // Set by every schedule() call; the job loops again while it is set, so a
+    // download that finishes while the job is pending or running still installs.
+    static volatile boolean rerun;
+
     static void schedule(Context context) {
+        rerun = true;
         JobScheduler jobs = (JobScheduler) context.getSystemService(Context.JOB_SCHEDULER_SERVICE);
         if (jobs.getPendingJob(JOB) == null)
             jobs.schedule(new JobInfo.Builder(JOB, new ComponentName(context, GameInstallJob.class))

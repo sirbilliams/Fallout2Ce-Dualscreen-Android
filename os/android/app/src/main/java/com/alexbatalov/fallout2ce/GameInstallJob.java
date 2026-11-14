@@ -14,10 +14,14 @@ public class GameInstallJob extends JobService {
         worker = new Thread(() -> {
             boolean retry = false;
             try {
+              do {
+                GameInstaller.rerun = false;
                 for (DownloadIndex.Row row : ModDownloads.rows(this, ModDownloads.gameFolder(this))) {
                     String id = GameInstaller.game(row);
                     if (id == null || row.item.installed) continue;
-                    if (row.state.active()) { retry = true; continue; }
+                    // Still downloading: ModDownloadReceiver schedules us again when it
+                    // finishes. Retrying here waited out the 30 s+ linear backoff instead.
+                    if (row.state.active()) continue;
                     if (row.state.kind != DownloadIndex.Kind.DOWNLOADED) continue;
                     // A failed archive is retried only by an explicit picker tap.
                     if (GameInstaller.status(this, id).startsWith("Install failed:")) continue;
@@ -55,6 +59,7 @@ public class GameInstallJob extends JobService {
                         GameInstaller.status(this, id, "Install failed: " + e.getMessage());
                     }
                 }
+              } while (GameInstaller.rerun && !retry && !stopped);
             } catch (IOException | RuntimeException e) {
                 android.util.Log.w("GameInstallJob", "Install interrupted", e);
                 retry = true;
