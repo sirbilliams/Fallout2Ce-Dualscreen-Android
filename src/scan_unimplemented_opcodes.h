@@ -366,6 +366,12 @@ void simulate_scanned_stack_opcode(
     }
 
     switch (opcode) {
+    case 0x81a3: // eax_available (handled; EAX support removed)
+        stack.push_back(knownIntStackValue(0));
+        break;
+    case 0x81a4: // set_eax_environment
+        pop_scanned_stack_values(stack, 1);
+        break;
     case VALUE_TYPE_INT:
         stack.push_back(knownIntStackValue(fallout::stackReadInt32(data, opcodePos + 2)));
         break;

@@ -117,7 +117,8 @@ static void op_eax_available(Program* program)
 // set_eax_environment: deprecated in sfall, no-op.
 static void op_set_eax_environment(Program* program)
 {
-    programStackPopInteger(program);
+    // sfall consumes even a non-integer argument and returns no value.
+    programStackPopValue(program);
 }
 
 // set_pc_base_stat
@@ -2256,6 +2257,8 @@ void sfallOpcodesInit()
     // 0x8158 - int   read_int(int address)
     // 0x8159 - string read_string(int address)
 
+    // Registered by sfallCompatibilityInit: discard both arguments, no result
+    // and no writes to the host address space.
     // 0x81cf - void  write_byte(int address, int value)
     // 0x81d0 - void  write_short(int address, int value)
     // 0x81d1 - void  write_int(int address, int value)
