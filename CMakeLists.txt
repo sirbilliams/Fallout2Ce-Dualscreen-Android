@@ -1016,6 +1016,7 @@ if(UNIX AND NOT ANDROID AND NOT IOS AND NOT CMAKE_SYSTEM_NAME MATCHES "Emscripte
     ce_add_test(suspend_gate_test)
     ce_add_test(mui_notify_test)
     target_include_directories(mui_notify_test PRIVATE ${SDL2_INCLUDE_DIRS})
+    target_link_libraries(mui_notify_test ${SDL2_LIBRARIES})
     target_compile_options(mui_notify_test PRIVATE -ffunction-sections -fdata-sections)
     if(APPLE)
         target_link_options(mui_notify_test PRIVATE -Wl,-dead_strip)
