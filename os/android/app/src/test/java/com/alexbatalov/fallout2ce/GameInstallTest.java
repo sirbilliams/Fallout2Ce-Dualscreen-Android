@@ -61,7 +61,7 @@ public class GameInstallTest {
             new File(top, "base/fallout1").mkdirs();
             Files.write(new File(top, "master.dat").toPath(), new byte[] {42});
             Files.write(new File(top, "critter.dat").toPath(), new byte[] {43});
-            String p = id.equals("ettu") ? "Fallout1in2/" : id.equals("sonora") ? "Fallout_Sonora_1_16_E/" : "";
+            String p = id.equals("ettu") ? "Fallout1in2/" : id.equals("sonora") ? "Fallout_Sonora_1_16_E/" : "Resurrection/";
             GameInstall.extract(top, id, zip(p + "mods/game.dat", p + "mods/mods_order.txt", p + "data/maps/test.map",
                 p + "master.dat", p + "critter.dat", p + "Fallout2.cfg", p + "Fallout2.exe"), (d, t) -> assertTrue(d <= t));
             File root = GameInstall.target(top, id);
@@ -92,6 +92,19 @@ public class GameInstallTest {
         assertNull(GameInstall.mapped("ettu", "Fallout1in2/master.dat"));
         assertNull(GameInstall.mapped("resurrection", "Resurrection/master.dat"));
         assertNull(GameInstall.mapped("sonora", "Fallout_Sonora_1_16_E/fallout2.exe"));
+    }
+
+    @Test public void resurrectionRealArchiveLayoutMapsToGameRoot() throws Exception {
+        assertEquals("data/art/cuts/intro.mve", GameInstall.mapped("resurrection", "Resurrection/data/art/cuts/intro.mve"));
+        assertEquals("sound/music/06vault.acm", GameInstall.mapped("resurrection", "sound/music/06VAULT.ACM"));
+        assertEquals("mods/fores.dat", GameInstall.mapped("resurrection", "Resurrection/fores.dat"));
+        assertEquals("mods/fores_critter.dat", GameInstall.mapped("resurrection", "Resurrection/fores_critter.dat"));
+        assertEquals("ddraw.ini", GameInstall.mapped("resurrection", "Resurrection/ddraw.ini"));
+        assertNull(GameInstall.mapped("resurrection", "Resurrection/fores.exe"));
+        assertNull(GameInstall.mapped("resurrection", "Resurrection/FALLOUT2"));
+        assertNull(GameInstall.mapped("resurrection", "Resurrection/fores.cfg"));
+        assertNull(GameInstall.mapped("resurrection", "Resurrection/fores_readme.txt"));
+        assertNull(GameInstall.mapped("resurrection", "Resurrection/ddraw.dll"));
     }
 
     @Test public void sonoraWithoutDatsIsIncompleteAndRepairKeepsPlayerFiles() throws Exception {
@@ -214,7 +227,7 @@ public class GameInstallTest {
     @Test public void traversalAndFailedExtractionNeverPublish() throws Exception {
         File top = temp.newFolder();
         fails(() -> GameInstall.extract(top, "sonora", zip("../master.dat"), (d, t) -> {}));
-        fails(() -> GameInstall.extract(top, "resurrection", zip("data/test.dat"), (d, t) -> { throw new IOException("stop"); }));
+        fails(() -> GameInstall.extract(top, "resurrection", zip("Resurrection/data/test.dat"), (d, t) -> { throw new IOException("stop"); }));
         assertFalse(GameInstall.target(top, "resurrection").exists());
         for (File f : new File(top, "games").listFiles()) assertFalse(f.getName().startsWith(".install-resurrection-"));
         fails(() -> GameInstall.mapped("sonora", "C:/data/a"));

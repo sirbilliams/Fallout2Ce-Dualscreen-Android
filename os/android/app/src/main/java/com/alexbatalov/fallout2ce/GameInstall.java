@@ -228,6 +228,17 @@ final class GameInstall {
                 || path.startsWith("appearance/") || path.startsWith("sfall/")
                 || path.matches("(master.dat|critter.dat|f2_res.dat|sfall.dat|f2_res.ini|ddraw.ini|config.cfg)"))) return null;
         }
+        if ("resurrection".equals(id)) {
+            // FoRes_EN_1_5.zip: Resurrection/ (game files) plus a sibling sound/music/ that
+            // fores.cfg reaches as ..\\sound\\music; both land at the game folder root.
+            if (path.startsWith("resurrection/")) path = path.substring("resurrection/".length());
+            else if (!path.startsWith("sound/")) return null;
+            // fores.cfg is not used (the installer writes fallout2.cfg), FALLOUT2 is an exe stub.
+            // Engine mounts mods/*.dat, so the content dats go there; nothing else loads fores*.dat.
+            if (path.equals("fores.dat") || path.equals("fores_critter.dat")) return "mods/" + path;
+            if (path.equals("fores.cfg") || path.equals("fallout2")
+                || path.matches("[^/]*\\.(txt|rtf|log)")) return null;
+        }
         if ("yesterday".equals(id)) {
             if (!path.startsWith(YesterdayInstall.PREFIX)) throw new IOException("Expected fallouty-main archive folder");
             path = path.substring(YesterdayInstall.PREFIX.length());
