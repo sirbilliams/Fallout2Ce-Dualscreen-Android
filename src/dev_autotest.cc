@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include <algorithm>
+#include <algorithm>
 #include <set>
 #include <string>
 #include <vector>
@@ -56,6 +57,7 @@
 #include "preferences.h"
 #include "save_compatibility.h"
 #include "save_storage.h"
+#include "game.h"
 #include "scripts.h"
 #include "settings.h"
 #include "skill.h"
@@ -732,7 +734,7 @@ static const DevAutotestStep kDevAutotestTalkSteps[] = {
 // saved as <step>_bottom.png).
 static const DevAutotestStep kDevAutotestDualTalkSteps[] = {
     { DEV_AUTOTEST_ACTION_NONE, 0, 0, 0, 30, "t00_map" },
-    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 13, 0, 0, 30, "t01_talk" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "t01_talk" },
     { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 60, "t02_talking" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "t03_option_0", "talk.options.0" },
     { DEV_AUTOTEST_ACTION_WAIT_TALKING, 600, 0, 0, 60, "t03b_talking" },
@@ -749,7 +751,8 @@ static const DevAutotestStep kDevAutotestDualBarterSteps[] = {
     { DEV_AUTOTEST_ACTION_GIVE_ITEM, 40, 3, 0, 1, "b01_give_stimpak" },
     { DEV_AUTOTEST_ACTION_GIVE_ITEM, 4, 0, 0, 1, "b02_give_knife" },
     { DEV_AUTOTEST_ACTION_CENTER_CRITTER, 0, 0, 0, 10, "b03_center_critter" },
-    { DEV_AUTOTEST_ACTION_TOUCH_TAP_CRITTER, 0, 0, 0, 300, "b04_talk" },
+    { DEV_AUTOTEST_ACTION_TALK_TO_PID, 0, 0, 0, 30, "b04_talk" },
+    { DEV_AUTOTEST_ACTION_WAIT_TALKING, 900, 0, 0, 30, "b04_talk_ready" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 90, "b05_barter", "dialog.tab.barter" },
     { DEV_AUTOTEST_ACTION_MUI_TAP, 0, 0, 0, 40, "b06_tap_item", "barter.player.pid.4" },
     { DEV_AUTOTEST_ACTION_MUI_LONG_PRESS, 45, 0, 0, 40, "b07_request", "barter.barterer.0" },
@@ -1551,6 +1554,35 @@ static Object* devAutotestFindNearestCritter()
         }
     }
     return critter;
+}
+
+// The nearest critter the dude can talk to: alive, visible, not in the party
+// and with a talk_p_proc (a critter without one, an animal or a plain spawn,
+// never opens a dialogue). Falls back to the nearest critter.
+// Critters whose talk did not open a dialogue (a talk_p_proc that only floats
+// a line, or an NPC that refuses); the next nearest is tried instead.
+static std::vector<int> gDevAutotestTalkRejected;
+static int gDevAutotestTalkLastId = -1;
+static int gDevAutotestTalkRetries = 0;
+
+static Object* devAutotestFindNearestTalkableCritter()
+{
+    Object* critter = nullptr;
+    int bestDistance = 0;
+    for (Object* object = objectFindFirstAtElevation(gElevation); object != nullptr; object = objectFindNextAtElevation()) {
+        if (object == gDude || FrmId(object).objectType() != OBJ_TYPE_CRITTER || (object->flags & OBJECT_HIDDEN) != 0 || critterIsDead(object)
+            || objectIsPartyMember(object) || object->sid == -1 || !scriptHasProc(object->sid, SCRIPT_PROC_TALK)
+            || std::find(gDevAutotestTalkRejected.begin(), gDevAutotestTalkRejected.end(), object->id) != gDevAutotestTalkRejected.end()) {
+            continue;
+        }
+
+        int distance = objectGetDistanceBetween(gDude, object);
+        if (critter == nullptr || distance < bestDistance) {
+            critter = object;
+            bestDistance = distance;
+        }
+    }
+    return critter != nullptr ? critter : devAutotestFindNearestCritter();
 }
 
 // The nearest living critter not in the party the dude can shoot at.
@@ -3594,6 +3626,22 @@ void devAutotestTick()
     if (step->action == DEV_AUTOTEST_ACTION_WAIT_TALKING && !gDevAutotestStepStarted) {
         static int waited = 0;
         bool talking = gameDialogIsTalking() && gameDialogGetOptionCount() > 0;
+        // The talk request was queued by the step before: when no dialogue
+        // mode was entered within kTalkOpenFrames, that critter's talk
+        // opened nothing.
+        const int kTalkOpenFrames = 200;
+        bool pickedTalk = gDevAutotestStep > 0 && gDevAutotestSteps[gDevAutotestStep - 1].action == DEV_AUTOTEST_ACTION_TALK_TO_PID
+            && gDevAutotestSteps[gDevAutotestStep - 1].a == 0 && gDevAutotestTalkLastId != -1;
+        bool inDialog = GameMode::isInGameMode(GameMode::kDialog);
+        if (!talking && !inDialog && pickedTalk && waited >= kTalkOpenFrames && gDevAutotestTalkRetries < 12) {
+            gDevAutotestTalkRetries++;
+            gDevAutotestTalkRejected.push_back(gDevAutotestTalkLastId);
+            devAutotestLog("  critter id %d opened no dialogue after %d frames, trying the next nearest\n", gDevAutotestTalkLastId, waited);
+            waited = 0;
+            gDevAutotestStep--;
+            gDevAutotestStepStarted = false;
+            return;
+        }
         if (!talking && waited < static_cast<int>(step->a)) {
             waited++;
             return;
@@ -3751,7 +3799,7 @@ void devAutotestTick()
             break;
         case DEV_AUTOTEST_ACTION_TALK_TO_PID: {
             int pid = 0x01000000 | static_cast<int>(step->a);
-            Object* critter = step->a == 0 ? devAutotestFindNearestCritter() : nullptr;
+            Object* critter = step->a == 0 ? devAutotestFindNearestTalkableCritter() : nullptr;
             // The dude's elevation first, then the others.
             for (int pass = 0; pass <= ELEVATION_COUNT && critter == nullptr; pass++) {
                 int elevation = pass == 0 ? gDude->elevation : pass - 1;
@@ -3763,15 +3811,28 @@ void devAutotestTick()
                 }
             }
             if (critter != nullptr) {
-                // Next to the critter: no walk, the same start every run.
+                // Next to the critter: no walk, the same start every run. The
+                // SW neighbour first; a free neighbour with a clear line to the
+                // critter otherwise (a wall or a prop between them makes
+                // _can_talk_to fail and the dialogue never opens).
                 int tile = tileGetTileInDirection(critter->tile, ROTATION_SW, 1);
+                for (int i = 0; i < ROTATION_COUNT; i++) {
+                    int candidate = tileGetTileInDirection(critter->tile, static_cast<Rotation>((ROTATION_SW + i) % ROTATION_COUNT), 1);
+                    if (_obj_blocking_at(gDude, candidate, critter->elevation) == nullptr
+                        && !_combat_is_shot_blocked(gDude, candidate, critter->tile, critter, nullptr)) {
+                        tile = candidate;
+                        break;
+                    }
+                }
                 Rect rect;
                 objectSetLocation(gDude, tile, critter->elevation, &rect);
-                devAutotestLog("  talk to pid %d at tile %d from tile %d\n", critter->pid, critter->tile, tile);
+                devAutotestLog("  talk to pid %d (id %d, sid %d) at tile %d from tile %d\n", critter->pid, critter->id, critter->sid, critter->tile, tile);
+                gDevAutotestTalkLastId = step->a == 0 ? critter->id : -1;
                 gDevAutotestPendingCapture = step->name;
                 gDevAutotestStep++;
                 gDevAutotestStepStarted = false;
-                actionTalk(gDude, critter);
+                int talkRc = actionTalk(gDude, critter);
+                devAutotestLog("  actionTalk rc %d, combat %d\n", talkRc, isInCombat() ? 1 : 0);
                 return;
             }
             devAutotestLog("  no critter pid %d\n", pid);
