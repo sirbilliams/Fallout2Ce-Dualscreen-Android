@@ -13,6 +13,7 @@
 #include "dev_autotest.h"
 #include "draw.h"
 #include "font_manager.h"
+#include "menu_branding.h"
 #include "game.h"
 #include "game_sound.h"
 #include "geometry.h"
@@ -499,8 +500,11 @@ static void mainMenuDrawButtonLabels(const MainMenuLayout& layout, const MainMen
         msg.num = mainMenuButtonSpecs[index].labelMessage;
         if (msg.num == -1) {
             msg.text = const_cast<char*>(muiText(380, "Mods"));
-        } else if (!messageListGetItem(&gMiscMessageList, &msg)) {
-            continue;
+        } else if (!messageListGetItem(&gMiscMessageList, &msg) || msg.text == nullptr || msg.text[0] == '\0') {
+            // CE: total conversions may lack or blank these entries.
+            const char* fallback = mainMenuDefaultLabel(mainMenuButtonSpecs[index].labelMessage);
+            if (fallback == nullptr) continue;
+            msg.text = const_cast<char*>(fallback);
         }
 
         int len = fontGetStringWidth(msg.text);
