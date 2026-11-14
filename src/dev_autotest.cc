@@ -7,7 +7,6 @@
 #include <string.h>
 
 #include <algorithm>
-#include <algorithm>
 #include <set>
 #include <string>
 #include <vector>
@@ -57,7 +56,6 @@
 #include "preferences.h"
 #include "save_compatibility.h"
 #include "save_storage.h"
-#include "game.h"
 #include "scripts.h"
 #include "settings.h"
 #include "skill.h"
