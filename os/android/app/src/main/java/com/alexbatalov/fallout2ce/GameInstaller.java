@@ -90,9 +90,7 @@ final class GameInstaller {
                 if (id.equals("yesterday")) {
                     bytes = YesterdayInstall.ARCHIVE_BYTES;
                 } else if (id.equals("resurrection")) {
-                    HttpURLConnection connection = connect(RESURRECTION, "HEAD");
-                    try { bytes = connection.getResponseCode() == 200 ? connection.getContentLengthLong() : -1; }
-                    finally { connection.disconnect(); }
+                    bytes = remoteSize(RESURRECTION);
                 } else {
                     bytes = GameInstall.asset(id, read(GameInstall.releaseApi(id))).size;
                 }
@@ -136,13 +134,10 @@ final class GameInstaller {
                 if (id.equals("yesterday")) {
                     asset = new RpuRelease.Asset("fallouty-main.zip", YesterdayInstall.ARCHIVE_BYTES, YesterdayInstall.URL);
                 } else if (id.equals("resurrection")) {
-                    HttpURLConnection connection = connect(RESURRECTION, "HEAD");
-                    try {
-                        if (connection.getResponseCode() != 200) throw new IOException("Official archive is unavailable");
-                        long size = connection.getContentLengthLong();
-                        if (size <= 0) throw new IOException("Official server did not provide an archive size");
-                        asset = new RpuRelease.Asset("FoRes_EN_1_5.zip", size, RESURRECTION);
-                    } finally { connection.disconnect(); }
+                    long size = remoteSize(RESURRECTION);
+                    if (size == -2) throw new IOException("Official archive is unavailable");
+                    if (size <= 0) throw new IOException("Official server did not provide an archive size");
+                    asset = new RpuRelease.Asset("FoRes_EN_1_5.zip", size, RESURRECTION);
                 } else {
                     asset = GameInstall.asset(id, read(GameInstall.releaseApi(id)));
                 }
@@ -192,6 +187,29 @@ final class GameInstaller {
         try { status(context, id, download < 0 ? "Could not start download; tap Install to retry" : "Downloading"); }
         catch (IOException ignored) { }
         if (download >= 0) schedule(context);
+    }
+
+    // Size of a remote file, -1 when the server gives none, -2 when it refuses.
+    // A one-byte GET, not HEAD: Bitbucket redirects to an S3 link signed for
+    // GET only, which answers HEAD with 403.
+    static long remoteSize(String url) throws IOException {
+        HttpURLConnection connection = connect(url, "GET");
+        connection.setRequestProperty("Range", "bytes=0-0");
+        try {
+            int code = connection.getResponseCode();
+            if (code == 206) return totalFromContentRange(connection.getHeaderField("Content-Range"));
+            if (code == 200) return connection.getContentLengthLong();
+            return -2;
+        } finally { connection.disconnect(); }
+    }
+
+    // "bytes 0-0/358069166" -> 358069166; -1 when missing or unknown ("*").
+    static long totalFromContentRange(String header) {
+        if (header == null) return -1;
+        int slash = header.lastIndexOf('/');
+        if (slash < 0) return -1;
+        try { return Long.parseLong(header.substring(slash + 1).trim()); }
+        catch (NumberFormatException e) { return -1; }
     }
 
     private static HttpURLConnection connect(String url, String method) throws IOException {
