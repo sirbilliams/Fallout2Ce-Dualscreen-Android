@@ -401,12 +401,17 @@ final class GameInstall {
     }
 
     private static boolean shareWithOs(java.nio.file.Path p, boolean dir, int gid) {
-        if (osStat(p.toFile()) == null) return false;
-        try {
-            android.system.Os.chmod(p.toString(), dir ? 02775 : 0664);
-        } catch (Throwable ignored) {
+        int[] st = osStat(p.toFile());
+        if (st == null) return false;
+        int want = dir ? 02775 : 0664;
+        // Every app start walks every game: only touch what is wrong (saves the syscalls on big installs).
+        if ((st[0] & 07777 & want) != want) {
+            try {
+                android.system.Os.chmod(p.toString(), (st[0] & 07777) | want);
+            } catch (Throwable ignored) {
+            }
         }
-        if (gid >= 0) {
+        if (gid >= 0 && st[1] != gid) {
             try {
                 android.system.Os.chown(p.toString(), -1, gid);
             } catch (Throwable ignored) {
