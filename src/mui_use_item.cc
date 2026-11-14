@@ -14,6 +14,9 @@ namespace {
 
     const MuiColor kListBackground = muiRgb(0x0C0F09);
 
+    constexpr int kTextUseOn = 435;
+    constexpr int kTextYourItems = 436;
+
     // "Use item on": dude's items (not the equipped ones) in a compact panel
     // next to the target - name, filters, a grid of three columns. Tap uses
     // the item on the target, long press shows its name, tap outside
@@ -63,10 +66,11 @@ namespace {
         float gridWidth = cell * kColumns + gap * (kColumns + 1);
         float width = gridWidth + padding * 2.0f;
         float titleHeight = ui.dp(20.0f);
+        float hintHeight = ui.dp(16.0f);
         float filterHeight = ui.dp(28.0f);
         int rows = std::max((static_cast<int>(items.size()) + kColumns - 1) / kColumns, 1);
         float contentHeight = rows * (cell + gap);
-        float fixedHeight = padding + titleHeight + ui.dp(4.0f) + filterHeight + ui.dp(6.0f) + gap * 2.0f + padding;
+        float fixedHeight = padding + titleHeight + hintHeight + ui.dp(4.0f) + filterHeight + ui.dp(6.0f) + gap * 2.0f + padding;
         float height = std::min(fixedHeight + contentHeight, ui.safeRect().h - ui.dp(16.0f));
 
         MuiRect panel = muiPlacePopup(ui, anchor, avoid, width, height);
@@ -77,12 +81,26 @@ namespace {
         float x = panel.x + padding;
         float y = panel.y + padding;
 
-        // Who the item is for.
+        // Who the item is for. Spelled out: a bare "Chair" over the player's
+        // own items read as the chair's inventory.
         MuiRect title = { x, y, gridWidth, titleHeight };
+        std::u32string titleText = muiDecodeUtf8(muiText(kTextUseOn, "Use an item on: %s"));
+        std::u32string name = muiDecodeGameText(objectGetName(target));
+        size_t slot = titleText.find(U"%s");
+        if (slot != std::u32string::npos) {
+            titleText.replace(slot, 2, name);
+        } else {
+            titleText += U" " + name;
+        }
         muiPushClip(title);
-        muiDrawTextAligned(muiDecodeGameText(objectGetName(target)), title, ui.dp(13.0f), theme.accent, MuiAlign::Start, MuiAlign::Center);
+        muiDrawTextAligned(titleText, title, ui.dp(13.0f), theme.accent, MuiAlign::Start, MuiAlign::Center);
         muiPopClip();
-        y += titleHeight + ui.dp(4.0f);
+        y += titleHeight;
+        MuiRect hint = { x, y, gridWidth, hintHeight };
+        muiPushClip(hint);
+        muiDrawTextAligned(muiDecodeUtf8(muiText(kTextYourItems, "Your items - tap one to use it")), hint, ui.dp(11.0f), theme.text, MuiAlign::Start, MuiAlign::Center);
+        muiPopClip();
+        y += hintHeight + ui.dp(4.0f);
 
         muiItemFilterRow(ui, "useitem.filter", { x, y, gridWidth, filterHeight }, &filter);
         y += filterHeight + ui.dp(6.0f);

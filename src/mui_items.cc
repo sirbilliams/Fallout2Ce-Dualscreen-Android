@@ -158,6 +158,14 @@ void muiDrawItemCell(MuiContext& ui, const MuiRect& rect, Object* item, int quan
         muiDrawTexture(texture, { area.centerX() - w / 2.0f, area.centerY() - h / 2.0f, w, h });
     }
 
+    // A lit flare is named and drawn like an unlit one, and the two don't
+    // stack, so without a tag it looks like a copied flare.
+    if (ProtoId(item) == ItemProtoTypeId::LitFlare) {
+        float size = ui.dp(10.0f);
+        MuiRect tagRect = { rect.x + ui.dp(4.0f), rect.y + ui.dp(2.0f), rect.w - ui.dp(8.0f), muiLineHeight(size) };
+        muiDrawTextAligned(muiDecodeUtf8(muiText(437, "LIT")), tagRect, size, theme.accent, MuiAlign::Start, MuiAlign::Start);
+    }
+
     if (quantity > 1 || ProtoId(item) == ItemProtoTypeId::Money) {
         std::string label = ProtoId(item) == ItemProtoTypeId::Money ? "$" + std::to_string(quantity) : "x" + std::to_string(quantity);
         float size = ui.dp(11.0f);
