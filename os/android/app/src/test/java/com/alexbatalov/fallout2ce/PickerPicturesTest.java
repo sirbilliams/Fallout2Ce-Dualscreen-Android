@@ -93,7 +93,8 @@ public class PickerPicturesTest {
         assertEquals(-1, PickerPictures.imageScore(320, 200));   // too narrow
         assertEquals(-1, PickerPictures.imageScore(1000, 1000)); // square
         assertEquals(-1, PickerPictures.imageScore(1600, 400));  // too wide
-        assertEquals(-1, PickerPictures.imageScore(640, 480));
+        assertTrue(PickerPictures.imageScore(640, 480) > 0); // 640x480 game screenshots are valid, just smaller
+        assertEquals(-1, PickerPictures.imageScore(480, 360));
         assertTrue(PickerPictures.imageScore(1280, 720) > PickerPictures.imageScore(640, 480));
     }
 
@@ -133,6 +134,27 @@ public class PickerPicturesTest {
         assertTrue(PickerPictures.noneBackoffActive(dir, 1000 + 3600_000L));
         assertFalse(PickerPictures.noneBackoffActive(dir, 1000 + PickerPictures.NONE_BACKOFF_MS));
         assertFalse(PickerPictures.noneBackoffActive(dir, 500)); // clock went backwards: retry
+    }
+
+    @Test public void oldNoneMarkerIsVoidAfterRankVersionBump() throws Exception {
+        File dir = java.nio.file.Files.createTempDirectory("none2").toFile();
+        java.nio.file.Files.write(new File(dir, "none-found").toPath(), "1000".getBytes("UTF-8")); // pre-version format
+        assertFalse(PickerPictures.noneBackoffActive(dir, 2000));
+        java.nio.file.Files.write(new File(dir, "none-found").toPath(), ((PickerPictures.RANK_VERSION - 1) + ":1000").getBytes("UTF-8"));
+        assertFalse(PickerPictures.noneBackoffActive(dir, 2000));
+    }
+
+    @Test public void resurrectionModdbPageYieldsScreenshots() throws Exception {
+        String html;
+        try (InputStream in = getClass().getResourceAsStream("/picker/moddb-resurrection-images.html")) {
+            assertNotNull(in);
+            html = PickerPictures.utf8(PickerPictures.readLimited(in, 1 << 21));
+        }
+        java.util.List<String> urls = PickerPictures.moddbImages(html, 12);
+        assertTrue(urls.size() >= 6);
+        assertEquals("https://media.moddb.com/images/mods/1/30/29897/screen04_en.jpg", urls.get(0));
+        assertTrue(urls.contains("https://media.moddb.com/images/mods/1/30/29897/screen20.jpg")); // from a crop_120x90 thumbnail
+        for (String u : urls) { assertFalse(u, u.contains("/cache/")); assertFalse(u, u.contains("Header")); }
     }
 
     @Test public void previewCapAdmitsRealScreenshots() {

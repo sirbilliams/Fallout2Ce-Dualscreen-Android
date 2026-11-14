@@ -51,6 +51,30 @@ final class GameArt {
         }
     }
 
+    /** Every copy of [path] in this source (each loose root and each archive), as {bytes, origin} pairs. */
+    static List<Object[]> readAll(Source source, String path) {
+        List<Object[]> out = new ArrayList<>();
+        String rel = path.replace('\\', '/').toLowerCase(Locale.ROOT);
+        for (File root : source.looseRoots) {
+            File f = ci(root, rel);
+            if (f != null && inside(root, f) && f.isFile() && f.length() <= MAX_ENTRY) {
+                try { out.add(new Object[] { Files.readAllBytes(f.toPath()), f.getName() }); } catch (IOException ignored) { }
+            }
+        }
+        for (File dat : source.dats) {
+            try {
+                Map<String, long[]> index = source.indexes.get(dat);
+                if (index == null) { index = index(dat); source.indexes.put(dat, index); }
+                byte[] data = readEntry(dat, index, rel);
+                if (data != null) out.add(new Object[] { data, dat.getName() });
+            } catch (IOException | RuntimeException ignored) { }
+        }
+        return out;
+    }
+
+    /** Flat or near-flat images (a solid test card) are never a game picture. */
+    static final double MIN_RICHNESS = 2;
+
     private static boolean inside(File root, File file) {
         try { return file.getCanonicalPath().startsWith(root.getCanonicalPath() + File.separator); }
         catch (IOException e) { return false; }
@@ -211,18 +235,22 @@ final class GameArt {
         double ownScore = -1, stockScore = -1;
         for (int i = 0; i < 16; ++i) {
             String entry = "art/splash/splash" + i + ".rix";
-            byte[] praw = rixToPraw(source.read(entry));
-            if (praw == null) continue;
-            String name = entry + "@" + source.origin;
-            double score = richness(praw);
-            boolean stock = base != null && Arrays.equals(praw, rixToPraw(base.read(entry)));
-            if (stock) { if (score > stockScore) { stockScore = score; bestStock = new Object[] { praw, name }; } }
-            else if (score > ownScore) { ownScore = score; bestOwn = new Object[] { praw, name }; }
+            byte[] baseRaw = base == null ? null : rixToPraw(base.read(entry));
+            for (Object[] copy : readAll(source, entry)) {
+                byte[] praw = rixToPraw((byte[]) copy[0]);
+                if (praw == null) continue;
+                String name = entry + "@" + copy[1];
+                double score = richness(praw);
+                if (score < MIN_RICHNESS) continue; // flat grey/black card
+                boolean stock = baseRaw != null && Arrays.equals(praw, baseRaw);
+                if (stock) { if (score > stockScore) { stockScore = score; bestStock = new Object[] { praw, name }; } }
+                else if (score > ownScore) { ownScore = score; bestOwn = new Object[] { praw, name }; }
+            }
         }
         if (bestOwn != null) return bestOwn;
         byte[] menu = frmToPraw(source.read("art/intrface/mainmenu.frm"), palette(source));
         if (bestStock != null) return bestStock;
-        if (menu != null) return new Object[] { menu, "art/intrface/mainmenu.frm@" + source.origin };
+        if (menu != null && richness(menu) >= MIN_RICHNESS) return new Object[] { menu, "art/intrface/mainmenu.frm@" + source.origin };
         return null;
     }
 

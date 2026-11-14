@@ -117,6 +117,24 @@ public class GameArtTest {
         assertTrue(new File(dir, "art.rgba").isFile());
     }
 
+    @Test public void flatSplashesAreRejectedAndOtherCopiesAreTried() throws Exception {
+        File top = temp.newFolder("flat");
+        File root = new File(new File(top, "games"), "nevada");
+        File splash = new File(root, "data/art/splash");
+        assertTrue(splash.mkdirs());
+        Files.write(new File(splash, "splash0.rix").toPath(), rix(8, 6, 3)); // flat black
+        Files.write(new File(splash, "splash5.rix").toPath(), rix(8, 6, 2)); // green
+        Object[] pick = GameArt.pick(GameArt.sourceFor(top, "nevada"));
+        assertNotNull(pick);
+        assertTrue(pick[1].toString().startsWith("art/splash/splash5.rix"));
+        File only = temp.newFolder("flatonly");
+        File root2 = new File(new File(only, "games"), "nevada");
+        File splash2 = new File(root2, "data/art/splash");
+        assertTrue(splash2.mkdirs());
+        Files.write(new File(splash2, "splash0.rix").toPath(), rix(8, 6, 3));
+        assertNull(GameArt.pick(GameArt.sourceFor(only, "nevada")));
+    }
+
     @Test public void looseSplashAndMainMenuFallback() throws Exception {
         File top = temp.newFolder("top2");
         File root = new File(new File(top, "games"), "sonora");
@@ -172,10 +190,12 @@ public class GameArtTest {
         assertTrue(credit, credit.contains("splash3.rix"));
         // Only stock images exist: they are still used.
         File top2 = temp.newFolder("top6");
-        dat2(new File(top2, "master.dat"), base, true);
+        Map<String, byte[]> stock = new LinkedHashMap<>();
+        stock.put("art/splash/splash0.rix", colourful);
+        dat2(new File(top2, "master.dat"), stock, true);
         File root2 = new File(new File(top2, "games"), "sonora");
         assertTrue(root2.mkdirs());
-        dat2(new File(root2, "master.dat"), base, true);
+        dat2(new File(root2, "master.dat"), stock, true);
         assertTrue(GameArt.generate(top2, "sonora", new File(root2, "picker"), "c", "u"));
     }
 }

@@ -21,7 +21,7 @@ public class PickerRankingTest {
         for (String host : new String[] { "opengraph.githubassets.com", "repository-images.githubusercontent.com" })
             assertEquals(-1, PickerPictures.score("https://" + host + "/a/b", "image/png", 1920, 1080, 100, false));
         assertEquals(-1, score("a.gif", "image/gif", 1920, 1080, 100));
-        assertEquals(-1, score("a.png", "image/png", 959, 600, 100));
+        assertEquals(-1, score("a.png", "image/png", 599, 400, 100));
         assertEquals(-1, score("a.png", "image/png", 1920, 1600, 100));
         assertEquals(-1, score("a.png", "image/png", 1920, 800, 100));
         assertTrue(score("a.png", "image/png", 1300, 1000, 100) > 0);

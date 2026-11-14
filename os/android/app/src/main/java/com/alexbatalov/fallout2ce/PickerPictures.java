@@ -150,7 +150,7 @@ final class PickerPictures {
         return list.size() > max ? list.subList(0, max) : list;
     }
 
-    static final int RANK_VERSION = 3;
+    static final int RANK_VERSION = 4;
     static final int CANDIDATE_CAP = 16;
     static final long NONE_BACKOFF_MS = 24L * 60 * 60 * 1000;
 
@@ -175,7 +175,7 @@ final class PickerPictures {
     }
 
     static long imageScore(int width, int height) {
-        if (width < 960 || height <= 0 || width > 16384 || height > 16384 || (long) width * height > 64000000) return -1;
+        if (width < 600 || height <= 0 || width > 16384 || height > 16384 || (long) width * height > 64000000) return -1;
         double aspect = width / (double) height;
         return aspect < 1.3 || aspect > 2.2 ? -1 : (long) width * height;
     }
@@ -278,14 +278,17 @@ final class PickerPictures {
         File marker = new File(dir, "none-found");
         if (!marker.isFile()) return false;
         try {
-            long at = Long.parseLong(utf8(java.nio.file.Files.readAllBytes(marker.toPath())).trim());
+            // "<RANK_VERSION>:<millis>"; a marker from another rank version (or the old bare number) is void.
+            String[] parts = utf8(java.nio.file.Files.readAllBytes(marker.toPath())).trim().split(":");
+            if (parts.length != 2 || Integer.parseInt(parts[0]) != RANK_VERSION) return false;
+            long at = Long.parseLong(parts[1]);
             return at <= nowMs && nowMs - at < NONE_BACKOFF_MS;
         } catch (IOException | NumberFormatException e) { return false; }
     }
 
     static void writeNone(File dir, long nowMs) throws IOException {
         if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("picture directory");
-        java.nio.file.Files.write(new File(dir, "none-found").toPath(), Long.toString(nowMs).getBytes(StandardCharsets.UTF_8));
+        java.nio.file.Files.write(new File(dir, "none-found").toPath(), (RANK_VERSION + ":" + nowMs).getBytes(StandardCharsets.UTF_8));
     }
 
     // ---- repository image folders ----
@@ -352,8 +355,9 @@ final class PickerPictures {
             String lower = url.toLowerCase(Locale.ROOT);
             if (lower.contains("/members/") || lower.contains("/avatar") || lower.contains("/icons/") || lower.contains("/groups/")
                 || lower.contains("/articles/") || lower.contains("/downloads/") || lower.contains("/thumbsquare")
-                || lower.contains("/thumb_100x") || lower.contains("/thumb_75x") || lower.contains("/thumb_150x")) continue;
-            String full = url.replaceFirst("(?i)media\\.moddb\\.com/cache/images/(.*)/thumb[a-z]*_[0-9x]+/", "media.moddb.com/images/$1/");
+                || lower.contains("/thumb_100x") || lower.contains("/thumb_75x") || lower.contains("/thumb_150x")
+                || lower.contains("header")) continue;
+            String full = url.replaceFirst("(?i)media\\.moddb\\.com/cache/images/(.*)/(?:thumb|crop|square)[a-z]*_[0-9x]+/", "media.moddb.com/images/$1/");
             if (full.toLowerCase(Locale.ROOT).contains("/cache/")) continue; // thumbnail we cannot map back
             if (unwantedImage(full)) continue;
             out.add(full);
