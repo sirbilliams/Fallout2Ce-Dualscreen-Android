@@ -25,6 +25,10 @@ public final class GamePictures {
         if ("ettu".equals(id)) return new String[] { "rotators", "https://github.com/rotators/Fo1in2" };
         if ("sonora".equals(id)) return new String[] { "Nevada Band / Cambragol / NovaRain", "https://github.com/NovaRain/Fallout-Sonora-English" };
         if ("resurrection".equals(id)) return new String[] { "Resurrection Team", "https://resurrection.cz/en/download/" };
+        if ("nevada".equals(id)) return new String[] { "Nevada Band", "https://github.com/HogLord69/fallout-english-localization" };
+        if ("olympus2207".equals(id)) return new String[] { "Nebesa Games / Dieselship Studio", "https://olympus2207.com/" };
+        if ("megamod".equals(id)) return new String[] { "MIB88 and contributors", "https://www.moddb.com/mods/mib88-megamod" };
+        if ("yesterday".equals(id)) return new String[] { "PJ Hexer and contributors", "https://gitlab.com/falloutfans/fallouty" };
         return null;
     }
 
@@ -53,6 +57,7 @@ public final class GamePictures {
         if (!PickerPictures.needsRanking(dir, version)) return;
         String key = dir.getAbsolutePath();
         long now = android.os.SystemClock.elapsedRealtime();
+        if (PickerPictures.noneBackoffActive(dir, System.currentTimeMillis())) return;
         if (now - attempted.getOrDefault(key, -60000L) < 60000 || !pending.add(key)) return;
         attempted.put(key, now);
         Context app = context.getApplicationContext();
@@ -71,8 +76,8 @@ public final class GamePictures {
                         writeLocal(dir, local, creator, source);
                     return; // No rank marker: retry discovery when Wi-Fi is available.
                 }
-                long deadline = android.os.SystemClock.elapsedRealtime() + 25000;
-                java.util.List<String> candidates = discover(id, source, deadline - 12000);
+                long deadline = android.os.SystemClock.elapsedRealtime() + 60000;
+                java.util.List<String> candidates = discover(id, source, deadline - 30000);
                 String image = null;
                 byte[] data = null;
                 BitmapFactory.Options bounds = new BitmapFactory.Options();
@@ -104,7 +109,9 @@ public final class GamePictures {
                         if (android.os.SystemClock.elapsedRealtime() < deadline)
                             Files.write(new File(dir, "rank-version").toPath(), version.getBytes(StandardCharsets.UTF_8));
                     }
-                    // With no result or an exhausted deadline, allow a later retry.
+                    else if (android.os.SystemClock.elapsedRealtime() < deadline)
+                        PickerPictures.writeNone(dir, System.currentTimeMillis()); // retry after 24 h, not every launch
+                    // An exhausted deadline writes nothing: a later launch retries.
                     return;
                 }
                 int edge = installed ? 1920 : 480;
@@ -133,6 +140,7 @@ public final class GamePictures {
                     Files.move(credit.toPath(), new File(dir, "credit.txt").toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                     Files.move(temp.toPath(), new File(dir, "art.rgba").toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
                     Files.write(new File(dir, "rank-version").toPath(), version.getBytes(StandardCharsets.UTF_8));
+                    Files.deleteIfExists(new File(dir, "none-found").toPath());
                 } finally { bitmap.recycle(); }
             } catch (IOException | RuntimeException e) {
                 Log.d("GamePictures", "No picture for " + id + ": " + e.getClass().getSimpleName());
@@ -191,13 +199,24 @@ public final class GamePictures {
             String repo = api.substring(0, api.length() - "/readme".length());
             try { pools.add(PickerPictures.githubImages(PickerPictures.utf8(fetch(repo + "/releases?per_page=2", PickerPictures.PAGE_CAP, deadline)), true)); }
             catch (IOException | RuntimeException ignored) { }
-            for (String folder : new String[] { "", "/docs", "/screenshots", "/gallery" }) {
-                try { pools.add(PickerPictures.githubImages(PickerPictures.utf8(fetch(repo + "/contents" + folder, PickerPictures.PAGE_CAP, deadline)), false)); }
-                catch (IOException | RuntimeException ignored) { }
+            String rootJson = null;
+            try { rootJson = PickerPictures.utf8(fetch(repo + "/contents", PickerPictures.PAGE_CAP, deadline)); }
+            catch (IOException | RuntimeException ignored) { }
+            if (rootJson != null) {
+                try { pools.add(PickerPictures.githubImages(rootJson, false)); } catch (RuntimeException ignored) { }
+                for (String folder : PickerPictures.imageFolders(rootJson)) {
+                    try { pools.add(PickerPictures.githubImages(PickerPictures.utf8(fetch(repo + "/contents" + PickerPictures.contentsPath(folder), PickerPictures.PAGE_CAP, deadline)), false)); }
+                    catch (IOException | RuntimeException ignored) { }
+                }
             }
         }
+        String moddb = PickerPictures.moddbImagesPage(id);
+        if (moddb != null) {
+            try { pools.add(PickerPictures.moddbImages(PickerPictures.utf8(fetch(moddb, 2 * PickerPictures.PAGE_CAP, deadline)), 12)); }
+            catch (IOException | RuntimeException ignored) { }
+        }
         java.util.Set<String> result = new java.util.LinkedHashSet<>();
-        for (int index = 0; index < 12 && result.size() < PickerPictures.CANDIDATE_CAP; index++) {
+        for (int index = 0; index < 16 && result.size() < PickerPictures.CANDIDATE_CAP; index++) {
             for (java.util.List<String> pool : pools) {
                 if (index < pool.size()) result.add(pool.get(index));
                 if (result.size() == PickerPictures.CANDIDATE_CAP) break;

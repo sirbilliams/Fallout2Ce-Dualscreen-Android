@@ -96,4 +96,47 @@ public class PickerPicturesTest {
         assertEquals(-1, PickerPictures.imageScore(640, 480));
         assertTrue(PickerPictures.imageScore(1280, 720) > PickerPictures.imageScore(640, 480));
     }
+
+    @Test public void imageFoldersMatchCaseInsensitivelyAndNestGallery() {
+        String json = "[{\"name\":\"Resources\",\"type\":\"dir\"},{\"name\":\"Images\",\"type\":\"dir\"},"
+            + "{\"name\":\"IMG\",\"type\":\"dir\"},{\"name\":\"src\",\"type\":\"dir\"},{\"name\":\"Art\",\"type\":\"file\"},"
+            + "{\"name\":\"media\",\"type\":\"dir\"},{\"name\":\"../x\",\"type\":\"dir\"}]";
+        java.util.List<String> folders = PickerPictures.imageFolders(json);
+        assertTrue(folders.contains("Resources/Gallery"));
+        assertTrue(folders.contains("Images") && folders.contains("IMG") && folders.contains("media"));
+        assertFalse(folders.contains("src") || folders.contains("Art") || folders.contains("../x"));
+        assertEquals("/Resources/Gallery", PickerPictures.contentsPath("Resources/Gallery"));
+        assertTrue(PickerPictures.imageFolders("not json").isEmpty());
+    }
+
+    @Test public void moddbSlugsAndScreenshotParsing() {
+        assertEquals("https://www.moddb.com/mods/fallout-15-resurrection/images", PickerPictures.moddbImagesPage("resurrection"));
+        assertEquals("https://www.moddb.com/mods/f3-van-buren/images", PickerPictures.moddbImagesPage("yesterday"));
+        assertNull(PickerPictures.moddbImagesPage("sonora"));
+        String html = "<img src=\"https://media.moddb.com/cache/images/mods/1/12/11111/thumb_620x2000/shot1.jpg\">"
+            + "<a href=\"https://media.moddb.com/images/mods/1/12/11111/shot2.png\">"
+            + "<img src=\"https://media.moddb.com/images/members/1/2/1/avatar.jpg\">"
+            + "<img src=\"https://media.moddb.com/cache/images/mods/1/12/11111/thumb_100x100/tiny.jpg\">"
+            + "<img src=\"https://media.moddb.com/images/mods/1/12/11111/shot1.jpg\">"
+            + "<img src=\"https://media.moddb.com/images/mods/1/12/11111/badge.png\">"
+            + "<img src=\"https://www.moddb.com/static/logo.png\">";
+        assertEquals(java.util.Arrays.asList(
+            "https://media.moddb.com/images/mods/1/12/11111/shot1.jpg",
+            "https://media.moddb.com/images/mods/1/12/11111/shot2.png"), PickerPictures.moddbImages(html, 10));
+        assertEquals(1, PickerPictures.moddbImages(html, 1).size());
+    }
+
+    @Test public void noneFoundBacksOffForADay() throws Exception {
+        File dir = java.nio.file.Files.createTempDirectory("none").toFile();
+        assertFalse(PickerPictures.noneBackoffActive(dir, 1000));
+        PickerPictures.writeNone(dir, 1000);
+        assertTrue(PickerPictures.noneBackoffActive(dir, 1000 + 3600_000L));
+        assertFalse(PickerPictures.noneBackoffActive(dir, 1000 + PickerPictures.NONE_BACKOFF_MS));
+        assertFalse(PickerPictures.noneBackoffActive(dir, 500)); // clock went backwards: retry
+    }
+
+    @Test public void previewCapAdmitsRealScreenshots() {
+        assertTrue(PickerPictures.PREVIEW_CAP >= 4 * 1024 * 1024);
+        assertTrue(PickerPictures.imageScore(1280, 800) > 0);
+    }
 }

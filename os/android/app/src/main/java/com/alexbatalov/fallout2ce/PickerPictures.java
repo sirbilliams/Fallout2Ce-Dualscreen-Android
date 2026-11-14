@@ -9,7 +9,7 @@ import java.util.regex.*;
 
 // Pure source/cache policy. No pictures or network access at build time.
 final class PickerPictures {
-    static final int PREVIEW_CAP = 512 * 1024;
+    static final int PREVIEW_CAP = 4 * 1024 * 1024;
     static final int FULL_CAP = 8 * 1024 * 1024;
     static final int PAGE_CAP = 1024 * 1024;
 
@@ -150,8 +150,9 @@ final class PickerPictures {
         return list.size() > max ? list.subList(0, max) : list;
     }
 
-    static final int RANK_VERSION = 2;
-    static final int CANDIDATE_CAP = 12;
+    static final int RANK_VERSION = 3;
+    static final int CANDIDATE_CAP = 16;
+    static final long NONE_BACKOFF_MS = 24L * 60 * 60 * 1000;
 
     static String rankVersion(String appVersion) { return RANK_VERSION + ":" + appVersion; }
 
@@ -266,6 +267,97 @@ final class PickerPictures {
                 addImage(out, file.get(releases ? "browser_download_url" : "download_url"));
                 if (out.size() >= 12) return new ArrayList<>(out);
             }
+        }
+        return new ArrayList<>(out);
+    }
+
+    // ---- none-found backoff ----
+
+    /** True while a "none-found" marker younger than NONE_BACKOFF_MS exists (wall-clock millis). */
+    static boolean noneBackoffActive(File dir, long nowMs) {
+        File marker = new File(dir, "none-found");
+        if (!marker.isFile()) return false;
+        try {
+            long at = Long.parseLong(utf8(java.nio.file.Files.readAllBytes(marker.toPath())).trim());
+            return at <= nowMs && nowMs - at < NONE_BACKOFF_MS;
+        } catch (IOException | NumberFormatException e) { return false; }
+    }
+
+    static void writeNone(File dir, long nowMs) throws IOException {
+        if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("picture directory");
+        java.nio.file.Files.write(new File(dir, "none-found").toPath(), Long.toString(nowMs).getBytes(StandardCharsets.UTF_8));
+    }
+
+    // ---- repository image folders ----
+
+    private static final Set<String> IMAGE_FOLDERS = new HashSet<>(Arrays.asList(
+        "docs", "screenshots", "screens", "gallery", "images", "img", "media", "art", "pictures"));
+
+    /**
+     * Folders worth listing, from a GitHub contents listing of the repository root. Matching is
+     * case-insensitive; "Resources" is searched one level down for "Gallery"/"Images" (the Fo1in2
+     * layout, Resources/Gallery). Returns repository-relative paths with the real casing, at most 6.
+     */
+    static List<String> imageFolders(String rootJson) {
+        List<String> out = new ArrayList<>();
+        try {
+            for (Object entry : array(new RpuRelease.Json(rootJson).value())) {
+                Map<?, ?> e = object(entry);
+                if (!"dir".equals(e.get("type")) || !(e.get("name") instanceof String)) continue;
+                String name = (String) e.get("name");
+                if (!name.matches("[A-Za-z0-9_. -]+")) continue;
+                String lower = name.toLowerCase(Locale.ROOT);
+                if (IMAGE_FOLDERS.contains(lower)) out.add(name);
+                else if (lower.equals("resources") || lower.equals("assets")) { out.add(name + "/Gallery"); out.add(name + "/Images"); }
+                if (out.size() >= 6) break;
+            }
+        } catch (RuntimeException ignored) { }
+        return out;
+    }
+
+    /** Encodes each path segment for the GitHub contents API. */
+    static String contentsPath(String folder) {
+        StringBuilder sb = new StringBuilder();
+        for (String part : folder.split("/")) sb.append('/').append(encode(part).replace("+", "%20"));
+        return sb.toString();
+    }
+
+    // ---- ModDB screenshots ----
+
+    static String moddbSlug(String id) {
+        switch (id) {
+            case "megamod": return "mib88-megamod";
+            case "resurrection": return "fallout-15-resurrection";
+            case "olympus2207": return "olympus-2207";
+            case "yesterday": return "f3-van-buren";
+            default: return null; // no confirmed ModDB page (ettu, sonora, nevada)
+        }
+    }
+
+    static String moddbImagesPage(String id) {
+        String slug = moddbSlug(id);
+        return slug == null ? null : "https://www.moddb.com/mods/" + slug + "/images";
+    }
+
+    /**
+     * Full-size screenshots from a ModDB images page. Takes media.moddb.com image URLs; a cached
+     * thumbnail (media.moddb.com/cache/images/.../thumb_NNN/name.jpg) is rewritten to its full-size
+     * original (media.moddb.com/images/.../name.jpg). Member avatars, icons and site chrome are
+     * skipped. Document order, duplicates removed, at most [max].
+     */
+    static List<String> moddbImages(String html, int max) {
+        Set<String> out = new LinkedHashSet<>();
+        Matcher m = Pattern.compile("https?://media\\.moddb\\.com/(?:cache/)?images/[^\"'\\s<>)]+\\.(?:png|jpe?g)", Pattern.CASE_INSENSITIVE).matcher(html);
+        while (m.find() && out.size() < max) {
+            String url = m.group().replace("&amp;", "&");
+            String lower = url.toLowerCase(Locale.ROOT);
+            if (lower.contains("/members/") || lower.contains("/avatar") || lower.contains("/icons/") || lower.contains("/groups/")
+                || lower.contains("/articles/") || lower.contains("/downloads/") || lower.contains("/thumbsquare")
+                || lower.contains("/thumb_100x") || lower.contains("/thumb_75x") || lower.contains("/thumb_150x")) continue;
+            String full = url.replaceFirst("(?i)media\\.moddb\\.com/cache/images/(.*)/thumb[a-z]*_[0-9x]+/", "media.moddb.com/images/$1/");
+            if (full.toLowerCase(Locale.ROOT).contains("/cache/")) continue; // thumbnail we cannot map back
+            if (unwantedImage(full)) continue;
+            out.add(full);
         }
         return new ArrayList<>(out);
     }

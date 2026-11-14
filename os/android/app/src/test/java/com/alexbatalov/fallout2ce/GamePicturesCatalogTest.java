@@ -27,7 +27,7 @@ public class GamePicturesCatalogTest {
         }
         if (src == null) return; // source tree not reachable from the test's working directory
         String text = new String(Files.readAllBytes(src), StandardCharsets.UTF_8);
-        for (String id : new String[] { "ettu", "sonora", "resurrection" }) {
+        for (String id : new String[] { "ettu", "sonora", "resurrection", "nevada", "olympus2207", "megamod", "yesterday" }) {
             Matcher m = Pattern.compile("\\{ \"" + id + "\", \"[^\"]*\", \"([^\"]*)\".*\"([^\"]*)\" \\},").matcher(text);
             if (!m.find()) throw new AssertionError("catalog row missing: " + id);
             String[] info = GamePictures.catalogInfo(id);
