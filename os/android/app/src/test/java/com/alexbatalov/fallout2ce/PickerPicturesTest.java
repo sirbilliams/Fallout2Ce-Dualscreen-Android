@@ -111,7 +111,7 @@ public class PickerPicturesTest {
 
     @Test public void moddbSlugsAndScreenshotParsing() {
         assertEquals("https://www.moddb.com/mods/fallout-15-resurrection/images", PickerPictures.moddbImagesPage("resurrection"));
-        assertEquals("https://www.moddb.com/mods/f3-van-buren/images", PickerPictures.moddbImagesPage("yesterday"));
+        assertNull(PickerPictures.moddbImagesPage("yesterday")); // "f3-van-buren" is another project
         assertNull(PickerPictures.moddbImagesPage("sonora"));
         String html = "<img src=\"https://media.moddb.com/cache/images/mods/1/12/11111/thumb_620x2000/shot1.jpg\">"
             + "<a href=\"https://media.moddb.com/images/mods/1/12/11111/shot2.png\">"

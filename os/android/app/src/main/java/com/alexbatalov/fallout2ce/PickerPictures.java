@@ -329,8 +329,7 @@ final class PickerPictures {
             case "megamod": return "mib88-megamod";
             case "resurrection": return "fallout-15-resurrection";
             case "olympus2207": return "olympus-2207";
-            case "yesterday": return "f3-van-buren";
-            default: return null; // no confirmed ModDB page (ettu, sonora, nevada)
+            default: return null; // no confirmed ModDB page (ettu, sonora, nevada, yesterday; "f3-van-buren" is another project)
         }
     }
 
