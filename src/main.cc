@@ -157,7 +157,11 @@ int falloutMain(int argc, char** argv)
     }
 
     if (mainMenuWindowInit() == 0) {
-        bool done = muiIsEnabled() && !muiGamePickerRun();
+        // CE: A dev start (--dev-load-game / --dev-new-game) goes straight to
+        // the game; the picker would otherwise swallow the autotest's steps
+        // (they would run over the picker, never over the loaded map).
+        bool devStart = commandLineDevLoadGameSlot != -1 || commandLineDevNewGame;
+        bool done = muiIsEnabled() && !devStart && !muiGamePickerRun();
         while (!done) {
             keyboardReset();
             if (!backgoundSoundIsPlaying()) {
