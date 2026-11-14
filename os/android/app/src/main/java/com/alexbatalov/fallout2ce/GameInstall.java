@@ -373,7 +373,8 @@ final class GameInstall {
         }
     }
 
-    // Adds owner+group rwx to folders and rw to files (no symlinks followed).
+    // Adds owner+group rwx and world rx to folders, owner+group rw and world r
+    // to files (no symlinks followed).
     // On Android folders also get setgid and the games folder's group, so files
     // the game creates later inherit it (readable over adb/MTP).
     // Errors are ignored: some filesystems have no POSIX permissions.
@@ -402,7 +403,7 @@ final class GameInstall {
     private static boolean shareWithOs(java.nio.file.Path p, boolean dir, int gid) {
         if (osStat(p.toFile()) == null) return false;
         try {
-            android.system.Os.chmod(p.toString(), dir ? 02770 : 0660);
+            android.system.Os.chmod(p.toString(), dir ? 02775 : 0664);
         } catch (Throwable ignored) {
         }
         if (gid >= 0) {
@@ -423,50 +424,26 @@ final class GameInstall {
             perms.add(java.nio.file.attribute.PosixFilePermission.OWNER_WRITE);
             perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_READ);
             perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE);
+            perms.add(java.nio.file.attribute.PosixFilePermission.OTHERS_READ);
             if (dir) {
                 perms.add(java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE);
                 perms.add(java.nio.file.attribute.PosixFilePermission.GROUP_EXECUTE);
+                perms.add(java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE);
             }
             Files.setPosixFilePermissions(p, perms);
         } catch (IOException | RuntimeException ignored) {
         }
     }
 
-    // Android only: true when a game folder or one of its direct children lacks
-    // setgid (folders) / has a group other than the games folder's.
-    private static boolean needsOsShare(File game, int gamesGid) {
-        int[] st = osStat(game);
-        if (st == null) return false;
-        if ((st[0] & 02000) == 0 || (st[0] & 0070) != 0070 || st[1] != gamesGid) return true;
-        File[] children = game.listFiles();
-        if (children == null) return false;
-        for (File c : children) {
-            if (Files.isSymbolicLink(c.toPath())) continue;
-            int[] cs = osStat(c);
-            if (cs == null) continue;
-            if (cs[1] != gamesGid) return true;
-            if (c.isDirectory() && (cs[0] & 02000) == 0) return true;
-        }
-        return false;
-    }
-
-    // App start: repairs owner-only game folders of older installs.
+    // App start: repair every descendant, even if the game folder was already
+    // shared by an older build. walkFileTree does not follow symbolic links.
     static void shareGames(File top) {
         File gamesDir = new File(top, "games");
+        if (Files.isSymbolicLink(gamesDir.toPath())) return;
         File[] games = gamesDir.listFiles();
         if (games == null) return;
-        int[] gamesStat = osStat(gamesDir);
         for (File game : games) {
-            if (game.getName().startsWith(".") || !game.isDirectory() || Files.isSymbolicLink(game.toPath())) continue;
-            if (gamesStat != null) {
-                if (!needsOsShare(game, gamesStat[1])) continue;
-            } else {
-                try {
-                    if (Files.getPosixFilePermissions(game.toPath()).contains(java.nio.file.attribute.PosixFilePermission.GROUP_READ)) continue;
-                } catch (IOException | RuntimeException e) {
-                    continue;
-                }
-            }
+            if (game.getName().startsWith(".") || Files.isSymbolicLink(game.toPath()) || !game.isDirectory()) continue;
             shareTree(game);
         }
     }

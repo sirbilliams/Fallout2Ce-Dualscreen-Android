@@ -149,6 +149,55 @@ public class GameInstallTest {
         assertTrue(Files.getPosixFilePermissions(f.toPath()).contains(gr));
     }
 
+    @Test public void shareGamesRepairsNestedFileUnderAlreadySharedDirectories() throws Exception {
+        org.junit.Assume.assumeTrue(temp.getRoot().toPath().getFileSystem().supportedFileAttributeViews().contains("posix"));
+        File top = temp.newFolder();
+        File game = new File(top, "games/x");
+        File sub = new File(game, "data/maps");
+        assertTrue(sub.mkdirs());
+        File file = new File(sub, "a.map");
+        Files.write(file.toPath(), new byte[] {1});
+        for (File dir : new File[] {game, sub.getParentFile(), sub}) {
+            Files.setPosixFilePermissions(dir.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rwxrwxr-x"));
+        }
+        Files.setPosixFilePermissions(file.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"));
+        assertFalse(Files.getPosixFilePermissions(file.toPath()).contains(java.nio.file.attribute.PosixFilePermission.OTHERS_READ));
+
+        GameInstall.shareGames(top);
+
+        assertTrue(Files.getPosixFilePermissions(file.toPath()).contains(java.nio.file.attribute.PosixFilePermission.OTHERS_READ));
+        assertFalse(Files.getPosixFilePermissions(file.toPath()).contains(java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE));
+        // A later owner-only directory must also be repaired on the next start.
+        Files.setPosixFilePermissions(sub.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"));
+        GameInstall.shareGames(top);
+        for (File dir : new File[] {game, sub.getParentFile(), sub}) {
+            assertTrue(Files.getPosixFilePermissions(dir.toPath()).contains(java.nio.file.attribute.PosixFilePermission.OTHERS_READ));
+            assertTrue(Files.getPosixFilePermissions(dir.toPath()).contains(java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE));
+        }
+    }
+
+    @Test public void shareGamesDoesNotFollowSymlinks() throws Exception {
+        org.junit.Assume.assumeTrue(temp.getRoot().toPath().getFileSystem().supportedFileAttributeViews().contains("posix"));
+        File top = temp.newFolder();
+        File game = new File(top, "games/x");
+        assertTrue(game.mkdirs());
+        File outside = temp.newFolder();
+        File file = new File(outside, "private.dat");
+        Files.write(file.toPath(), new byte[] {1});
+        java.util.Set<java.nio.file.attribute.PosixFilePermission> dirPerms = java.nio.file.attribute.PosixFilePermissions.fromString("rwx------");
+        java.util.Set<java.nio.file.attribute.PosixFilePermission> filePerms = java.nio.file.attribute.PosixFilePermissions.fromString("rw-------");
+        Files.setPosixFilePermissions(outside.toPath(), dirPerms);
+        Files.setPosixFilePermissions(file.toPath(), filePerms);
+        Files.createSymbolicLink(new File(game, "linked-dir").toPath(), outside.toPath());
+        Files.createSymbolicLink(new File(game, "linked-file").toPath(), file.toPath());
+        Files.createSymbolicLink(new File(top, "games/linked-game").toPath(), outside.toPath());
+
+        GameInstall.shareGames(top);
+
+        assertEquals(dirPerms, Files.getPosixFilePermissions(outside.toPath()));
+        assertEquals(filePerms, Files.getPosixFilePermissions(file.toPath()));
+    }
+
     @Test public void missingFallout1AndExistingRootsAreUntouched() throws Exception {
         File top = temp.newFolder();
         fails(() -> GameInstall.extract(top, "ettu", zip("Fallout1in2/data/test.dat"), (d, t) -> {}));
