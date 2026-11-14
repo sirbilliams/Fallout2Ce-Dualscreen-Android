@@ -98,7 +98,7 @@ namespace {
         y += titleHeight;
         MuiRect hint = { x, y, gridWidth, hintHeight };
         muiPushClip(hint);
-        muiDrawTextAligned(muiDecodeUtf8(muiText(kTextYourItems, "Your items - tap one to use it")), hint, ui.dp(11.0f), theme.text, MuiAlign::Start, MuiAlign::Center);
+        muiDrawTextAligned(muiDecodeUtf8(muiText(kTextYourItems, "Tap one of your items")), hint, ui.dp(11.0f), theme.text, MuiAlign::Start, MuiAlign::Center);
         muiPopClip();
         y += hintHeight + ui.dp(4.0f);
 

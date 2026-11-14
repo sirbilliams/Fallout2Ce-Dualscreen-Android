@@ -439,5 +439,5 @@
 {433}{}{Version: not installed}
 {434}{}{Version: incomplete}
 {435}{}{Use an item on: %s}
-{436}{}{Your items - tap one to use it}
+{436}{}{Tap one of your items}
 {437}{}{LIT}
